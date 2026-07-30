@@ -1,0 +1,20 @@
+[
+  {
+    "id": "boat-chao-phraya-orange",
+    "nameEn": "Chao Phraya Express Boat Orange Flag",
+    "nameTh": "เรือด่วนเจ้าพระยา ธงส้ม",
+    "operator": "Chao Phraya Express Boat",
+    "color": "#ff7f00",
+    "piers": [
+      { "id": "phra-arthit", "nameEn": "Phra Arthit", "nameTh": "พระอาทิตย์", "lat": 13.7704, "lng": 100.4954, "connectedStationIds": [] },
+      { "id": "wang-lang", "nameEn": "Wang Lang", "nameTh": "วังหลัง", "lat": 13.7587, "lng": 100.4889, "connectedStationIds": [] },
+      { "id": "tha-chang", "nameEn": "Tha Chang", "nameTh": "ท่าช้าง", "lat": 13.7511, "lng": 100.4909, "connectedStationIds": [] },
+      { "id": "tha-tian", "nameEn": "Tha Tian", "nameTh": "ท่าเตียน", "lat": 13.7456, "lng": 100.4895, "connectedStationIds": [] },
+      { "id": "wat-arun-pier", "nameEn": "Wat Arun Pier", "nameTh": "ท่าวัดอรุณ", "lat": 13.7437, "lng": 100.4889, "connectedStationIds": [] },
+      { "id": "ratchawongse", "nameEn": "Ratchawongse", "nameTh": "ราชวงศ์", "lat": 13.7408, "lng": 100.4979, "connectedStationIds": [] },
+      { "id": "si-phraya", "nameEn": "Si Phraya", "nameTh": "สี่พระยา", "lat": 13.7356, "lng": 100.5054, "connectedStationIds": [] },
+      { "id": "iconsiam-pier", "nameEn": "ICONSIAM Pier", "nameTh": "ท่าไอคอนสยาม", "lat": 13.7269, "lng": 100.5103, "connectedStationIds": ["bts-khlong-san"] },
+      { "id": "sathorn-pier", "nameEn": "Sathorn Pier (Central)", "nameTh": "ท่าสาทร (กลาง)", "lat": 13.7213, "lng": 100.529, "connectedStationIds": ["bts-saphan-taksin"] }
+    ]
+  }
+]

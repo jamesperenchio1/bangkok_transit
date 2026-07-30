@@ -1,0 +1,56 @@
+[
+  {
+    "id": "bts",
+    "nameEn": "Bangkok Mass Transit System",
+    "nameTh": "รถไฟฟ้าบีทีเอส",
+    "shortName": "BTS",
+    "website": "https://www.bts.co.th",
+    "color": "#006400",
+    "textColor": "#ffffff"
+  },
+  {
+    "id": "mrta",
+    "nameEn": "Mass Rapid Transit Authority of Thailand",
+    "nameTh": "การรถไฟฟ้าขนส่งมวลชนแห่งประเทศไทย",
+    "shortName": "MRT",
+    "website": "https://www.mrta.co.th",
+    "color": "#1a3c8a",
+    "textColor": "#ffffff"
+  },
+  {
+    "id": "srtet",
+    "nameEn": "SRT Electrified Train",
+    "nameTh": "รถไฟฟ้าชานเมืองสายสีแดง",
+    "shortName": "SRT",
+    "website": "https://www.srtet.co.th",
+    "color": "#cc0000",
+    "textColor": "#ffffff"
+  },
+  {
+    "id": "arl",
+    "nameEn": "Airport Rail Link",
+    "nameTh": "รถไฟฟ้าเชื่อมท่าอากาศยานสุวรรณภูมิ",
+    "shortName": "ARL",
+    "website": "https://www.srtet.co.th",
+    "color": "#8a1c1c",
+    "textColor": "#ffffff"
+  },
+  {
+    "id": "brt",
+    "nameEn": "Bangkok BRT",
+    "nameTh": "บีอาร์ที กรุงเทพฯ",
+    "shortName": "BRT",
+    "website": "https://www.bangkokbrt.com",
+    "color": "#f2a900",
+    "textColor": "#000000"
+  },
+  {
+    "id": "chaophraya",
+    "nameEn": "Chao Phraya Express Boat",
+    "nameTh": "เรือด่วนเจ้าพระยา",
+    "shortName": "Boat",
+    "website": "https://www.chaophrayaexpressboat.com",
+    "color": "#0066cc",
+    "textColor": "#ffffff"
+  }
+]

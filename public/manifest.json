@@ -1,0 +1,29 @@
+{
+  "name": "Bangkok Transit",
+  "short_name": "BKK Transit",
+  "description": "The definitive Bangkok transit app. Interactive map, route planner, fares, exits, facilities, parking, and offline PWA.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#006400",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["navigation", "travel", "utilities"],
+  "screenshots": []
+}
