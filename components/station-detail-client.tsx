@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { MapPin, AlertTriangle, ArrowUpFromLine, Train, Ticket, Car, Coffee, Baby, Wifi, BatteryCharging, ShoppingBag, CreditCard, Phone, Accessibility, Info } from "lucide-react";
+import {
+  AlertTriangle, ArrowUpFromLine, Train, Ticket, Car, Coffee,
+  Baby, BatteryCharging, ShoppingBag, CreditCard, Phone,
+  Accessibility, Info, Bike, Bus, Ship, Waypoints,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/components/language-provider";
 import type { TranslationKey } from "@/lib/i18n";
 import type { Station, Line, Exit, Facility, Parking, Place, Alert, Timetable } from "@/data/schemas";
@@ -21,25 +24,25 @@ interface StationDetailClientProps {
 }
 
 const facilityIcons: Record<string, React.ElementType> = {
-  elevators: ArrowUpFromLine,
-  escalators: ArrowUpFromLine,
-  toilets: Train,
-  disabledAccess: Accessibility,
-  babyChanging: Baby,
-  atms: CreditCard,
-  convenienceStores: ShoppingBag,
-  food: Coffee,
-  chargingPoints: BatteryCharging,
-  bikeParking: Train,
-  carParking: Car,
-  motorcycleParking: Train,
-  taxiStand: Car,
-  motorcycleTaxi: Train,
-  busStop: Train,
-  boatPier: Train,
-  lostAndFound: Info,
-  customerService: Phone,
-  evCharging: BatteryCharging,
+  elevators:          ArrowUpFromLine,
+  escalators:         ArrowUpFromLine,
+  toilets:            Waypoints,
+  disabledAccess:     Accessibility,
+  babyChanging:       Baby,
+  atms:               CreditCard,
+  convenienceStores:  ShoppingBag,
+  food:               Coffee,
+  chargingPoints:     BatteryCharging,
+  bikeParking:        Bike,
+  carParking:         Car,
+  motorcycleParking:  Car,
+  taxiStand:          Car,
+  motorcycleTaxi:     Car,
+  busStop:            Bus,
+  boatPier:           Ship,
+  lostAndFound:       Info,
+  customerService:    Phone,
+  evCharging:         BatteryCharging,
 };
 
 export function StationDetailClient({
@@ -70,17 +73,16 @@ export function StationDetailClient({
               {line.shortName}
             </Badge>
           ))}
+          {station.isInterchange && (
+            <Badge variant="outline">Interchange</Badge>
+          )}
         </div>
         <h1 className="text-3xl font-bold">
           {language === "th" ? station.nameTh : station.nameEn}
         </h1>
-        <p className="text-muted-foreground text-lg">
-          {station.codes.join(", ")} · {station.isInterchange ? t("interchange") : ""}
-        </p>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <MapPin className="h-4 w-4" />
-          {station.lat.toFixed(5)}, {station.lng.toFixed(5)}
-        </div>
+        {station.codes.length > 0 && (
+          <p className="text-muted-foreground text-lg">{station.codes.join(", ")}</p>
+        )}
       </section>
 
       {alerts.length > 0 && (
@@ -112,7 +114,7 @@ export function StationDetailClient({
             <CardContent className="p-4 flex items-center gap-3">
               <Train className="h-5 w-5 text-primary" />
               <div>
-                <div className="font-medium">Plan route from here</div>
+                <div className="font-medium">{t("planRoute")} from here</div>
                 <div className="text-xs text-muted-foreground">Find best route</div>
               </div>
             </CardContent>
@@ -121,9 +123,9 @@ export function StationDetailClient({
         <Link href={`/route?to=${encodeURIComponent(station.nameEn)}`}>
           <Card className="hover:bg-accent transition-colors h-full">
             <CardContent className="p-4 flex items-center gap-3">
-              <MapPin className="h-5 w-5 text-primary" />
+              <Train className="h-5 w-5 text-primary" />
               <div>
-                <div className="font-medium">Plan route to here</div>
+                <div className="font-medium">{t("planRoute")} to here</div>
                 <div className="text-xs text-muted-foreground">Find best route</div>
               </div>
             </CardContent>
@@ -131,7 +133,6 @@ export function StationDetailClient({
         </Link>
       </div>
 
-      {/* Timetable */}
       {stationTimetables.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
@@ -144,7 +145,7 @@ export function StationDetailClient({
             {stationTimetables.map((tt) => {
               const line = lineMap.get(tt.lineId);
               const first = tt.firstTrain.find((ft) => ft.stationId === station.id);
-              const last = tt.lastTrain.find((lt) => lt.stationId === station.id);
+              const last  = tt.lastTrain.find((lt) => lt.stationId === station.id);
               return (
                 <div key={tt.lineId} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
@@ -165,7 +166,6 @@ export function StationDetailClient({
         </Card>
       )}
 
-      {/* Facilities */}
       {facility && (
         <Card>
           <CardHeader className="pb-3">
@@ -178,7 +178,7 @@ export function StationDetailClient({
                 const Icon = facilityIcons[key] || Info;
                 return (
                   <div key={key} className="flex items-center gap-2 text-sm">
-                    <Icon className="h-4 w-4 text-muted-foreground" />
+                    <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span>
                       {t(key as TranslationKey)}
                       {typeof value === "number" ? `: ${value}` : ""}
@@ -191,7 +191,6 @@ export function StationDetailClient({
         </Card>
       )}
 
-      {/* Exits */}
       {exits && exits.exits.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
@@ -215,7 +214,6 @@ export function StationDetailClient({
         </Card>
       )}
 
-      {/* Parking */}
       {parking && (
         <Card>
           <CardHeader className="pb-3">
@@ -251,7 +249,6 @@ export function StationDetailClient({
         </Card>
       )}
 
-      {/* Nearby places */}
       {places.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
@@ -271,7 +268,7 @@ export function StationDetailClient({
                   <div className="text-xs text-muted-foreground capitalize">{place.category}</div>
                 </div>
                 {place.walkingMinutes && (
-                  <div className="text-xs text-muted-foreground">{place.walkingMinutes} min walk</div>
+                  <div className="text-xs text-muted-foreground">{place.walkingMinutes} min {t("walking")}</div>
                 )}
               </Link>
             ))}

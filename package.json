@@ -7,7 +7,8 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "validate-data": "npx tsx scripts/validate-data.ts"
+    "validate-data": "npx tsx scripts/validate-data.ts",
+    "scrape": "npx tsx scripts/scrape-osm-transit.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

@@ -1,7 +1,5 @@
-import { getAllData } from "@/lib/data";
-import { TransitMapLoader } from "@/components/transit-map-loader";
+import { redirect } from "next/navigation";
 
-export default async function MapPage() {
-  const data = await getAllData();
-  return <TransitMapLoader initialData={data} />;
+export default function MapPage() {
+  redirect("/");
 }

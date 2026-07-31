@@ -10,7 +10,55 @@
     "mode": "bts",
     "status": "operational",
     "openingDate": "1999-12-05",
-    "stationIds": ["bts-mo-chit", "bts-saphan-khwai", "bts-ari", "bts-victory-monument", "bts-phaya-thai", "bts-ratchathewi", "bts-siam", "bts-chit-lom", "bts-pleonchit", "bts-nana", "bts-asok", "bts-phrom-phong", "bts-thong-lo", "bts-ekkamai", "bts-on-nut", "bts-bang-na", "bts-bearing", "bts-samrong"]
+    "stationIds": [
+      "bts-kheha",
+      "bts-sai-luat",
+      "bts-phraek-sa",
+      "bts-srinagarindra",
+      "bts-pak-nam",
+      "bts-royal-thai-naval-academy",
+      "bts-chang-erawan",
+      "bts-pu-chao",
+      "bts-samrong",
+      "bts-bearing",
+      "bts-bang-na",
+      "bts-udom-suk",
+      "bts-punnawithi",
+      "bts-bang-chak",
+      "bts-on-nut",
+      "bts-phra-khanong",
+      "bts-ekkamai",
+      "bts-thong-lo",
+      "bts-phrom-phong",
+      "bts-asok",
+      "bts-nana",
+      "bts-phloen-chit",
+      "bts-chit-lom",
+      "bts-siam",
+      "bts-ratchathewi",
+      "arl-phaya-thai",
+      "bts-victory-monument",
+      "bts-sanam-pao",
+      "bts-ari",
+      "bts-saphan-khwai",
+      "bts-mo-chit",
+      "bts-ha-yaek-lat-phrao",
+      "bts-phahonyothin-24",
+      "bts-ratchayothin",
+      "bts-sena-nikhom",
+      "bts-kasetsart-university",
+      "bts-royal-forest-department",
+      "bts-bang-bua",
+      "bts-11th-infantry-regiment",
+      "bts-wat-phra-sri-mahathat",
+      "bts-phahonyothin-59",
+      "bts-sai-yud",
+      "bts-saphan-mai",
+      "bts-bhumibol-adulyadej-hospital",
+      "bts-royal-thai-air-force-museum",
+      "bts-yaek-kor-por-aor",
+      "bts-khu-khot"
+    ]
   },
   {
     "id": "bts-silom",
@@ -23,7 +71,22 @@
     "mode": "bts",
     "status": "operational",
     "openingDate": "1999-12-05",
-    "stationIds": ["bts-national-stadium", "bts-siam", "bts-ratchadamri", "bts-sala-daeng", "bts-chong-nonsi", "bts-surask", "bts-saphan-taksin", "bts-krung-thon-buri", "bts-wongwian-yai", "bts-bang-wa"]
+    "stationIds": [
+      "bts-national-stadium",
+      "bts-siam",
+      "bts-ratchadamri",
+      "bts-sala-daeng",
+      "bts-chong-nonsi",
+      "bts-surask",
+      "bts-saphan-taksin",
+      "bts-krung-thon-buri",
+      "bts-krung-thon-buri-gold",
+      "bts-wongwian-yai",
+      "bts-pho-nimit",
+      "bts-talat-phlu",
+      "bts-wutthakat",
+      "bts-bang-wa"
+    ]
   },
   {
     "id": "bts-gold",
@@ -36,7 +99,11 @@
     "mode": "bts",
     "status": "operational",
     "openingDate": "2020-12-16",
-    "stationIds": ["bts-krung-thon-buri-gold", "bts-charoen-nakhon", "bts-khlong-san"]
+    "stationIds": [
+      "bts-krung-thon-buri-gold",
+      "bts-charoen-nakhon",
+      "bts-khlong-san"
+    ]
   },
   {
     "id": "mrt-blue",
@@ -49,7 +116,47 @@
     "mode": "mrt",
     "status": "operational",
     "openingDate": "2004-07-03",
-    "stationIds": ["mrt-bang-sue", "mrt-chatuchak-park", "mrt-phahon-yothin", "mrt-lat-phrao", "mrt-ratchadaphisek", "mrt-sutthisan", "mrt-huai-khwang", "mrt-thailand-cultural-centre", "mrt-phra-ram-9", "mrt-phetchaburi", "mrt-sukhumvit", "mrt-queen-sirkit", "mrt-klong-toei", "mrt-lumphini", "mrt-si-lom", "mrt-sam-yan", "mrt-hua-lamphong"]
+    "stationIds": [
+      "mrt-tha-phra",
+      "mrt-13",
+      "mrt-fai-chai",
+      "mrt-bang-khun-non",
+      "mrt-bang-yi-khan",
+      "mrt-sirindhorn",
+      "mrt-bang-phlat",
+      "mrt-bang-o",
+      "mrt-bang-pho",
+      "mrt-tao-poon",
+      "srt-bang-sue",
+      "mrt-kamphaeng-phet",
+      "mrt-chatuchak-park",
+      "mrt-phahon-yothin",
+      "mrt-lat-phrao",
+      "mrt-ratchadaphisek",
+      "mrt-sutthisan",
+      "mrt-huai-khwang",
+      "mrt-thailand-cultural-centre",
+      "mrt-phra-ram-9",
+      "mrt-phetchaburi",
+      "mrt-sukhumvit",
+      "mrt-queen-sirkit",
+      "mrt-khlong-toei",
+      "mrt-lumphini",
+      "mrt-si-lom",
+      "mrt-sam-yan",
+      "mrt-hua-lamphong",
+      "mrt-wat-mangkon",
+      "mrt-sam-yot",
+      "mrt-sanam-chai",
+      "mrt-itsaraphap",
+      "mrt-tha-phra",
+      "mrt-bang-phai",
+      "bts-bang-wa",
+      "mrt-phetkasem-48",
+      "mrt-phasi-charoen",
+      "mrt-bang-khae",
+      "mrt-lak-song"
+    ]
   },
   {
     "id": "mrt-purple",
@@ -62,7 +169,28 @@
     "mode": "mrt",
     "status": "operational",
     "openingDate": "2016-08-06",
-    "stationIds": ["mrt-khlong-bang-phai", "mrt-talad-bang-yai", "mrt-sam-yaek-bang-yai", "mrt-bang-phlu", "mrt-bang-rak-yai", "mrt-bang-rak-noi-tha-it", "mrt-sai-ma", "mrt-sam-reong", "mrt-yaek-nonthaburi-1", "mrt-bang-krasor", "mrt-nontraburi-civic-centre", "mrt-ministry-of-public-health", "mrt-tiwanon", "mrt-wong-sawang", "mrt-bang-son", "mrt-tao-poon"]
+    "stationIds": [
+      "mrt-khlong-bang-phai",
+      "mrt-talad-bang-yai",
+      "mrt-sam-yaek-bang-yai",
+      "mrt-bang-phlu",
+      "mrt-bang-rak-yai",
+      "mrt-bang-rak-noi-tha-it",
+      "mrt-sai-ma",
+      "mrt-phra-nang-klao-bridge",
+      "mrt-sam-reong",
+      "mrt-yaek-nonthaburi-1",
+      "mrt-bang-krasor",
+      "mrt-nonthaburi-civic-center",
+      "mrt-nontraburi-civic-centre",
+      "mrt-ministry-of-public-health",
+      "mrt-yaek-tiwanon",
+      "mrt-tiwanon",
+      "mrt-wong-sawang",
+      "srt-bang-son-light-red",
+      "mrt-bang-son",
+      "mrt-tao-poon"
+    ]
   },
   {
     "id": "mrt-yellow",
@@ -75,7 +203,28 @@
     "mode": "mrt",
     "status": "operational",
     "openingDate": "2023-07-03",
-    "stationIds": []
+    "stationIds": [
+      "mrt-lat-phrao",
+      "mrt-phawana",
+      "mrt-chok-chai-4",
+      "mrt-lat-phrao-71",
+      "mrt-lat-phrao-83",
+      "mrt-mahatthai",
+      "mrt-lat-phrao-101",
+      "mrt-bang-kapi",
+      "mrt-yaek-lam-sali",
+      "mrt-si-kritha",
+      "mrt-kalantan",
+      "mrt-si-nut",
+      "mrt-srinagarindra-38",
+      "mrt-si-iam",
+      "mrt-si-la-salle",
+      "mrt-si-bearing",
+      "mrt-si-dan",
+      "mrt-si-thepha",
+      "mrt-thipphawan",
+      "bts-samrong"
+    ]
   },
   {
     "id": "mrt-pink",
@@ -88,7 +237,38 @@
     "mode": "mrt",
     "status": "operational",
     "openingDate": "2023-11-21",
-    "stationIds": []
+    "stationIds": [
+      "mrt-nonthaburi-civic-center",
+      "mrt-khae-rai",
+      "mrt-sanambin-nam",
+      "mrt-samakkhi",
+      "mrt-royal-irrigation-department",
+      "mrt-yaek-pak-kret",
+      "mrt-pak-kret-bypass",
+      "mrt-chaeng-watthana-pak-kret-28",
+      "mrt-si-rat",
+      "mrt-muang-thong-thani",
+      "mrt-chaeng-watthana-14",
+      "mrt-government-complex",
+      "mrt-national-telecom",
+      "srt-lak-si",
+      "mrt-rajabhat-phranakhon",
+      "bts-wat-phra-sri-mahathat",
+      "mrt-ram-inthra-3",
+      "mrt-lat-pla-khao",
+      "mrt-ram-inthra-kor-mor-4",
+      "mrt-maiyalap",
+      "mrt-vacharaphol",
+      "mrt-ram-inthra-kor-mor-6",
+      "mrt-khu-bon",
+      "mrt-ram-inthra-kor-mor-9",
+      "mrt-outer-ring-road-ram-inthra",
+      "mrt-nopparat",
+      "mrt-bang-chan",
+      "mrt-setthabutbamphen",
+      "mrt-min-buri-market",
+      "mrt-min-buri"
+    ]
   },
   {
     "id": "arl-city",
@@ -101,7 +281,16 @@
     "mode": "arl",
     "status": "operational",
     "openingDate": "2010-08-23",
-    "stationIds": ["arl-phaya-thai", "arl-ratchaprarop", "arl-makkasan", "arl-ramkhamhaeng", "arl-hua-mak", "arl-ban-thap-chang", "arl-lat-krabang", "arl-suvarnabhumi"]
+    "stationIds": [
+      "arl-phaya-thai",
+      "arl-ratchaprarop",
+      "arl-makkasan",
+      "arl-ramkhamhaeng",
+      "arl-hua-mak",
+      "arl-ban-thap-chang",
+      "arl-lat-krabang",
+      "arl-suvarnabhumi"
+    ]
   },
   {
     "id": "srt-dark-red",
@@ -114,7 +303,13 @@
     "mode": "srt",
     "status": "operational",
     "openingDate": "2021-08-02",
-    "stationIds": ["srt-bang-sue", "srt-bang-khen", "srt-lak-si", "srt-don-mueang", "srt-rangsit"]
+    "stationIds": [
+      "srt-bang-sue",
+      "srt-bang-khen",
+      "srt-lak-si",
+      "srt-don-mueang",
+      "srt-rangsit"
+    ]
   },
   {
     "id": "srt-light-red",
@@ -127,7 +322,11 @@
     "mode": "srt",
     "status": "operational",
     "openingDate": "2021-08-02",
-    "stationIds": ["srt-taling-chan", "srt-bang-son-light-red", "srt-bang-sue"]
+    "stationIds": [
+      "srt-taling-chan",
+      "srt-bang-son-light-red",
+      "srt-bang-sue"
+    ]
   },
   {
     "id": "brt-sathorn",
@@ -140,7 +339,12 @@
     "mode": "brt",
     "status": "operational",
     "openingDate": "2010-05-14",
-    "stationIds": ["brt-sathorn", "brt-witthayu", "brt-rama-9", "brt-ratchaphruek"]
+    "stationIds": [
+      "brt-sathorn",
+      "brt-witthayu",
+      "brt-rama-9",
+      "brt-ratchaphruek"
+    ]
   },
   {
     "id": "boat-chao-phraya",

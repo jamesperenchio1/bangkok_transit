@@ -1,7 +1,7 @@
 import { getAllData } from "@/lib/data";
-import { DashboardClient } from "@/components/dashboard-client";
+import { TransitMapLoader } from "@/components/transit-map-loader";
 
 export default async function Home() {
   const data = await getAllData();
-  return <DashboardClient initialData={data} />;
+  return <TransitMapLoader initialData={data} />;
 }
