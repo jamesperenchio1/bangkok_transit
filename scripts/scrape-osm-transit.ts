@@ -112,7 +112,9 @@ const OVERPASS   = "https://overpass-api.de/api/interpreter";
 
 const USER_AGENT = "BangkokTransitApp/1.0 (open-source transit guide; contact via GitHub)";
 
-function httpsPost(path: string, body: string): Promise<unknown> {
+type OverpassResponse = { elements: (OsmNode | OsmRelation)[] };
+
+function httpsPost(path: string, body: string): Promise<OverpassResponse> {
   return new Promise((resolve, reject) => {
     const bodyBuf = Buffer.from(body, "utf-8");
     const opts = {
@@ -177,13 +179,13 @@ async function fetchOverpass(
   query: string,
   cacheKey: string,
   fresh: boolean
-): Promise<{ elements: (OsmNode | OsmRelation)[] }> {
+): Promise<OverpassResponse> {
   const cachePath = path.join(CACHE_DIR, `${cacheKey}.json`);
 
   if (!fresh) {
     try {
       const raw = await fs.readFile(cachePath, "utf-8");
-      const { ts, data } = JSON.parse(raw);
+      const { ts, data } = JSON.parse(raw) as { ts: number; data: OverpassResponse };
       const ageH = (Date.now() - ts) / 3_600_000;
       if (ageH < 24) {
         console.log(`  Cache hit: ${cacheKey} (${ageH.toFixed(1)}h old)`);
