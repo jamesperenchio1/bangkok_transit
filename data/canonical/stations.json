@@ -730,8 +730,8 @@
     "lineIds": [
       "mrt-purple"
     ],
-    "lat": 13.7989,
-    "lng": 100.4522
+    "lat": 13.8681,
+    "lng": 100.4871
   },
   {
     "id": "mrt-yaek-nonthaburi-1",
@@ -760,19 +760,6 @@
     "lng": 100.504668
   },
   {
-    "id": "mrt-nontraburi-civic-centre",
-    "nameEn": "Nonthaburi Civic Centre",
-    "nameTh": "ศูนย์ราชการนนทบุรี",
-    "codes": [
-      "PP11"
-    ],
-    "lineIds": [
-      "mrt-purple"
-    ],
-    "lat": 13.7702,
-    "lng": 100.4751
-  },
-  {
     "id": "mrt-ministry-of-public-health",
     "nameEn": "Ministry of Public Health",
     "nameTh": "กระทรวงสาธารณสุข",
@@ -795,8 +782,8 @@
     "lineIds": [
       "mrt-purple"
     ],
-    "lat": 13.7524,
-    "lng": 100.4894
+    "lat": 13.835,
+    "lng": 100.5208
   },
   {
     "id": "mrt-wong-sawang",

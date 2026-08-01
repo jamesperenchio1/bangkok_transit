@@ -1219,7 +1219,7 @@
     "evCharging": false
   },
   {
-    "stationId": "mrt-nontraburi-civic-centre",
+    "stationId": "mrt-nonthaburi-civic-center",
     "elevators": 2,
     "escalators": 4,
     "toilets": true,
