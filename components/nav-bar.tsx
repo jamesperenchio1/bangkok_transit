@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Map, Route, Home, Ticket, Car, Bell, Palmtree, Menu, Moon, Sun, Languages } from "lucide-react";
+import { Map, Route, LayoutDashboard, Ticket, Car, Bell, Palmtree, Menu, Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -16,14 +16,20 @@ export function NavBar() {
   const { t, toggleLanguage, language } = useLanguage();
 
   const navItems = [
-    { href: "/", label: t("home"), icon: Home },
-    { href: "/map", label: t("map"), icon: Map },
-    { href: "/route", label: t("route"), icon: Route },
-    { href: "/fares", label: t("fares"), icon: Ticket },
+    { href: "/",        label: t("map"),     icon: Map },
+    { href: "/route",   label: t("route"),   icon: Route },
+    { href: "/fares",   label: t("fares"),   icon: Ticket },
     { href: "/parking", label: t("parking"), icon: Car },
     { href: "/tourist", label: t("tourist"), icon: Palmtree },
-    { href: "/alerts", label: t("alerts"), icon: Bell },
+    { href: "/alerts",  label: t("alerts"),  icon: Bell },
+    { href: "/home",    label: t("home"),    icon: LayoutDashboard },
   ];
+
+  function isActive(href: string) {
+    // "/" must be exact — every path starts with "/"
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -38,7 +44,7 @@ export function NavBar() {
         <nav className="hidden md:flex items-center gap-1">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const active = isActive(item.href);
             return (
               <Link
                 key={item.href}
@@ -105,7 +111,7 @@ export function NavBar() {
               <div className="flex flex-col gap-4 mt-4">
                 {navItems.map((item) => {
                   const Icon = item.icon;
-                  const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                  const active = isActive(item.href);
                   return (
                     <Link
                       key={item.href}

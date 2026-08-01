@@ -2,8 +2,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker, useMap, Polyline } from "react-leaflet";
-import { MapPin, Layers } from "lucide-react";
+import { MapContainer, TileLayer, Marker, Popup, CircleMarker, Polyline, useMap } from "react-leaflet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/components/language-provider";
@@ -39,74 +38,102 @@ export function TransitMapClient({ initialData }: TransitMapClientProps) {
   const { stations, lines, boatRoutes, busRoutes } = initialData;
   const { language } = useLanguage();
   const [userPos, setUserPos] = useState<[number, number] | null>(null);
-  const [activeModes, setActiveModes] = useState<Record<string, boolean>>({
-    bts: true,
-    mrt: true,
-    arl: true,
-    srt: true,
-    brt: true,
-    boat: false,
-    bus: false,
-  });
+
+  // Per-line toggle — each line has its own on/off state
+  const [activeLines, setActiveLines] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(
+      lines
+        .filter((l) => l.mode !== "boat" && l.mode !== "bus")
+        .map((l) => [l.id, true])
+    )
+  );
+  const [showBoat, setShowBoat] = useState(false);
+  const [showBus, setShowBus] = useState(false);
 
   useEffect(() => {
     if (typeof navigator !== "undefined" && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        setUserPos([pos.coords.latitude, pos.coords.longitude]);
-      });
+      navigator.geolocation.getCurrentPosition((pos) =>
+        setUserPos([pos.coords.latitude, pos.coords.longitude])
+      );
     }
   }, []);
 
-  const lineById = useMemo(() => {
-    const map = new Map<string, Line>();
-    lines.forEach((l) => map.set(l.id, l));
-    return map;
-  }, [lines]);
+  const lineById = useMemo(
+    () => new Map(lines.map((l) => [l.id, l])),
+    [lines]
+  );
 
-  const visibleStations = useMemo(() => {
-    return stations.filter((s) => s.lineIds.some((lid) => activeModes[lineById.get(lid)?.mode || ""]));
-  }, [stations, activeModes, lineById]);
+  const stationById = useMemo(
+    () => new Map(stations.map((s) => [s.id, s])),
+    [stations]
+  );
 
-  const toggleMode = (mode: string) => {
-    setActiveModes((prev) => ({ ...prev, [mode]: !prev[mode] }));
-  };
+  const visibleStations = useMemo(
+    () =>
+      stations.filter((s) =>
+        s.lineIds.some((lid) => activeLines[lid])
+      ),
+    [stations, activeLines]
+  );
+
+  // Build ordered polyline coordinates per active line
+  const linePolylines = useMemo(() => {
+    const result: { line: Line; coords: [number, number][] }[] = [];
+    for (const line of lines) {
+      if (!activeLines[line.id]) continue;
+      if (line.stationIds.length < 2) continue;
+      const coords: [number, number][] = [];
+      for (const sid of line.stationIds) {
+        const s = stationById.get(sid);
+        if (s) coords.push([s.lat, s.lng]);
+      }
+      if (coords.length >= 2) result.push({ line, coords });
+    }
+    return result;
+  }, [lines, activeLines, stationById]);
+
+  const toggleLine = (lineId: string) =>
+    setActiveLines((prev) => ({ ...prev, [lineId]: !prev[lineId] }));
 
   const center: [number, number] = [13.7563, 100.5018];
 
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)]">
-      <div className="flex items-center gap-2 overflow-x-auto p-3 border-b bg-background/95">
-        {lines.map((line) => (
-          <Button
-            key={line.id}
-            variant={activeModes[line.mode] ? "default" : "outline"}
-            size="sm"
-            onClick={() => toggleMode(line.mode)}
-            className="whitespace-nowrap text-xs"
-            style={
-              activeModes[line.mode]
-                ? { backgroundColor: line.color, color: line.textColor }
-                : {}
-            }
-          >
-            {line.shortName}
-          </Button>
-        ))}
+      {/* Line toggle toolbar */}
+      <div className="flex items-center gap-2 overflow-x-auto p-2 border-b bg-background/95 shrink-0">
+        {lines
+          .filter((l) => l.mode !== "boat" && l.mode !== "bus")
+          .map((line) => (
+            <Button
+              key={line.id}
+              variant={activeLines[line.id] ? "default" : "outline"}
+              size="sm"
+              onClick={() => toggleLine(line.id)}
+              className="whitespace-nowrap text-xs shrink-0"
+              style={
+                activeLines[line.id]
+                  ? { backgroundColor: line.color, color: line.textColor, borderColor: line.color }
+                  : { borderColor: line.color, color: line.color }
+              }
+            >
+              {line.shortName}
+            </Button>
+          ))}
         <Button
-          variant={activeModes.boat ? "default" : "outline"}
+          variant={showBoat ? "default" : "outline"}
           size="sm"
-          onClick={() => toggleMode("boat")}
-          className="whitespace-nowrap text-xs"
+          onClick={() => setShowBoat((v) => !v)}
+          className="whitespace-nowrap text-xs shrink-0"
         >
-          Boat
+          🚤 Boat
         </Button>
         <Button
-          variant={activeModes.bus ? "default" : "outline"}
+          variant={showBus ? "default" : "outline"}
           size="sm"
-          onClick={() => toggleMode("bus")}
-          className="whitespace-nowrap text-xs"
+          onClick={() => setShowBus((v) => !v)}
+          className="whitespace-nowrap text-xs shrink-0"
         >
-          Bus
+          🚌 Bus
         </Button>
       </div>
 
@@ -118,6 +145,18 @@ export function TransitMapClient({ initialData }: TransitMapClientProps) {
           />
           <MapBounds stations={stations} />
 
+          {/* Draw line routes as polylines */}
+          {linePolylines.map(({ line, coords }) => (
+            <Polyline
+              key={`line-${line.id}`}
+              positions={coords}
+              color={line.color}
+              weight={4}
+              opacity={0.85}
+            />
+          ))}
+
+          {/* Station markers */}
           {visibleStations.map((station) => {
             const primaryLine = lineById.get(station.lineIds[0]);
             const color = primaryLine?.color || "#666";
@@ -125,7 +164,7 @@ export function TransitMapClient({ initialData }: TransitMapClientProps) {
               <CircleMarker
                 key={station.id}
                 center={[station.lat, station.lng]}
-                radius={station.isInterchange ? 8 : 6}
+                radius={station.isInterchange ? 8 : 5}
                 fillColor={color}
                 color="#fff"
                 weight={2}
@@ -136,7 +175,11 @@ export function TransitMapClient({ initialData }: TransitMapClientProps) {
                     <div className="font-semibold">
                       {language === "th" ? station.nameTh : station.nameEn}
                     </div>
-                    <div className="text-xs text-muted-foreground">{station.codes.join(", ")}</div>
+                    {station.codes.length > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        {station.codes.join(", ")}
+                      </div>
+                    )}
                     <div className="flex flex-wrap gap-1 pt-1">
                       {station.lineIds.map((lid) => {
                         const line = lineById.get(lid);
@@ -163,7 +206,8 @@ export function TransitMapClient({ initialData }: TransitMapClientProps) {
             );
           })}
 
-          {activeModes.boat &&
+          {/* Boat piers */}
+          {showBoat &&
             boatRoutes.map((route) =>
               route.piers.map((pier, idx) => (
                 <CircleMarker
@@ -173,21 +217,25 @@ export function TransitMapClient({ initialData }: TransitMapClientProps) {
                   fillColor={route.color}
                   color="#fff"
                   weight={2}
+                  fillOpacity={0.9}
                 >
                   <Popup>
-                    <div className="font-medium">{language === "th" ? pier.nameTh : pier.nameEn}</div>
+                    <div className="font-medium">
+                      {language === "th" ? pier.nameTh : pier.nameEn}
+                    </div>
                     <div className="text-xs text-muted-foreground">{route.nameEn}</div>
                   </Popup>
                 </CircleMarker>
               ))
             )}
 
+          {/* User location */}
           {userPos && (
             <Marker
               position={userPos}
               icon={L.divIcon({
                 className: "bg-transparent",
-                html: `<div class="h-4 w-4 rounded-full bg-blue-500 border-2 border-white shadow-md"></div>`,
+                html: `<div style="width:16px;height:16px;border-radius:50%;background:#2563eb;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
               })}
             >
               <Popup>You are here</Popup>
