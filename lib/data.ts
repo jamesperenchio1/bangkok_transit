@@ -13,6 +13,7 @@ import {
   Alert,
   BoatRoute,
   BusRoute,
+  LineGeometry,
 } from "@/data/schemas";
 
 const dataDir = path.join(process.cwd(), "data", "canonical");
@@ -71,6 +72,15 @@ export async function getBusRoutes(): Promise<BusRoute[]> {
   return readJson<BusRoute[]>("bus_routes.json");
 }
 
+export async function getLineGeometry(): Promise<LineGeometry> {
+  try {
+    return await readJson<LineGeometry>("line_geometry.json");
+  } catch {
+    // Not scraped yet — map falls back to straight station-to-station lines.
+    return {};
+  }
+}
+
 export async function getAllData() {
   const [
     operators,
@@ -85,6 +95,7 @@ export async function getAllData() {
     alerts,
     boatRoutes,
     busRoutes,
+    lineGeometry,
   ] = await Promise.all([
     getOperators(),
     getLines(),
@@ -98,6 +109,7 @@ export async function getAllData() {
     getAlerts(),
     getBoatRoutes(),
     getBusRoutes(),
+    getLineGeometry(),
   ]);
 
   return {
@@ -113,6 +125,7 @@ export async function getAllData() {
     alerts,
     boatRoutes,
     busRoutes,
+    lineGeometry,
   };
 }
 

@@ -39,6 +39,12 @@ interface OsmRelation {
   }>;
 }
 
+interface OsmWay {
+  type: "way";
+  id: number;
+  geometry: { lat: number; lon: number }[];
+}
+
 interface Station {
   id: string;
   nameEn: string;
@@ -112,7 +118,10 @@ const OVERPASS   = "https://overpass-api.de/api/interpreter";
 
 const USER_AGENT = "BangkokTransitApp/1.0 (open-source transit guide; contact via GitHub)";
 
-type OverpassResponse = { elements: (OsmNode | OsmRelation)[] };
+type OverpassResponse = { elements: (OsmNode | OsmRelation | OsmWay)[] };
+
+// Lines we pull real track geometry for (scope: BTS Skytrain only — see AGENTS.md)
+const GEOMETRY_LINE_IDS = new Set(["bts-sukhumvit", "bts-silom", "bts-gold"]);
 
 function httpsPost(path: string, body: string): Promise<OverpassResponse> {
   return new Promise((resolve, reject) => {
@@ -269,6 +278,92 @@ function cleanNameTh(raw: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Line geometry — stitches a route relation's member ways into one ordered
+// [lat, lng] path, so the map can draw the real track instead of straight
+// lines between station dots.
+// ---------------------------------------------------------------------------
+
+const EPSILON = 1e-5; // ~1m, tolerance for matching way endpoints
+
+function pointsEqual(a: { lat: number; lon: number }, b: { lat: number; lon: number }): boolean {
+  return Math.abs(a.lat - b.lat) < EPSILON && Math.abs(a.lon - b.lon) < EPSILON;
+}
+
+/**
+ * Stitches an ordered list of way geometries into a single continuous path.
+ * Route relations list member ways in travel order by mapping convention,
+ * but individual ways aren't guaranteed to be drawn "forwards" — so each
+ * way is oriented to connect to the end of the chain so far before appending.
+ */
+function stitchWays(ways: OsmWay[]): [number, number][] {
+  const chain: { lat: number; lon: number }[] = [];
+
+  for (const way of ways) {
+    const geom = way.geometry;
+    if (!geom || geom.length === 0) continue;
+
+    if (chain.length === 0) {
+      chain.push(...geom);
+      continue;
+    }
+
+    const tail = chain[chain.length - 1];
+    if (pointsEqual(tail, geom[0])) {
+      chain.push(...geom.slice(1));
+    } else if (pointsEqual(tail, geom[geom.length - 1])) {
+      chain.push(...[...geom].reverse().slice(1));
+    } else {
+      // Discontinuity (gap in OSM mapping) — append as-is, best effort.
+      chain.push(...geom);
+    }
+  }
+
+  return chain.map((p) => [+p.lat.toFixed(6), +p.lon.toFixed(6)] as [number, number]);
+}
+
+async function fetchLineGeometry(
+  lineRelations: Map<string, OsmRelation>,
+  fresh: boolean
+): Promise<Map<string, [number, number][]>> {
+  const result = new Map<string, [number, number][]>();
+
+  for (const [lineId, rel] of lineRelations) {
+    if (!GEOMETRY_LINE_IDS.has(lineId)) continue;
+
+    const wayIds: number[] = [];
+    const seen = new Set<number>();
+    for (const m of rel.members) {
+      if (m.type !== "way") continue;
+      if (seen.has(m.ref)) continue;
+      seen.add(m.ref);
+      wayIds.push(m.ref);
+    }
+    if (wayIds.length === 0) {
+      console.log(`  ${lineId}: no way members, skipping geometry`);
+      continue;
+    }
+
+    const query = `[out:json][timeout:90];\nway(id:${wayIds.join(",")});\nout geom;`;
+    const data = await fetchOverpass(query, `geometry-${lineId}`, fresh);
+
+    // Preserve relation member order, not Overpass response order.
+    const wayById = new Map<number, OsmWay>();
+    for (const el of data.elements) {
+      if (el.type === "way") wayById.set((el as OsmWay).id, el as OsmWay);
+    }
+    const orderedWays = wayIds.map((id) => wayById.get(id)).filter((w): w is OsmWay => !!w);
+
+    const path = stitchWays(orderedWays);
+    if (path.length >= 2) {
+      result.set(lineId, path);
+      console.log(`  ${lineId}: ${path.length} track points from ${orderedWays.length} ways`);
+    }
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -288,7 +383,7 @@ async function main() {
   );
 
   // ---------- Step 1: fetch route relations ----------
-  console.log("\n[1/3] Fetching route relations…");
+  console.log("\n[1/4] Fetching route relations…");
   const relData = await fetchOverpass(RELATIONS_QUERY, "relations", fresh);
   const relations = relData.elements.filter(
     (e): e is OsmRelation => e.type === "relation"
@@ -296,7 +391,7 @@ async function main() {
   console.log(`  Found ${relations.length} relations`);
 
   // ---------- Step 2: match relations to our lines ----------
-  console.log("\n[2/3] Matching relations to lines…");
+  console.log("\n[2/4] Matching relations to lines…");
 
   // Group by line ID; keep the relation with most stop members per line
   const lineRelations = new Map<string, OsmRelation>();
@@ -369,7 +464,7 @@ async function main() {
   }
 
   // ---------- Step 3: fetch node details ----------
-  console.log(`\n[3/3] Fetching ${allStopNodeIds.size} stop node details…`);
+  console.log(`\n[3/4] Fetching ${allStopNodeIds.size} stop node details…`);
   const nodeIds = Array.from(allStopNodeIds).join(",");
   const NODES_QUERY = `[out:json][timeout:60];\nnode(id:${nodeIds});\nout body;`;
   const nodeData = await fetchOverpass(NODES_QUERY, "stop-nodes", fresh);
@@ -378,6 +473,10 @@ async function main() {
     if (el.type === "node") nodeMap.set((el as OsmNode).id, el as OsmNode);
   }
   console.log(`  Retrieved ${nodeMap.size} nodes`);
+
+  // ---------- Step 4: fetch real track geometry (BTS only) ----------
+  console.log("\n[4/4] Fetching BTS line track geometry…");
+  const lineGeometry = await fetchLineGeometry(lineRelations, fresh);
 
   // ---------- Merge with existing data ----------
   console.log("\nMerging with existing data…");
@@ -532,6 +631,7 @@ async function main() {
   console.log(`  New stations added:         ${newCount}`);
   console.log(`  Station coords updated:     ${coordUpdateCount}`);
   console.log(`  Total stations:             ${finalStations.length}`);
+  console.log(`  Line geometries fetched:    ${lineGeometry.size}`);
 
   if (dryRun) {
     console.log("\nDry run — no files written.");
@@ -548,6 +648,24 @@ async function main() {
   );
   console.log("\ndata/canonical/stations.json updated");
   console.log("data/canonical/lines.json updated");
+
+  if (lineGeometry.size > 0) {
+    // Merge into any existing geometry file rather than overwriting other lines.
+    let existingGeometry: Record<string, [number, number][]> = {};
+    try {
+      existingGeometry = JSON.parse(
+        await fs.readFile(path.join(DATA_DIR, "line_geometry.json"), "utf-8")
+      );
+    } catch {
+      // no existing file yet
+    }
+    const mergedGeometry = { ...existingGeometry, ...Object.fromEntries(lineGeometry) };
+    await fs.writeFile(
+      path.join(DATA_DIR, "line_geometry.json"),
+      JSON.stringify(mergedGeometry, null, 2) + "\n"
+    );
+    console.log("data/canonical/line_geometry.json updated");
+  }
 }
 
 main().catch(err => {

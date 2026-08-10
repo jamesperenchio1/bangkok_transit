@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   AlertTriangle, ArrowUpFromLine, Train, Ticket, Car, Coffee,
   Baby, BatteryCharging, ShoppingBag, CreditCard, Phone,
@@ -11,6 +12,14 @@ import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/components/language-provider";
 import type { TranslationKey } from "@/lib/i18n";
 import type { Station, Line, Exit, Facility, Parking, Place, Alert, Timetable } from "@/data/schemas";
+
+// Client-only: it reads localStorage synchronously on mount to paint
+// last-known data instantly, which would mismatch the server-rendered HTML
+// (always empty) if hydrated normally.
+const StationArrivals = dynamic(
+  () => import("@/components/station-arrivals").then((mod) => mod.StationArrivals),
+  { ssr: false }
+);
 
 interface StationDetailClientProps {
   station: Station;
@@ -61,6 +70,10 @@ export function StationDetailClient({
   const stationLines = station.lineIds.map((id) => lineMap.get(id)).filter(Boolean) as Line[];
   const stationTimetables = timetables.filter((tt) => station.lineIds.includes(tt.lineId));
 
+  // Live arrivals only exist for BTS Skytrain — see AGENTS.md scope note.
+  const isBts = station.lineIds.some((id) => id.startsWith("bts-"));
+  const btsCode = isBts ? station.codes[0] : undefined;
+
   return (
     <div className="container max-w-3xl px-4 py-6 space-y-6">
       <section className="space-y-2">
@@ -107,6 +120,8 @@ export function StationDetailClient({
           </CardContent>
         </Card>
       )}
+
+      {btsCode && <StationArrivals stationCode={btsCode} />}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Link href={`/route?from=${encodeURIComponent(station.nameEn)}`}>
