@@ -229,6 +229,13 @@ export const BusRouteSchema = z.object({
   ),
 });
 
+// Real track path per line ID, e.g. { "bts-sukhumvit": [[lat, lng], ...] }.
+// Scraped from OSM way geometry — see scripts/scrape-osm-transit.ts.
+export const LineGeometrySchema = z.record(
+  z.string(),
+  z.array(z.tuple([z.number(), z.number()]))
+);
+
 export type Operator = z.infer<typeof OperatorSchema>;
 export type Line = z.infer<typeof LineSchema>;
 export type Station = z.infer<typeof StationSchema>;
@@ -241,3 +248,4 @@ export type Place = z.infer<typeof PlaceSchema>;
 export type Alert = z.infer<typeof AlertSchema>;
 export type BoatRoute = z.infer<typeof BoatRouteSchema>;
 export type BusRoute = z.infer<typeof BusRouteSchema>;
+export type LineGeometry = z.infer<typeof LineGeometrySchema>;

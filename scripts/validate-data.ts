@@ -11,6 +11,7 @@ import {
   AlertSchema,
   BoatRouteSchema,
   BusRouteSchema,
+  LineGeometrySchema,
 } from "@/data/schemas";
 import { getAllData } from "@/lib/data";
 
@@ -41,9 +42,21 @@ async function validate() {
   validateItems("boatRoutes", data.boatRoutes, BoatRouteSchema);
   validateItems("busRoutes", data.busRoutes, BusRouteSchema);
 
+  try {
+    LineGeometrySchema.parse(data.lineGeometry);
+  } catch (e) {
+    errors.push(`lineGeometry: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
   // Cross-reference checks
   const stationIds = new Set(data.stations.map((s) => s.id));
   const lineIds = new Set(data.lines.map((l) => l.id));
+
+  for (const lineId of Object.keys(data.lineGeometry)) {
+    if (!lineIds.has(lineId)) {
+      errors.push(`lineGeometry references unknown line ${lineId}`);
+    }
+  }
 
   for (const station of data.stations) {
     for (const lineId of station.lineIds) {

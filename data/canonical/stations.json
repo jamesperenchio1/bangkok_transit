@@ -32,7 +32,7 @@
     "nameEn": "Ratchadamri",
     "nameTh": "ราชดำริ",
     "codes": [
-      "W2"
+      "S1"
     ],
     "lineIds": [
       "bts-silom"
@@ -45,7 +45,7 @@
     "nameEn": "Sala Daeng",
     "nameTh": "ศาลาแดง",
     "codes": [
-      "W3"
+      "S2"
     ],
     "lineIds": [
       "bts-silom"
@@ -58,7 +58,7 @@
     "nameEn": "Chong Nonsi",
     "nameTh": "ช่องนนทรี",
     "codes": [
-      "W4"
+      "S3"
     ],
     "lineIds": [
       "bts-silom"
@@ -71,7 +71,7 @@
     "nameEn": "Surasak",
     "nameTh": "สุรศักดิ์",
     "codes": [
-      "W5"
+      "S5"
     ],
     "lineIds": [
       "bts-silom"
@@ -84,7 +84,7 @@
     "nameEn": "Saphan Taksin",
     "nameTh": "สะพานตากสิน",
     "codes": [
-      "W6"
+      "S6"
     ],
     "lineIds": [
       "bts-silom"
@@ -97,7 +97,7 @@
     "nameEn": "Krung Thon Buri",
     "nameTh": "กรุงธนบุรี",
     "codes": [
-      "W7"
+      "S7"
     ],
     "lineIds": [
       "bts-silom"
@@ -110,7 +110,7 @@
     "nameEn": "Wongwian Yai",
     "nameTh": "วงเวียนใหญ่",
     "codes": [
-      "W8"
+      "S8"
     ],
     "lineIds": [
       "bts-silom"
@@ -123,7 +123,7 @@
     "nameEn": "Bang Wa",
     "nameTh": "บางหว้า",
     "codes": [
-      "W12"
+      "S12"
     ],
     "lineIds": [
       "bts-silom",

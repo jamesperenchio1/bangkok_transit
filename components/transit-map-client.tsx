@@ -6,7 +6,7 @@ import { MapContainer, TileLayer, Marker, Popup, CircleMarker, Polyline, useMap 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/components/language-provider";
-import type { Station, Line, BoatRoute, BusRoute } from "@/data/schemas";
+import type { Station, Line, BoatRoute, BusRoute, LineGeometry } from "@/data/schemas";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -16,6 +16,7 @@ export interface TransitMapClientProps {
     lines: Line[];
     boatRoutes: BoatRoute[];
     busRoutes: BusRoute[];
+    lineGeometry: LineGeometry;
   };
 }
 
@@ -35,7 +36,7 @@ function MapBounds({ stations }: { stations: Station[] }) {
 }
 
 export function TransitMapClient({ initialData }: TransitMapClientProps) {
-  const { stations, lines, boatRoutes, busRoutes } = initialData;
+  const { stations, lines, boatRoutes, busRoutes, lineGeometry } = initialData;
   const { language } = useLanguage();
   const [userPos, setUserPos] = useState<[number, number] | null>(null);
 
@@ -76,11 +77,20 @@ export function TransitMapClient({ initialData }: TransitMapClientProps) {
     [stations, activeLines]
   );
 
-  // Build ordered polyline coordinates per active line
+  // Build ordered polyline coordinates per active line. Prefer real scraped
+  // track geometry (lineGeometry) over straight station-to-station lines —
+  // the latter is only a fallback for lines we haven't scraped geometry for.
   const linePolylines = useMemo(() => {
     const result: { line: Line; coords: [number, number][] }[] = [];
     for (const line of lines) {
       if (!activeLines[line.id]) continue;
+
+      const geometry = lineGeometry[line.id];
+      if (geometry && geometry.length >= 2) {
+        result.push({ line, coords: geometry });
+        continue;
+      }
+
       if (line.stationIds.length < 2) continue;
       const coords: [number, number][] = [];
       for (const sid of line.stationIds) {
@@ -90,7 +100,7 @@ export function TransitMapClient({ initialData }: TransitMapClientProps) {
       if (coords.length >= 2) result.push({ line, coords });
     }
     return result;
-  }, [lines, activeLines, stationById]);
+  }, [lines, activeLines, stationById, lineGeometry]);
 
   const toggleLine = (lineId: string) =>
     setActiveLines((prev) => ({ ...prev, [lineId]: !prev[lineId] }));

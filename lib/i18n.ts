@@ -76,6 +76,10 @@ export const translations = {
     darkMode: "Dark mode",
     lightMode: "Light mode",
     offlineReady: "Offline ready",
+    liveArrivals: "Live arrivals",
+    updatedAgo: "Updated {time} ago",
+    showingLastKnown: "Offline — showing last known",
+    noTrainsScheduled: "No trains currently scheduled",
     lineStatus: {
       operational: "Operational",
       under_construction: "Under construction",
@@ -162,6 +166,10 @@ export const translations = {
     darkMode: "โหมดมืด",
     lightMode: "โหมดสว่าง",
     offlineReady: "พร้อมใช้งานออฟไลน์",
+    liveArrivals: "เวลารถไฟฟ้าล่าสุด",
+    updatedAgo: "อัปเดตเมื่อ {time} ที่แล้ว",
+    showingLastKnown: "ออฟไลน์ — แสดงข้อมูลล่าสุดที่ทราบ",
+    noTrainsScheduled: "ไม่มีรถไฟฟ้าให้บริการในขณะนี้",
     lineStatus: {
       operational: "ให้บริการปกติ",
       under_construction: "อยู่ระหว่างก่อสร้าง",
