@@ -36,7 +36,6 @@
       "bts-chit-lom",
       "bts-siam",
       "bts-ratchathewi",
-      "arl-phaya-thai",
       "bts-victory-monument",
       "bts-sanam-pao",
       "bts-ari",
@@ -57,7 +56,8 @@
       "bts-bhumibol-adulyadej-hospital",
       "bts-royal-thai-air-force-museum",
       "bts-yaek-kor-por-aor",
-      "bts-khu-khot"
+      "bts-khu-khot",
+      "bts-phaya-thai"
     ]
   },
   {
@@ -81,7 +81,6 @@
       "bts-surask",
       "bts-saphan-taksin",
       "bts-krung-thon-buri",
-      "bts-krung-thon-buri-gold",
       "bts-wongwian-yai",
       "bts-pho-nimit",
       "bts-talat-phlu",
@@ -101,9 +100,9 @@
     "status": "operational",
     "openingDate": "2020-12-16",
     "stationIds": [
-      "bts-krung-thon-buri-gold",
       "bts-charoen-nakhon",
-      "bts-khlong-san"
+      "bts-khlong-san",
+      "bts-krung-thon-buri"
     ]
   },
   {
@@ -128,7 +127,6 @@
       "mrt-bang-o",
       "mrt-bang-pho",
       "mrt-tao-poon",
-      "srt-bang-sue",
       "mrt-kamphaeng-phet",
       "mrt-chatuchak-park",
       "mrt-phahon-yothin",
@@ -156,7 +154,9 @@
       "mrt-phetkasem-48",
       "mrt-phasi-charoen",
       "mrt-bang-khae",
-      "mrt-lak-song"
+      "mrt-lak-song",
+      "mrt-klong-toei",
+      "mrt-bang-sue"
     ]
   },
   {
@@ -283,14 +283,14 @@
     "status": "operational",
     "openingDate": "2010-08-23",
     "stationIds": [
-      "arl-phaya-thai",
       "arl-ratchaprarop",
       "arl-makkasan",
       "arl-ramkhamhaeng",
       "arl-hua-mak",
       "arl-ban-thap-chang",
       "arl-lat-krabang",
-      "arl-suvarnabhumi"
+      "arl-suvarnabhumi",
+      "bts-phaya-thai"
     ]
   },
   {
@@ -305,11 +305,11 @@
     "status": "operational",
     "openingDate": "2021-08-02",
     "stationIds": [
-      "srt-bang-sue",
       "srt-bang-khen",
       "srt-lak-si",
       "srt-don-mueang",
-      "srt-rangsit"
+      "srt-rangsit",
+      "mrt-bang-sue"
     ]
   },
   {
@@ -325,8 +325,7 @@
     "openingDate": "2021-08-02",
     "stationIds": [
       "srt-taling-chan",
-      "srt-bang-son-light-red",
-      "srt-bang-sue"
+      "srt-bang-son-light-red"
     ]
   },
   {

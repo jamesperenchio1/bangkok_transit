@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,13 +39,16 @@ export function RoutePlannerClient({
   const { t, language } = useLanguage();
   const [from, setFrom] = useState(initialFrom);
   const [to, setTo] = useState(initialTo);
-  const [routes, setRoutes] = useState<RouteOption[]>([]);
-
-  useEffect(() => {
-    if (initialFrom && initialTo) {
-      handleSearch();
-    }
-  }, []);
+  // Resolved during initialisation rather than in an effect: a route can arrive
+  // via the URL, and computing it up front avoids both a synchronous setState in
+  // an effect and a flash of empty results on first paint.
+  const [routes, setRoutes] = useState<RouteOption[]>(() => {
+    if (!initialFrom || !initialTo) return [];
+    const fromId = resolveNameToStationId(initialFrom, stations, places);
+    const toId = resolveNameToStationId(initialTo, stations, places);
+    if (!fromId || !toId) return [];
+    return findRoutes(stations, lines, boatRoutes, busRoutes, fromId, toId);
+  });
 
   const lineMap = useMemo(() => new Map(lines.map((l) => [l.id, l])), [lines]);
 

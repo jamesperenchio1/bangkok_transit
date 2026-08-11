@@ -8,11 +8,13 @@
     "start": "next start",
     "lint": "eslint",
     "validate-data": "npx tsx scripts/validate-data.ts",
-    "scrape": "npx tsx scripts/scrape-osm-transit.ts"
+    "scrape": "npx tsx scripts/scrape-osm-transit.ts",
+    "extract-schematic": "npx tsx scripts/extract-bts-schematic.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@serwist/next": "^9.5.12",
+    "@upstash/redis": "^1.38.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",

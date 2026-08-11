@@ -236,7 +236,45 @@ export const LineGeometrySchema = z.record(
   z.array(z.tuple([z.number(), z.number()]))
 );
 
+// The BTS route-map schematic: station positions in a 1380x1380 canvas, extracted
+// from the operator's own route map. Generated — see scripts/extract-bts-schematic.ts.
+export const SchematicStationSchema = z.object({
+  code: z.string(),
+  x: z.number(),
+  y: z.number(),
+  nameEn: z.string(),
+  nameTh: z.string(),
+  // Set only where the code is confirmed against the live API's catalog.
+  apiStationId: z.number().nullable(),
+  hasLiveArrivals: z.boolean(),
+});
+
+export const SchematicLineSchema = z.object({
+  id: z.number(),
+  key: z.string(),
+  nameEn: z.string(),
+  nameTh: z.string(),
+  color: z.string(),
+  hasLiveArrivals: z.boolean(),
+  // Ordered code sequences to stroke as polylines; more than one where the line
+  // branches (the Pink line's Muang Thong Thani spur leaves the trunk at PK10).
+  segments: z.array(z.array(z.string())).min(1),
+  stations: z.array(SchematicStationSchema).min(1),
+});
+
+export const BtsSchematicSchema = z.object({
+  source: z.string(),
+  generatedAt: z.string(),
+  canvas: z.object({ width: z.number(), height: z.number() }),
+  // Every code /arrivals accepts, including N6 which serves data but has no station.
+  liveCodes: z.array(z.string()).min(1),
+  lines: z.array(SchematicLineSchema).min(1),
+});
+
 export type Operator = z.infer<typeof OperatorSchema>;
+export type SchematicStation = z.infer<typeof SchematicStationSchema>;
+export type SchematicLine = z.infer<typeof SchematicLineSchema>;
+export type BtsSchematic = z.infer<typeof BtsSchematicSchema>;
 export type Line = z.infer<typeof LineSchema>;
 export type Station = z.infer<typeof StationSchema>;
 export type Exit = z.infer<typeof ExitSchema>;

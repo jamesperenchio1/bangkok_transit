@@ -10,7 +10,8 @@
       "bts-silom"
     ],
     "lat": 13.7465,
-    "lng": 100.5291
+    "lng": 100.5291,
+    "isInterchange": false
   },
   {
     "id": "bts-siam",
@@ -38,7 +39,8 @@
       "bts-silom"
     ],
     "lat": 13.7393,
-    "lng": 100.5395
+    "lng": 100.5395,
+    "isInterchange": false
   },
   {
     "id": "bts-sala-daeng",
@@ -51,7 +53,8 @@
       "bts-silom"
     ],
     "lat": 13.7286,
-    "lng": 100.5343
+    "lng": 100.5343,
+    "isInterchange": false
   },
   {
     "id": "bts-chong-nonsi",
@@ -64,7 +67,8 @@
       "bts-silom"
     ],
     "lat": 13.7236,
-    "lng": 100.5294
+    "lng": 100.5294,
+    "isInterchange": false
   },
   {
     "id": "bts-saint-louis",
@@ -92,7 +96,8 @@
       "bts-silom"
     ],
     "lat": 13.7192,
-    "lng": 100.5216
+    "lng": 100.5216,
+    "isInterchange": false
   },
   {
     "id": "bts-saphan-taksin",
@@ -105,20 +110,24 @@
       "bts-silom"
     ],
     "lat": 13.7188,
-    "lng": 100.5143
+    "lng": 100.5143,
+    "isInterchange": false
   },
   {
     "id": "bts-krung-thon-buri",
     "nameEn": "Krung Thon Buri",
     "nameTh": "กรุงธนบุรี",
     "codes": [
-      "S7"
+      "S7",
+      "G1"
     ],
     "lineIds": [
-      "bts-silom"
+      "bts-silom",
+      "bts-gold"
     ],
     "lat": 13.7207,
-    "lng": 100.5034
+    "lng": 100.5034,
+    "isInterchange": true
   },
   {
     "id": "bts-wongwian-yai",
@@ -131,7 +140,8 @@
       "bts-silom"
     ],
     "lat": 13.721068,
-    "lng": 100.495156
+    "lng": 100.495156,
+    "isInterchange": false
   },
   {
     "id": "bts-bang-wa",
@@ -145,7 +155,8 @@
       "mrt-blue"
     ],
     "lat": 13.720787,
-    "lng": 100.457763
+    "lng": 100.457763,
+    "isInterchange": true
   },
   {
     "id": "bts-mo-chit",
@@ -158,7 +169,8 @@
       "bts-sukhumvit"
     ],
     "lat": 13.8022,
-    "lng": 100.5538
+    "lng": 100.5538,
+    "isInterchange": false
   },
   {
     "id": "bts-saphan-khwai",
@@ -171,7 +183,8 @@
       "bts-sukhumvit"
     ],
     "lat": 13.7938,
-    "lng": 100.5497
+    "lng": 100.5497,
+    "isInterchange": false
   },
   {
     "id": "bts-ari",
@@ -184,7 +197,8 @@
       "bts-sukhumvit"
     ],
     "lat": 13.7797,
-    "lng": 100.5447
+    "lng": 100.5447,
+    "isInterchange": false
   },
   {
     "id": "bts-victory-monument",
@@ -197,20 +211,24 @@
       "bts-sukhumvit"
     ],
     "lat": 13.762768,
-    "lng": 100.53704
+    "lng": 100.53704,
+    "isInterchange": false
   },
   {
     "id": "bts-phaya-thai",
     "nameEn": "Phaya Thai",
     "nameTh": "พญาไท",
     "codes": [
-      "N2"
+      "N2",
+      "A8"
     ],
     "lineIds": [
-      "bts-sukhumvit"
+      "bts-sukhumvit",
+      "arl-city"
     ],
     "lat": 13.7568,
-    "lng": 100.5345
+    "lng": 100.5345,
+    "isInterchange": true
   },
   {
     "id": "bts-ratchathewi",
@@ -223,7 +241,8 @@
       "bts-sukhumvit"
     ],
     "lat": 13.7518,
-    "lng": 100.5316
+    "lng": 100.5316,
+    "isInterchange": false
   },
   {
     "id": "bts-chit-lom",
@@ -236,20 +255,8 @@
       "bts-sukhumvit"
     ],
     "lat": 13.7441,
-    "lng": 100.5433
-  },
-  {
-    "id": "bts-pleonchit",
-    "nameEn": "Ploenchit",
-    "nameTh": "เพลินจิต",
-    "codes": [
-      "E2"
-    ],
-    "lineIds": [
-      "bts-sukhumvit"
-    ],
-    "lat": 13.7431,
-    "lng": 100.5488
+    "lng": 100.5433,
+    "isInterchange": false
   },
   {
     "id": "bts-nana",
@@ -262,7 +269,8 @@
       "bts-sukhumvit"
     ],
     "lat": 13.7406,
-    "lng": 100.5553
+    "lng": 100.5553,
+    "isInterchange": false
   },
   {
     "id": "bts-asok",
@@ -275,7 +283,8 @@
       "bts-sukhumvit"
     ],
     "lat": 13.7369,
-    "lng": 100.5604
+    "lng": 100.5604,
+    "isInterchange": false
   },
   {
     "id": "bts-phrom-phong",
@@ -288,7 +297,8 @@
       "bts-sukhumvit"
     ],
     "lat": 13.730418,
-    "lng": 100.569704
+    "lng": 100.569704,
+    "isInterchange": false
   },
   {
     "id": "bts-thong-lo",
@@ -301,7 +311,8 @@
       "bts-sukhumvit"
     ],
     "lat": 13.72422,
-    "lng": 100.5785
+    "lng": 100.5785,
+    "isInterchange": false
   },
   {
     "id": "bts-ekkamai",
@@ -314,7 +325,8 @@
       "bts-sukhumvit"
     ],
     "lat": 13.719522,
-    "lng": 100.585098
+    "lng": 100.585098,
+    "isInterchange": false
   },
   {
     "id": "bts-on-nut",
@@ -327,7 +339,8 @@
       "bts-sukhumvit"
     ],
     "lat": 13.705619,
-    "lng": 100.600983
+    "lng": 100.600983,
+    "isInterchange": false
   },
   {
     "id": "bts-bang-na",
@@ -340,7 +353,8 @@
       "bts-sukhumvit"
     ],
     "lat": 13.6681,
-    "lng": 100.6044
+    "lng": 100.6044,
+    "isInterchange": false
   },
   {
     "id": "bts-bearing",
@@ -353,7 +367,8 @@
       "bts-sukhumvit"
     ],
     "lat": 13.6611,
-    "lng": 100.6022
+    "lng": 100.6022,
+    "isInterchange": false
   },
   {
     "id": "bts-samrong",
@@ -367,21 +382,8 @@
       "mrt-yellow"
     ],
     "lat": 13.645044,
-    "lng": 100.596616
-  },
-  {
-    "id": "bts-krung-thon-buri-gold",
-    "nameEn": "Krung Thon Buri",
-    "nameTh": "กรุงธนบุรี",
-    "codes": [
-      "G1"
-    ],
-    "lineIds": [
-      "bts-gold",
-      "bts-silom"
-    ],
-    "lat": 13.721168,
-    "lng": 100.503714
+    "lng": 100.596616,
+    "isInterchange": true
   },
   {
     "id": "bts-charoen-nakhon",
@@ -394,7 +396,8 @@
       "bts-gold"
     ],
     "lat": 13.726462,
-    "lng": 100.509052
+    "lng": 100.509052,
+    "isInterchange": false
   },
   {
     "id": "bts-khlong-san",
@@ -407,7 +410,8 @@
       "bts-gold"
     ],
     "lat": 13.730325,
-    "lng": 100.507728
+    "lng": 100.507728,
+    "isInterchange": false
   },
   {
     "id": "mrt-hua-lamphong",
@@ -420,7 +424,8 @@
       "mrt-blue"
     ],
     "lat": 13.737408,
-    "lng": 100.517047
+    "lng": 100.517047,
+    "isInterchange": false
   },
   {
     "id": "mrt-sam-yan",
@@ -433,7 +438,8 @@
       "mrt-blue"
     ],
     "lat": 13.732046,
-    "lng": 100.530114
+    "lng": 100.530114,
+    "isInterchange": false
   },
   {
     "id": "mrt-si-lom",
@@ -446,7 +452,8 @@
       "mrt-blue"
     ],
     "lat": 13.729174,
-    "lng": 100.537068
+    "lng": 100.537068,
+    "isInterchange": false
   },
   {
     "id": "mrt-lumphini",
@@ -459,7 +466,8 @@
       "mrt-blue"
     ],
     "lat": 13.7256,
-    "lng": 100.5455
+    "lng": 100.5455,
+    "isInterchange": false
   },
   {
     "id": "mrt-klong-toei",
@@ -472,7 +480,8 @@
       "mrt-blue"
     ],
     "lat": 13.7225,
-    "lng": 100.5536
+    "lng": 100.5536,
+    "isInterchange": false
   },
   {
     "id": "mrt-queen-sirkit",
@@ -485,7 +494,8 @@
       "mrt-blue"
     ],
     "lat": 13.722622,
-    "lng": 100.560067
+    "lng": 100.560067,
+    "isInterchange": false
   },
   {
     "id": "mrt-sukhumvit",
@@ -498,7 +508,8 @@
       "mrt-blue"
     ],
     "lat": 13.737472,
-    "lng": 100.561609
+    "lng": 100.561609,
+    "isInterchange": false
   },
   {
     "id": "mrt-phetchaburi",
@@ -511,7 +522,8 @@
       "mrt-blue"
     ],
     "lat": 13.749177,
-    "lng": 100.563483
+    "lng": 100.563483,
+    "isInterchange": false
   },
   {
     "id": "mrt-phra-ram-9",
@@ -524,7 +536,8 @@
       "mrt-blue"
     ],
     "lat": 13.757817,
-    "lng": 100.565277
+    "lng": 100.565277,
+    "isInterchange": false
   },
   {
     "id": "mrt-thailand-cultural-centre",
@@ -537,7 +550,8 @@
       "mrt-blue"
     ],
     "lat": 13.766104,
-    "lng": 100.570193
+    "lng": 100.570193,
+    "isInterchange": false
   },
   {
     "id": "mrt-huai-khwang",
@@ -550,7 +564,8 @@
       "mrt-blue"
     ],
     "lat": 13.778688,
-    "lng": 100.573566
+    "lng": 100.573566,
+    "isInterchange": false
   },
   {
     "id": "mrt-sutthisan",
@@ -563,7 +578,8 @@
       "mrt-blue"
     ],
     "lat": 13.789488,
-    "lng": 100.57408
+    "lng": 100.57408,
+    "isInterchange": false
   },
   {
     "id": "mrt-ratchadaphisek",
@@ -576,7 +592,8 @@
       "mrt-blue"
     ],
     "lat": 13.798971,
-    "lng": 100.574554
+    "lng": 100.574554,
+    "isInterchange": false
   },
   {
     "id": "mrt-lat-phrao",
@@ -590,7 +607,8 @@
       "mrt-yellow"
     ],
     "lat": 13.806991,
-    "lng": 100.574808
+    "lng": 100.574808,
+    "isInterchange": true
   },
   {
     "id": "mrt-phahon-yothin",
@@ -603,7 +621,8 @@
       "mrt-blue"
     ],
     "lat": 13.812881,
-    "lng": 100.561463
+    "lng": 100.561463,
+    "isInterchange": false
   },
   {
     "id": "mrt-chatuchak-park",
@@ -616,33 +635,36 @@
       "mrt-blue"
     ],
     "lat": 13.802964,
-    "lng": 100.553285
+    "lng": 100.553285,
+    "isInterchange": false
   },
   {
     "id": "mrt-kamphaeng-phet",
     "nameEn": "Kamphaeng Phet",
     "nameTh": "กำแพงเพชร",
-    "codes": [
-      "BL11"
-    ],
+    "codes": [],
     "lineIds": [
       "mrt-blue"
     ],
     "lat": 13.797948,
-    "lng": 100.547884
+    "lng": 100.547884,
+    "isInterchange": false
   },
   {
     "id": "mrt-bang-sue",
     "nameEn": "Bang Sue",
     "nameTh": "บางซื่อ",
     "codes": [
-      "BL11"
+      "BL11",
+      "RN01"
     ],
     "lineIds": [
-      "mrt-blue"
+      "mrt-blue",
+      "srt-dark-red"
     ],
     "lat": 13.8021,
-    "lng": 100.5394
+    "lng": 100.5394,
+    "isInterchange": true
   },
   {
     "id": "mrt-khlong-bang-phai",
@@ -655,7 +677,8 @@
       "mrt-purple"
     ],
     "lat": 13.89244,
-    "lng": 100.408285
+    "lng": 100.408285,
+    "isInterchange": false
   },
   {
     "id": "mrt-talad-bang-yai",
@@ -668,7 +691,8 @@
       "mrt-purple"
     ],
     "lat": 13.881018,
-    "lng": 100.409354
+    "lng": 100.409354,
+    "isInterchange": false
   },
   {
     "id": "mrt-sam-yaek-bang-yai",
@@ -681,7 +705,8 @@
       "mrt-purple"
     ],
     "lat": 13.874737,
-    "lng": 100.419357
+    "lng": 100.419357,
+    "isInterchange": false
   },
   {
     "id": "mrt-bang-phlu",
@@ -694,7 +719,8 @@
       "mrt-purple"
     ],
     "lat": 13.875824,
-    "lng": 100.433798
+    "lng": 100.433798,
+    "isInterchange": false
   },
   {
     "id": "mrt-bang-rak-yai",
@@ -707,7 +733,8 @@
       "mrt-purple"
     ],
     "lat": 13.876669,
-    "lng": 100.444934
+    "lng": 100.444934,
+    "isInterchange": false
   },
   {
     "id": "mrt-bang-rak-noi-tha-it",
@@ -720,7 +747,8 @@
       "mrt-purple"
     ],
     "lat": 13.874866,
-    "lng": 100.455998
+    "lng": 100.455998,
+    "isInterchange": false
   },
   {
     "id": "mrt-sai-ma",
@@ -733,7 +761,8 @@
       "mrt-purple"
     ],
     "lat": 13.870573,
-    "lng": 100.466711
+    "lng": 100.466711,
+    "isInterchange": false
   },
   {
     "id": "mrt-sam-reong",
@@ -746,7 +775,8 @@
       "mrt-purple"
     ],
     "lat": 13.7989,
-    "lng": 100.4522
+    "lng": 100.4522,
+    "isInterchange": false
   },
   {
     "id": "mrt-yaek-nonthaburi-1",
@@ -759,7 +789,8 @@
       "mrt-purple"
     ],
     "lat": 13.866011,
-    "lng": 100.494108
+    "lng": 100.494108,
+    "isInterchange": false
   },
   {
     "id": "mrt-bang-krasor",
@@ -772,7 +803,8 @@
       "mrt-purple"
     ],
     "lat": 13.861714,
-    "lng": 100.504668
+    "lng": 100.504668,
+    "isInterchange": false
   },
   {
     "id": "mrt-nontraburi-civic-centre",
@@ -785,7 +817,8 @@
       "mrt-purple"
     ],
     "lat": 13.7702,
-    "lng": 100.4751
+    "lng": 100.4751,
+    "isInterchange": false
   },
   {
     "id": "mrt-ministry-of-public-health",
@@ -798,7 +831,8 @@
       "mrt-purple"
     ],
     "lat": 13.848499,
-    "lng": 100.514776
+    "lng": 100.514776,
+    "isInterchange": false
   },
   {
     "id": "mrt-tiwanon",
@@ -811,7 +845,8 @@
       "mrt-purple"
     ],
     "lat": 13.7524,
-    "lng": 100.4894
+    "lng": 100.4894,
+    "isInterchange": false
   },
   {
     "id": "mrt-wong-sawang",
@@ -824,20 +859,20 @@
       "mrt-purple"
     ],
     "lat": 13.829919,
-    "lng": 100.526532
+    "lng": 100.526532,
+    "isInterchange": false
   },
   {
     "id": "mrt-bang-son",
     "nameEn": "Bang Son",
     "nameTh": "บางซ่อน",
-    "codes": [
-      "PP16"
-    ],
+    "codes": [],
     "lineIds": [
       "mrt-purple"
     ],
     "lat": 13.8245,
-    "lng": 100.5305
+    "lng": 100.5305,
+    "isInterchange": false
   },
   {
     "id": "mrt-tao-poon",
@@ -851,7 +886,8 @@
       "mrt-blue"
     ],
     "lat": 13.8061,
-    "lng": 100.5305
+    "lng": 100.5305,
+    "isInterchange": true
   },
   {
     "id": "arl-suvarnabhumi",
@@ -864,7 +900,8 @@
       "arl-city"
     ],
     "lat": 13.695,
-    "lng": 100.7509
+    "lng": 100.7509,
+    "isInterchange": false
   },
   {
     "id": "arl-lat-krabang",
@@ -877,7 +914,8 @@
       "arl-city"
     ],
     "lat": 13.7277,
-    "lng": 100.7486
+    "lng": 100.7486,
+    "isInterchange": false
   },
   {
     "id": "arl-ban-thap-chang",
@@ -890,7 +928,8 @@
       "arl-city"
     ],
     "lat": 13.7376,
-    "lng": 100.6905
+    "lng": 100.6905,
+    "isInterchange": false
   },
   {
     "id": "arl-hua-mak",
@@ -903,7 +942,8 @@
       "arl-city"
     ],
     "lat": 13.7379,
-    "lng": 100.6456
+    "lng": 100.6456,
+    "isInterchange": false
   },
   {
     "id": "arl-ramkhamhaeng",
@@ -916,7 +956,8 @@
       "arl-city"
     ],
     "lat": 13.7426,
-    "lng": 100.6003
+    "lng": 100.6003,
+    "isInterchange": false
   },
   {
     "id": "arl-makkasan",
@@ -929,7 +970,8 @@
       "arl-city"
     ],
     "lat": 13.751,
-    "lng": 100.5615
+    "lng": 100.5615,
+    "isInterchange": false
   },
   {
     "id": "arl-ratchaprarop",
@@ -942,35 +984,8 @@
       "arl-city"
     ],
     "lat": 13.7549,
-    "lng": 100.5422
-  },
-  {
-    "id": "arl-phaya-thai",
-    "nameEn": "Phaya Thai",
-    "nameTh": "พญาไท",
-    "codes": [
-      "A8"
-    ],
-    "lineIds": [
-      "arl-city",
-      "bts-sukhumvit"
-    ],
-    "lat": 13.756978,
-    "lng": 100.533807
-  },
-  {
-    "id": "srt-bang-sue",
-    "nameEn": "Bang Sue",
-    "nameTh": "บางซื่อ",
-    "codes": [
-      "RN01"
-    ],
-    "lineIds": [
-      "srt-dark-red",
-      "mrt-blue"
-    ],
-    "lat": 13.802427,
-    "lng": 100.54106
+    "lng": 100.5422,
+    "isInterchange": false
   },
   {
     "id": "srt-rangsit",
@@ -983,7 +998,8 @@
       "srt-dark-red"
     ],
     "lat": 13.9701,
-    "lng": 100.6173
+    "lng": 100.6173,
+    "isInterchange": false
   },
   {
     "id": "srt-don-mueang",
@@ -996,7 +1012,8 @@
       "srt-dark-red"
     ],
     "lat": 13.9139,
-    "lng": 100.5892
+    "lng": 100.5892,
+    "isInterchange": false
   },
   {
     "id": "srt-lak-si",
@@ -1010,7 +1027,8 @@
       "mrt-pink"
     ],
     "lat": 13.884049,
-    "lng": 100.582681
+    "lng": 100.582681,
+    "isInterchange": true
   },
   {
     "id": "srt-bang-khen",
@@ -1023,7 +1041,8 @@
       "srt-dark-red"
     ],
     "lat": 13.8316,
-    "lng": 100.5434
+    "lng": 100.5434,
+    "isInterchange": false
   },
   {
     "id": "srt-taling-chan",
@@ -1036,7 +1055,8 @@
       "srt-light-red"
     ],
     "lat": 13.7765,
-    "lng": 100.4508
+    "lng": 100.4508,
+    "isInterchange": false
   },
   {
     "id": "srt-bang-son-light-red",
@@ -1050,7 +1070,8 @@
       "mrt-purple"
     ],
     "lat": 13.820087,
-    "lng": 100.532521
+    "lng": 100.532521,
+    "isInterchange": true
   },
   {
     "id": "brt-sathorn",
@@ -1063,7 +1084,8 @@
       "brt-sathorn"
     ],
     "lat": 13.7213,
-    "lng": 100.529
+    "lng": 100.529,
+    "isInterchange": false
   },
   {
     "id": "brt-witthayu",
@@ -1076,7 +1098,8 @@
       "brt-sathorn"
     ],
     "lat": 13.7368,
-    "lng": 100.5481
+    "lng": 100.5481,
+    "isInterchange": false
   },
   {
     "id": "brt-rama-9",
@@ -1089,7 +1112,8 @@
       "brt-sathorn"
     ],
     "lat": 13.7533,
-    "lng": 100.5658
+    "lng": 100.5658,
+    "isInterchange": false
   },
   {
     "id": "brt-ratchaphruek",
@@ -1102,7 +1126,8 @@
       "brt-sathorn"
     ],
     "lat": 13.7222,
-    "lng": 100.462
+    "lng": 100.462,
+    "isInterchange": false
   },
   {
     "id": "bts-kheha",
@@ -1333,7 +1358,9 @@
     "id": "bts-phahonyothin-24",
     "nameEn": "Phahonyothin 24",
     "nameTh": "พหลโยธิน 24",
-    "codes": [],
+    "codes": [
+      "N10"
+    ],
     "lineIds": [
       "bts-sukhumvit"
     ],
@@ -1346,7 +1373,9 @@
     "id": "bts-ratchayothin",
     "nameEn": "Ratchayothin",
     "nameTh": "รัชโยธิน",
-    "codes": [],
+    "codes": [
+      "N11"
+    ],
     "lineIds": [
       "bts-sukhumvit"
     ],
@@ -1359,7 +1388,9 @@
     "id": "bts-sena-nikhom",
     "nameEn": "Sena Nikhom",
     "nameTh": "เสนานิคม",
-    "codes": [],
+    "codes": [
+      "N12"
+    ],
     "lineIds": [
       "bts-sukhumvit"
     ],
@@ -1372,7 +1403,9 @@
     "id": "bts-kasetsart-university",
     "nameEn": "Kasetsart University",
     "nameTh": "Kasetsart University",
-    "codes": [],
+    "codes": [
+      "N13"
+    ],
     "lineIds": [
       "bts-sukhumvit"
     ],
@@ -1385,7 +1418,9 @@
     "id": "bts-royal-forest-department",
     "nameEn": "Royal Forest Department",
     "nameTh": "กรมป่าไม้",
-    "codes": [],
+    "codes": [
+      "N14"
+    ],
     "lineIds": [
       "bts-sukhumvit"
     ],
@@ -1398,7 +1433,9 @@
     "id": "bts-bang-bua",
     "nameEn": "Bang Bua",
     "nameTh": "บางบัว",
-    "codes": [],
+    "codes": [
+      "N15"
+    ],
     "lineIds": [
       "bts-sukhumvit"
     ],
@@ -1411,7 +1448,9 @@
     "id": "bts-11th-infantry-regiment",
     "nameEn": "11th Infantry Regiment",
     "nameTh": "กรมทหารราบที่ 11",
-    "codes": [],
+    "codes": [
+      "N16"
+    ],
     "lineIds": [
       "bts-sukhumvit"
     ],
@@ -1433,14 +1472,16 @@
     ],
     "lat": 13.874461,
     "lng": 100.597268,
-    "isInterchange": false,
+    "isInterchange": true,
     "adjacentStationIds": []
   },
   {
     "id": "bts-phahonyothin-59",
     "nameEn": "Phahonyothin 59",
     "nameTh": "พหลโยธิน 59",
-    "codes": [],
+    "codes": [
+      "N18"
+    ],
     "lineIds": [
       "bts-sukhumvit"
     ],
@@ -1453,7 +1494,9 @@
     "id": "bts-sai-yud",
     "nameEn": "Sai Yud",
     "nameTh": "สายหยุด",
-    "codes": [],
+    "codes": [
+      "N19"
+    ],
     "lineIds": [
       "bts-sukhumvit"
     ],
@@ -1466,7 +1509,9 @@
     "id": "bts-saphan-mai",
     "nameEn": "Saphan Mai",
     "nameTh": "สะพานใหม่",
-    "codes": [],
+    "codes": [
+      "N20"
+    ],
     "lineIds": [
       "bts-sukhumvit"
     ],
@@ -1479,7 +1524,9 @@
     "id": "bts-bhumibol-adulyadej-hospital",
     "nameEn": "Bhumibol Adulyadej Hospital",
     "nameTh": "โรงพยาบาลภูมิพลอดุลยเดช",
-    "codes": [],
+    "codes": [
+      "N21"
+    ],
     "lineIds": [
       "bts-sukhumvit"
     ],
@@ -1492,7 +1539,9 @@
     "id": "bts-royal-thai-air-force-museum",
     "nameEn": "Royal Thai Air Force Museum",
     "nameTh": "พิพิธภัณฑ์กองทัพอากาศ",
-    "codes": [],
+    "codes": [
+      "N22"
+    ],
     "lineIds": [
       "bts-sukhumvit"
     ],
@@ -1505,7 +1554,9 @@
     "id": "bts-yaek-kor-por-aor",
     "nameEn": "Yaek Kor Por Aor",
     "nameTh": "แยก คปอ.",
-    "codes": [],
+    "codes": [
+      "N23"
+    ],
     "lineIds": [
       "bts-sukhumvit"
     ],
@@ -1518,7 +1569,9 @@
     "id": "bts-khu-khot",
     "nameEn": "Khu Khot",
     "nameTh": "คูคต",
-    "codes": [],
+    "codes": [
+      "N24"
+    ],
     "lineIds": [
       "bts-sukhumvit"
     ],
@@ -1845,7 +1898,7 @@
     ],
     "lat": 13.8597,
     "lng": 100.518106,
-    "isInterchange": false,
+    "isInterchange": true,
     "adjacentStationIds": []
   },
   {
