@@ -14,6 +14,7 @@ import {
   LineGeometrySchema,
 } from "@/data/schemas";
 import { getAllData } from "@/lib/data";
+import { btsSchematic } from "@/lib/bts";
 
 async function validate() {
   const data = await getAllData();
@@ -72,6 +73,58 @@ async function validate() {
         errors.push(`line ${line.id} references unknown station ${stationId}`);
       }
     }
+  }
+
+  // A station code must identify exactly one station: live arrivals are looked up
+  // by code, so a duplicate silently sends riders another station's trains. Three
+  // of these were live in the data (E2, BL11, PP16) before this check existed.
+  const stationsByCode = new Map<string, string[]>();
+  for (const station of data.stations) {
+    for (const code of station.codes) {
+      stationsByCode.set(code, [...(stationsByCode.get(code) ?? []), station.id]);
+    }
+  }
+  for (const [code, owners] of stationsByCode) {
+    if (owners.length > 1) {
+      errors.push(`code ${code} is claimed by ${owners.length} stations: ${owners.join(", ")}`);
+    }
+  }
+
+  // Every station the live API serves must be reachable in our own data, or its
+  // arrivals can never be shown. This is what regressed when 14 Sukhumvit
+  // stations were left with an empty `codes` array.
+  const knownCodes = new Set(data.stations.flatMap((s) => s.codes));
+  const unreachable = btsSchematic.lines
+    .flatMap((l) => l.stations)
+    .filter((s) => s.hasLiveArrivals && !knownCodes.has(s.code));
+  for (const station of unreachable) {
+    errors.push(`live station ${station.code} (${station.nameEn}) has no entry in stations.json`);
+  }
+
+  // Both directions of the line/station relationship have to agree, or a station
+  // shows on a line that does not list it (and drops out of routing).
+  for (const line of data.lines) {
+    const declared = new Set(line.stationIds);
+    for (const station of data.stations) {
+      const claimsLine = station.lineIds.includes(line.id);
+      if (claimsLine && !declared.has(station.id)) {
+        errors.push(`station ${station.id} claims line ${line.id}, which does not list it`);
+      }
+      if (!claimsLine && declared.has(station.id)) {
+        errors.push(`line ${line.id} lists station ${station.id}, which does not claim it`);
+      }
+    }
+  }
+
+  // Not an error: the MRT network has no trustworthy code source yet, and
+  // guessing would be worse than leaving them blank. Surfaced so the gap stays
+  // visible instead of looking intentional.
+  const uncoded = data.stations.filter((s) => s.codes.length === 0);
+  if (uncoded.length) {
+    console.warn(
+      `\n${uncoded.length} stations have no code (no authoritative source; not used by live arrivals):`
+    );
+    console.warn(`  ${uncoded.map((s) => s.id).join(", ")}\n`);
   }
 
   for (const exit of data.exits) {

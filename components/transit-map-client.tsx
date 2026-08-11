@@ -204,12 +204,6 @@ export function TransitMapClient({ initialData }: TransitMapClientProps) {
                         ) : null;
                       })}
                     </div>
-                    <Link
-                      href={`/station/${station.id}`}
-                      className="text-xs font-medium text-primary hover:underline block pt-1"
-                    >
-                      View station →
-                    </Link>
                   </div>
                 </Popup>
               </CircleMarker>
