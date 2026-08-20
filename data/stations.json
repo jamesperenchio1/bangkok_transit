@@ -1,0 +1,1777 @@
+[
+  {
+    "code": "N24",
+    "nameEn": "Khu Khot",
+    "nameTh": "คูคต",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N23",
+    "nameEn": "Yaek Kor Por Aor",
+    "nameTh": "แยก คปอ.",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N22",
+    "nameEn": "Royal Thai Air Force Museum",
+    "nameTh": "พิพิธภัณฑ์กองทัพอากาศ",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N21",
+    "nameEn": "Bhumibol Adulyadej Hospital",
+    "nameTh": "โรงพยาบาลภูมิพลอดุลยเดช",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N20",
+    "nameEn": "Saphan Mai",
+    "nameTh": "สะพานใหม่",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N19",
+    "nameEn": "Sai Yud",
+    "nameTh": "สายหยุด",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N18",
+    "nameEn": "Phahon Yothin 59",
+    "nameTh": "พหลโยธิน 59",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N17",
+    "nameEn": "Wat Phra Sri Mahathat",
+    "nameTh": "วัดพระศรีมหาธาตุ",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N16",
+    "nameEn": "11th Infantry Regiment",
+    "nameTh": "กรมทหารราบที่ 11",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N15",
+    "nameEn": "Bang Bua",
+    "nameTh": "บางบัว",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N14",
+    "nameEn": "Royal Forest Department",
+    "nameTh": "กรมป่าไม้",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N13",
+    "nameEn": "Kasetsart University",
+    "nameTh": "มหาวิทยาลัยเกษตรศาสตร์",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N12",
+    "nameEn": "Sena Nikhom",
+    "nameTh": "เสนานิคม",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N11",
+    "nameEn": "Ratchayothin",
+    "nameTh": "รัชโยธิน",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N10",
+    "nameEn": "Phahon Yothin 24",
+    "nameTh": "พหลโยธิน 24",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N9",
+    "nameEn": "Ha Yaek Lat Phrao",
+    "nameTh": "ห้าแยกลาดพร้าว",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N8",
+    "nameEn": "Mo Chit",
+    "nameTh": "หมอชิต",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N7",
+    "nameEn": "Saphan Khwai",
+    "nameTh": "สะพานควาย",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N5",
+    "nameEn": "Ari",
+    "nameTh": "อารีย์",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N4",
+    "nameEn": "Sanam Pao",
+    "nameTh": "สนามเป้า",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N3",
+    "nameEn": "Victory Monument",
+    "nameTh": "อนุสาวรีย์ชัยสมรภูมิ",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N2",
+    "nameEn": "Phaya Thai",
+    "nameTh": "พญาไท",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "N1",
+    "nameEn": "Ratchathewi",
+    "nameTh": "ราชเทวี",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "CEN",
+    "nameEn": "Siam",
+    "nameTh": "สยาม",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      },
+      {
+        "line": "silom",
+        "name": "BTS Silom Line",
+        "color": "#008c44"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E1",
+    "nameEn": "Chit Lom",
+    "nameTh": "ชิดลม",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E2",
+    "nameEn": "Phloen Chit",
+    "nameTh": "เพลินจิต",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E3",
+    "nameEn": "Nana",
+    "nameTh": "นานา",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E4",
+    "nameEn": "Asok",
+    "nameTh": "อโศก",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E5",
+    "nameEn": "Phrom Phong",
+    "nameTh": "พร้อมพงษ์",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E6",
+    "nameEn": "Thong Lo",
+    "nameTh": "ทองหล่อ",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E7",
+    "nameEn": "Ekkamai",
+    "nameTh": "เอกมัย",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E8",
+    "nameEn": "Phra Khanong",
+    "nameTh": "พระโขนง",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E9",
+    "nameEn": "On Nut",
+    "nameTh": "อ่อนนุช",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E10",
+    "nameEn": "Bang Chak",
+    "nameTh": "บางจาก",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E11",
+    "nameEn": "Punnawithi",
+    "nameTh": "ปุณณวิถี",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E12",
+    "nameEn": "Udom Suk",
+    "nameTh": "อุดมสุข",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E13",
+    "nameEn": "Bang Na",
+    "nameTh": "บางนา",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E14",
+    "nameEn": "Bearing",
+    "nameTh": "แบริ่ง",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E15",
+    "nameEn": "Samrong",
+    "nameTh": "สำโรง",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E16",
+    "nameEn": "Pu Chao",
+    "nameTh": "ปู่เจ้า",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E17",
+    "nameEn": "Chang Erawan",
+    "nameTh": "ช้างเอราวัณ",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E18",
+    "nameEn": "Royal Thai Naval Academy",
+    "nameTh": "โรงเรียนนายเรือ",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E19",
+    "nameEn": "Pak Nam",
+    "nameTh": "ปากน้ำ",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E20",
+    "nameEn": "Srinagarindra",
+    "nameTh": "ศรีนครินทร์",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E21",
+    "nameEn": "Phraek Sa",
+    "nameTh": "แพรกษา",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E22",
+    "nameEn": "Sai Luat",
+    "nameTh": "สายลวด",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "E23",
+    "nameEn": "Kheha",
+    "nameTh": "เคหะฯ",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "W1",
+    "nameEn": "National Stadium",
+    "nameTh": "สนามกีฬาแห่งชาติ",
+    "lines": [
+      {
+        "line": "silom",
+        "name": "BTS Silom Line",
+        "color": "#008c44"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "S1",
+    "nameEn": "Ratchadamri",
+    "nameTh": "ราชดำริ",
+    "lines": [
+      {
+        "line": "silom",
+        "name": "BTS Silom Line",
+        "color": "#008c44"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "S2",
+    "nameEn": "Sala Daeng",
+    "nameTh": "ศาลาแดง",
+    "lines": [
+      {
+        "line": "silom",
+        "name": "BTS Silom Line",
+        "color": "#008c44"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "S3",
+    "nameEn": "Chong Nonsi",
+    "nameTh": "ช่องนนทรี",
+    "lines": [
+      {
+        "line": "silom",
+        "name": "BTS Silom Line",
+        "color": "#008c44"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "S4",
+    "nameEn": "Saint Louis",
+    "nameTh": "เซนต์หลุยส์",
+    "lines": [
+      {
+        "line": "silom",
+        "name": "BTS Silom Line",
+        "color": "#008c44"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "S5",
+    "nameEn": "Surasak",
+    "nameTh": "สุรศักดิ์",
+    "lines": [
+      {
+        "line": "silom",
+        "name": "BTS Silom Line",
+        "color": "#008c44"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "S6",
+    "nameEn": "Saphan Taksin",
+    "nameTh": "สะพานตากสิน",
+    "lines": [
+      {
+        "line": "silom",
+        "name": "BTS Silom Line",
+        "color": "#008c44"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "S7",
+    "nameEn": "Krung Thon Buri",
+    "nameTh": "กรุงธนบุรี",
+    "lines": [
+      {
+        "line": "silom",
+        "name": "BTS Silom Line",
+        "color": "#008c44"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "S8",
+    "nameEn": "Wongwian Yai่",
+    "nameTh": "วงเวียนใหญ",
+    "lines": [
+      {
+        "line": "silom",
+        "name": "BTS Silom Line",
+        "color": "#008c44"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "S9",
+    "nameEn": "Pho Nimit",
+    "nameTh": "โพธิ์นิมิตร",
+    "lines": [
+      {
+        "line": "silom",
+        "name": "BTS Silom Line",
+        "color": "#008c44"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "S10",
+    "nameEn": "Talat Phlu",
+    "nameTh": "ตลาดพลู",
+    "lines": [
+      {
+        "line": "silom",
+        "name": "BTS Silom Line",
+        "color": "#008c44"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "S11",
+    "nameEn": "Wutthakat",
+    "nameTh": "วุฒากาศ",
+    "lines": [
+      {
+        "line": "silom",
+        "name": "BTS Silom Line",
+        "color": "#008c44"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "S12",
+    "nameEn": "Bang Wa",
+    "nameTh": "บางหว้า",
+    "lines": [
+      {
+        "line": "silom",
+        "name": "BTS Silom Line",
+        "color": "#008c44"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "G1",
+    "nameEn": "Krung Thon Buri (BTS Gold Line)",
+    "nameTh": "กรุงธนบุรี (BTS Gold Line)",
+    "lines": [
+      {
+        "line": "gold",
+        "name": "Gold Line",
+        "color": "#a3833c"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "G2",
+    "nameEn": "Charoen Nakhon",
+    "nameTh": "เจริญนคร",
+    "lines": [
+      {
+        "line": "gold",
+        "name": "Gold Line",
+        "color": "#a3833c"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "G3",
+    "nameEn": "Khlong San",
+    "nameTh": "คลองสาน",
+    "lines": [
+      {
+        "line": "gold",
+        "name": "Gold Line",
+        "color": "#a3833c"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL01",
+    "nameEn": "Ladprao",
+    "nameTh": "ลาดพร้าว",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL02",
+    "nameEn": "Phawana",
+    "nameTh": "ภาวนา",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL03",
+    "nameEn": "Chokchai 4",
+    "nameTh": "โชคชัย 4",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL04",
+    "nameEn": "Ladprao 71",
+    "nameTh": "ลาดพร้าว 71",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL05",
+    "nameEn": "Ladprao 83",
+    "nameTh": "ลาดพร้าว 83",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL06",
+    "nameEn": "Mahatthai",
+    "nameTh": "มหาดไทย",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL07",
+    "nameEn": "Ladprao 101",
+    "nameTh": "ลาดพร้าว 101",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL08",
+    "nameEn": "Bangkapi",
+    "nameTh": "บางกะปิ",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL09",
+    "nameEn": "Yak-Lamsali",
+    "nameTh": "แยกลำสาลี",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL10",
+    "nameEn": "Sri Kretta",
+    "nameTh": "ศรีกรีฑา",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL11",
+    "nameEn": "Huamark",
+    "nameTh": "หัวหมาก",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL12",
+    "nameEn": "Kalantan",
+    "nameTh": "กลันตัน",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL13",
+    "nameEn": "Sri Nut",
+    "nameTh": "ศรีนุช",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL14",
+    "nameEn": "Srinakarin 38",
+    "nameTh": "ศรีนครินทร์ 38",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL15",
+    "nameEn": "Suanluang Rama 9",
+    "nameTh": "สวนหลวง ร.9",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL16",
+    "nameEn": "Sri Udom",
+    "nameTh": "ศรีอุดม",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL17",
+    "nameEn": "Si lam",
+    "nameTh": "ศรีเอี่ยม",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL18",
+    "nameEn": "Si Lasalle",
+    "nameTh": "ศรีลาซาล",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL19",
+    "nameEn": "Sri Bearing",
+    "nameTh": "ศรีแบริ่ง",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL20",
+    "nameEn": "Sridan",
+    "nameTh": "ศรีด่าน",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL21",
+    "nameEn": "Sri Thepha",
+    "nameTh": "ศรีเทพา",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL22",
+    "nameEn": "Tippawan",
+    "nameTh": "ทิพวัล",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "YL23",
+    "nameEn": "Samrong",
+    "nameTh": "สำโรง",
+    "lines": [
+      {
+        "line": "yellow",
+        "name": "Yellow Line",
+        "color": "#fdb913"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK01",
+    "nameEn": "Nonthaburi Civic Center",
+    "nameTh": "ศูนย์ราชการนนทบุรี",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK02",
+    "nameEn": "Khae Rai",
+    "nameTh": "แคราย",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK03",
+    "nameEn": "Sanambin Nam",
+    "nameTh": "สนามบินน้ำ",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK04",
+    "nameEn": "Samakkhi",
+    "nameTh": "สามัคคี",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK05",
+    "nameEn": "Royal Irrigation Department",
+    "nameTh": "กรมชลประทาน",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK06",
+    "nameEn": "Pak Kret Intersection",
+    "nameTh": "แยกปากเกร็ด",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK07",
+    "nameEn": "Pak Kret Bypass",
+    "nameTh": "เลี่ยงเมืองปากเกร็ด",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK08",
+    "nameEn": "Chaengwattana - Pak Kret 28",
+    "nameTh": "แจ้งวัฒนะ-ปากเกร็ด 28",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK09",
+    "nameEn": "Si Rat",
+    "nameTh": "ศรีรัช",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK10",
+    "nameEn": "Muang Thong Thani",
+    "nameTh": "เมืองทองธานี",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK11",
+    "nameEn": "Chaeng Watthana 14",
+    "nameTh": "แจ้งวัฒนะ 14",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK12",
+    "nameEn": "Chaloem Phrakiat Government Center",
+    "nameTh": "ศูนย์ราชการเฉลิมพระเกียรติ",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK13",
+    "nameEn": "National Telecommunications",
+    "nameTh": "โทรคมนาคมแห่งชาติ",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK14",
+    "nameEn": "Lak Si",
+    "nameTh": "หลักสี่",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK15",
+    "nameEn": "Phranakhon Rajabhat",
+    "nameTh": "ราชภัฏพระนคร",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK16",
+    "nameEn": "Wat Phra Si Mahathat",
+    "nameTh": "วัดพระศรีมหาธาตุ",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK17",
+    "nameEn": "Ram Intra 3",
+    "nameTh": "รามอินทรา 3",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK18",
+    "nameEn": "Lat Pla Khao",
+    "nameTh": "ลาดปลาเค้า",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK19",
+    "nameEn": "Ram Inthra Km.4",
+    "nameTh": "รามอินทรา กม.4",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK20",
+    "nameEn": "Mayalap",
+    "nameTh": "มัยลาภ",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK21",
+    "nameEn": "Watcharaphon",
+    "nameTh": "วัชรพล",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK22",
+    "nameEn": "Ramintra Km.6",
+    "nameTh": "รามอินทรา กม.6",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK23",
+    "nameEn": "Khu Bon",
+    "nameTh": "คู้บอน",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK24",
+    "nameEn": "Ram Inthra Km.9",
+    "nameTh": "รามอินทรา กม.9",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK25",
+    "nameEn": "Outer Ring Road-Ram Inthra",
+    "nameTh": "วงแหวนรามอินทรา",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK26",
+    "nameEn": "Nopparat",
+    "nameTh": "นพรัตน์",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK27",
+    "nameEn": "Bang Chan",
+    "nameTh": "บางชัน",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK28",
+    "nameEn": "Setthabutbamphen",
+    "nameTh": "เศรษฐบุตรบำเพ็ญ",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK29",
+    "nameEn": "Min Buri Market",
+    "nameTh": "ตลาดมีนบุรี",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "PK30",
+    "nameEn": "Min Buri",
+    "nameTh": "มีนบุรี",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "MT01",
+    "nameEn": "Impact Muang Thong Thani",
+    "nameTh": "อิมแพ็ค เมืองทองธานี",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  },
+  {
+    "code": "MT02",
+    "nameEn": "MLake Muang Thong Thani",
+    "nameTh": "ทะเลสาบเมืองทองธานี",
+    "lines": [
+      {
+        "line": "pink",
+        "name": "Pink Line",
+        "color": "#ec4498"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "x": null,
+    "y": null
+  }
+]

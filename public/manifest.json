@@ -1,0 +1,10 @@
+{
+  "name": "Bangkok Transit",
+  "short_name": "BKK Transit",
+  "description": "Tap a BTS station for live arrival times.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#76b729",
+  "icons": []
+}
