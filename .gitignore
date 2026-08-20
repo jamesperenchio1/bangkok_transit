@@ -32,18 +32,19 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
+
+# local dev tooling
+/.claude/
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
 
-# serwist build artifacts
+# serwist build output
 /public/sw.js
-/public/swe-worker-*.js
-/public/workbox-*.js
-
-# OSM scraper response cache
-/.scraper-cache/
+/public/sw.js.map
+/public/swe-worker*.js
