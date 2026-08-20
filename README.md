@@ -14,7 +14,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## The map image
 
-The app needs `public/bts-map.png` — the official-style BTS/MRT network
+The app needs `public/bts-map.jpg` — the official-style BTS/MRT network
 diagram — to render the tappable station map. Station hitboxes in
 `data/stations.json` are positioned in pixel coordinates matching that
 specific image file; if the image changes, coordinates need remeasuring.

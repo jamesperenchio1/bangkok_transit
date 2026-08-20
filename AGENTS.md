@@ -25,7 +25,8 @@ needed.
 - **Data**: `data/stations.ts` (+ `data/stations.json`) is the full station
   list — BTS Sukhumvit/Silom (with live arrival codes, carried forward from
   the previous app's validated dataset) plus Gold/Yellow/Pink names. `x`/`y`
-  are pixel coordinates on `public/bts-map.png`, null until measured.
+  are pixel coordinates on `public/bts-map.jpg` (measured via automated
+  circle detection - see git history - not hand-placed).
 - **PWA**: Serwist service worker in `app/sw.ts`. Only wired in for the
   **production** build — `next.config.ts` skips the Serwist wrapper during
   `next dev` because it injects a `webpack` config key that conflicts with
@@ -55,7 +56,7 @@ npm start         # serve production build
 1. Update `data/stations.json` directly (flat array, see `data/stations.ts`
    for the `Station` type).
 2. Station `x`/`y` coordinates must be measured against the actual pixel
-   dimensions of `public/bts-map.png` — if that file changes, coordinates
+   dimensions of `public/bts-map.jpg` — if that file changes, coordinates
    need remeasuring.
 3. Run `npm run build` to validate TypeScript.
 
