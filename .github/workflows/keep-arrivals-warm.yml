@@ -1,0 +1,38 @@
+name: Keep arrivals cache warm
+
+# Periodically taps every BTS station's /api/arrivals/[code] route so the
+# Redis cache rarely goes fully cold. This does NOT make arrival times
+# "always fresh" - they're only considered fresh for ~90s after the
+# upstream call (see lib/bts.ts FRESH_FOR_MS), so a live user tap still
+# hits upstream most of the time. This job exists only to avoid the worst
+# case: the very first tap after a long idle period paying the full
+# ~2-6s cold-start cost. Runs on GitHub's free public-repo Actions minutes.
+#
+# GitHub's cron scheduler can delay runs by several minutes under load,
+# especially around the top of the hour - that's fine here since this is
+# a best-effort warm-up, not a correctness requirement.
+
+on:
+  schedule:
+    - cron: "*/12 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping every BTS station's arrivals endpoint
+        env:
+          BASE_URL: ${{ vars.APP_URL || 'https://bangkok-transit.vercel.app' }}
+        run: |
+          codes="N24 N23 N22 N21 N20 N19 N18 N17 N16 N15 N14 N13 N12 N11 N10 N9 N8 N7 N6 N5 N4 N3 N2 N1 CEN E1 E2 E3 E4 E5 E6 E7 E8 E9 E10 E11 E12 E13 E14 E15 E16 E17 E18 E19 E20 E21 E22 E23 W1 S1 S2 S3 S4 S5 S6 S7 S8 S9 S10 S11 S12"
+          fail=0
+          for code in $codes; do
+            status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$BASE_URL/api/arrivals/$code")
+            if [ "$status" != "200" ]; then
+              echo "warn: $code returned $status"
+              fail=$((fail+1))
+            fi
+            sleep 0.4
+          done
+          echo "done: $fail/61 non-200 responses"
