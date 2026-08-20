@@ -11,7 +11,7 @@ import type { Station } from "@/data/stations";
  * breakpoint.
  */
 
-const MAP_SRC = "/bts-map.png";
+const MAP_SRC = "/bts-map.jpg";
 
 export interface StationMapProps {
   stations: Station[];
