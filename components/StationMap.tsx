@@ -6,10 +6,20 @@ import type { Station } from "@/data/stations";
 /**
  * Renders the network map image with an SVG overlay sharing its native
  * pixel dimensions as the viewBox. Because the image and SVG scale together
- * in one container, each station's hitbox stays pixel-perfect aligned to
- * the artwork at any screen size - no separate positioning math per
- * breakpoint.
+ * in one container, the tap-detection math stays pixel-perfect aligned to
+ * the artwork at any screen size or zoom level - no separate positioning
+ * math per breakpoint.
+ *
+ * Tapping doesn't hit-test individual per-station circles (some stations,
+ * like the CEN/S1/N1/N2 interchange cluster, sit as close as ~16px apart
+ * in map space - circles sized for a comfortable fat-finger tap would
+ * overlap there). Instead every tap finds the *nearest* station within
+ * MAX_TAP_DISTANCE, which is both more forgiving and has no overlap
+ * ambiguity: every point on the map unambiguously belongs to whichever
+ * station is closest to it.
  */
+
+const MAX_TAP_DISTANCE = 34;
 
 export interface StationMapProps {
   src: string;
@@ -47,8 +57,33 @@ export function StationMap({ src, stations, onSelectBts, onSelectOther }: Statio
     );
   }
 
+  const handleTap = (e: React.MouseEvent) => {
+    if (!naturalSize) return;
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const mapX = ((e.clientX - rect.left) / rect.width) * naturalSize.w;
+    const mapY = ((e.clientY - rect.top) / rect.height) * naturalSize.h;
+
+    let nearest: (Station & { x: number; y: number }) | null = null;
+    let nearestDist = Infinity;
+    for (const s of placeable) {
+      const d = Math.hypot(s.x - mapX, s.y - mapY);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearest = s;
+      }
+    }
+    if (!nearest || nearestDist > MAX_TAP_DISTANCE) return;
+
+    if (nearest.hasLiveArrivals) {
+      onSelectBts(nearest);
+    } else {
+      onSelectOther(nearest, { x: e.clientX, y: e.clientY });
+    }
+  };
+
   return (
-    <div ref={containerRef} className="relative w-full">
+    <div ref={containerRef} className="relative w-full" onClick={handleTap}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         ref={imgRef}
@@ -65,36 +100,18 @@ export function StationMap({ src, stations, onSelectBts, onSelectOther }: Statio
       {naturalSize && (
         <svg
           viewBox={`0 0 ${naturalSize.w} ${naturalSize.h}`}
-          className="absolute inset-0 h-full w-full"
+          className="pointer-events-none absolute inset-0 h-full w-full"
         >
-          {placeable.map((s) => {
-            const isBts = s.hasLiveArrivals;
-            return (
-              <circle
-                key={s.code}
-                cx={s.x}
-                cy={s.y}
-                r={s.radius ?? 14}
-                fill="transparent"
-                stroke="transparent"
-                className="cursor-pointer"
-                pointerEvents="all"
-                onClick={(e) => {
-                  if (isBts) {
-                    onSelectBts(s);
-                  } else {
-                    const rect = containerRef.current?.getBoundingClientRect();
-                    onSelectOther(s, {
-                      x: e.clientX - (rect?.left ?? 0),
-                      y: e.clientY - (rect?.top ?? 0),
-                    });
-                  }
-                }}
-              >
-                <title>{s.nameEn}</title>
-              </circle>
-            );
-          })}
+          {placeable.map((s) => (
+            <circle
+              key={s.code}
+              cx={s.x}
+              cy={s.y}
+              r={s.radius ?? 14}
+              fill="transparent"
+              stroke="transparent"
+            />
+          ))}
         </svg>
       )}
     </div>
