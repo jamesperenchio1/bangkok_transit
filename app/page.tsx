@@ -5,6 +5,7 @@ import { stations, type Station } from "@/data/stations";
 import { StationMap } from "@/components/StationMap";
 import { ArrivalsSheet } from "@/components/ArrivalsSheet";
 import { UnavailableTooltip } from "@/components/UnavailableTooltip";
+import { ZoomableMap } from "@/components/ZoomableMap";
 
 export default function Home() {
   const [selected, setSelected] = useState<Station | null>(null);
@@ -30,29 +31,31 @@ export default function Home() {
         </button>
       </header>
 
-      <div className="flex-1 overflow-auto overscroll-contain">
-        {showReference ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src="/bts-map-network.jpg"
-            alt="Full Bangkok transit network map (BTS, MRT, Gold, Yellow, Pink lines) - reference only"
-            className="block w-full select-none"
-            draggable={false}
-          />
-        ) : (
-          <StationMap
-            src="/bts-map.jpg"
-            stations={stations}
-            onSelectBts={(s) => {
-              setTooltip(null);
-              setSelected(s);
-            }}
-            onSelectOther={(s, point) => {
-              setSelected(null);
-              setTooltip({ station: s, point });
-            }}
-          />
-        )}
+      <div className="relative flex-1 overflow-hidden">
+        <ZoomableMap key={showReference ? "reference" : "main"}>
+          {showReference ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/bts-map-network.jpg"
+              alt="Full Bangkok transit network map (BTS, MRT, Gold, Yellow, Pink lines) - reference only"
+              className="block w-full select-none"
+              draggable={false}
+            />
+          ) : (
+            <StationMap
+              src="/bts-map.jpg"
+              stations={stations}
+              onSelectBts={(s) => {
+                setTooltip(null);
+                setSelected(s);
+              }}
+              onSelectOther={(s, point) => {
+                setSelected(null);
+                setTooltip({ station: s, point });
+              }}
+            />
+          )}
+        </ZoomableMap>
       </div>
 
       <ArrivalsSheet station={selected} onClose={() => setSelected(null)} />
