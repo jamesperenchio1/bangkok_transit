@@ -11,15 +11,14 @@ import type { Station } from "@/data/stations";
  * breakpoint.
  */
 
-const MAP_SRC = "/bts-map.jpg";
-
 export interface StationMapProps {
+  src: string;
   stations: Station[];
   onSelectBts: (station: Station) => void;
   onSelectOther: (station: Station, point: { x: number; y: number }) => void;
 }
 
-export function StationMap({ stations, onSelectBts, onSelectOther }: StationMapProps) {
+export function StationMap({ src, stations, onSelectBts, onSelectOther }: StationMapProps) {
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
   const [imageMissing, setImageMissing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -43,7 +42,7 @@ export function StationMap({ stations, onSelectBts, onSelectOther }: StationMapP
   if (imageMissing) {
     return (
       <div className="flex h-full w-full items-center justify-center p-8 text-center text-sm text-neutral-500">
-        Map image not found at <code className="mx-1">public/bts-map.png</code>.
+        Map image not found at <code className="mx-1">public{src}</code>.
       </div>
     );
   }
@@ -53,7 +52,7 @@ export function StationMap({ stations, onSelectBts, onSelectOther }: StationMapP
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         ref={imgRef}
-        src={MAP_SRC}
+        src={src}
         alt="Bangkok BTS/MRT network map"
         className="block w-full select-none"
         draggable={false}

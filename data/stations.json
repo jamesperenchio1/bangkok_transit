@@ -11,9 +11,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1441.5,
-    "y": 110.6,
-    "radius": 20
+    "x": 569.9,
+    "y": 68.0,
+    "radius": 11
   },
   {
     "code": "N23",
@@ -27,9 +27,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1361.2,
-    "y": 110.6,
-    "radius": 20
+    "x": 529.6,
+    "y": 118.8,
+    "radius": 11
   },
   {
     "code": "N22",
@@ -43,9 +43,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1275.2,
+    "x": 529.8,
     "y": 152.3,
-    "radius": 20
+    "radius": 11
   },
   {
     "code": "N21",
@@ -59,9 +59,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1241.0,
-    "y": 188.7,
-    "radius": 20
+    "x": 525.6,
+    "y": 184.6,
+    "radius": 11
   },
   {
     "code": "N20",
@@ -75,9 +75,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1204.7,
-    "y": 222.8,
-    "radius": 20
+    "x": 528.7,
+    "y": 217.5,
+    "radius": 11
   },
   {
     "code": "N19",
@@ -91,9 +91,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1169.2,
-    "y": 257.9,
-    "radius": 20
+    "x": 528.6,
+    "y": 250.8,
+    "radius": 11
   },
   {
     "code": "N18",
@@ -107,9 +107,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1134.1,
-    "y": 292.9,
-    "radius": 20
+    "x": 522.5,
+    "y": 285.0,
+    "radius": 11
   },
   {
     "code": "N17",
@@ -123,9 +123,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1092.9,
-    "y": 352.3,
-    "radius": 20
+    "x": 522.5,
+    "y": 317.6,
+    "radius": 11
   },
   {
     "code": "N16",
@@ -139,9 +139,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1093.3,
-    "y": 409.1,
-    "radius": 20
+    "x": 528.0,
+    "y": 349.7,
+    "radius": 11
   },
   {
     "code": "N15",
@@ -155,9 +155,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1093.3,
-    "y": 462.3,
-    "radius": 20
+    "x": 528.6,
+    "y": 384.0,
+    "radius": 11
   },
   {
     "code": "N14",
@@ -171,9 +171,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1093.3,
-    "y": 515.5,
-    "radius": 20
+    "x": 528.7,
+    "y": 416.9,
+    "radius": 11
   },
   {
     "code": "N13",
@@ -187,9 +187,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1093.3,
-    "y": 563.4,
-    "radius": 20
+    "x": 528.8,
+    "y": 449.5,
+    "radius": 11
   },
   {
     "code": "N12",
@@ -203,9 +203,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1093.3,
-    "y": 622.4,
-    "radius": 20
+    "x": 528.5,
+    "y": 483.8,
+    "radius": 11
   },
   {
     "code": "N11",
@@ -219,9 +219,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1093.3,
-    "y": 675.6,
-    "radius": 20
+    "x": 522.4,
+    "y": 516.1,
+    "radius": 11
   },
   {
     "code": "N10",
@@ -235,9 +235,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1093.3,
-    "y": 730.2,
-    "radius": 20
+    "x": 528.3,
+    "y": 549.5,
+    "radius": 11
   },
   {
     "code": "N9",
@@ -251,9 +251,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1093.8,
-    "y": 794.5,
-    "radius": 20
+    "x": 529.3,
+    "y": 583.9,
+    "radius": 11
   },
   {
     "code": "N8",
@@ -267,9 +267,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1092.9,
-    "y": 855.7,
-    "radius": 20
+    "x": 529.3,
+    "y": 626.4,
+    "radius": 11
   },
   {
     "code": "N7",
@@ -283,9 +283,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1093.3,
-    "y": 898.7,
-    "radius": 20
+    "x": 525.6,
+    "y": 669.1,
+    "radius": 11
   },
   {
     "code": "N5",
@@ -299,9 +299,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1093.3,
-    "y": 981.6,
-    "radius": 20
+    "x": 525.6,
+    "y": 764.1,
+    "radius": 11
   },
   {
     "code": "N4",
@@ -315,9 +315,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1093.3,
-    "y": 1022.8,
-    "radius": 20
+    "x": 528.1,
+    "y": 795.9,
+    "radius": 11
   },
   {
     "code": "N3",
@@ -331,9 +331,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1093.8,
-    "y": 1064.1,
-    "radius": 20
+    "x": 529.4,
+    "y": 829.0,
+    "radius": 11
   },
   {
     "code": "N2",
@@ -347,9 +347,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1093.3,
-    "y": 1109.8,
-    "radius": 20
+    "x": 527.5,
+    "y": 876.5,
+    "radius": 11
   },
   {
     "code": "N1",
@@ -363,9 +363,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1093.3,
-    "y": 1194.9,
-    "radius": 20
+    "x": 521.5,
+    "y": 892.2,
+    "radius": 11
   },
   {
     "code": "CEN",
@@ -384,9 +384,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1174.5,
-    "y": 1271.2,
-    "radius": 26
+    "x": 542.1,
+    "y": 912.6,
+    "radius": 14
   },
   {
     "code": "E1",
@@ -400,9 +400,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1236.6,
-    "y": 1271.2,
-    "radius": 20
+    "x": 581.3,
+    "y": 915.3,
+    "radius": 11
   },
   {
     "code": "E2",
@@ -416,9 +416,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1298.2,
-    "y": 1271.2,
-    "radius": 20
+    "x": 624.4,
+    "y": 915.5,
+    "radius": 11
   },
   {
     "code": "E3",
@@ -432,9 +432,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1360.3,
-    "y": 1271.2,
-    "radius": 20
+    "x": 666.1,
+    "y": 915.4,
+    "radius": 11
   },
   {
     "code": "E4",
@@ -448,9 +448,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1417.5,
-    "y": 1271.6,
-    "radius": 20
+    "x": 696.4,
+    "y": 915.7,
+    "radius": 11
   },
   {
     "code": "E5",
@@ -464,9 +464,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1467.6,
-    "y": 1301.3,
-    "radius": 20
+    "x": 750.7,
+    "y": 916.1,
+    "radius": 11
   },
   {
     "code": "E6",
@@ -480,9 +480,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1503.5,
-    "y": 1337.3,
-    "radius": 20
+    "x": 784.1,
+    "y": 948.7,
+    "radius": 11
   },
   {
     "code": "E7",
@@ -496,9 +496,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1540.8,
-    "y": 1372.3,
-    "radius": 20
+    "x": 811.4,
+    "y": 978.0,
+    "radius": 11
   },
   {
     "code": "E8",
@@ -512,9 +512,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1574.5,
-    "y": 1410.4,
-    "radius": 20
+    "x": 843.2,
+    "y": 1006.5,
+    "radius": 11
   },
   {
     "code": "E9",
@@ -528,9 +528,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1611.8,
-    "y": 1445.5,
-    "radius": 20
+    "x": 874.8,
+    "y": 1038.4,
+    "radius": 11
   },
   {
     "code": "E10",
@@ -544,9 +544,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1630.4,
-    "y": 1490.2,
-    "radius": 20
+    "x": 901.0,
+    "y": 1067.9,
+    "radius": 11
   },
   {
     "code": "E11",
@@ -560,9 +560,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1630.4,
-    "y": 1544.3,
-    "radius": 20
+    "x": 899.3,
+    "y": 1101.3,
+    "radius": 11
   },
   {
     "code": "E12",
@@ -576,9 +576,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1630.4,
-    "y": 1598.9,
-    "radius": 20
+    "x": 902.3,
+    "y": 1136.0,
+    "radius": 11
   },
   {
     "code": "E13",
@@ -592,9 +592,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1630.4,
-    "y": 1653.0,
-    "radius": 20
+    "x": 899.4,
+    "y": 1168.9,
+    "radius": 11
   },
   {
     "code": "E14",
@@ -608,9 +608,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1629.9,
-    "y": 1707.5,
-    "radius": 20
+    "x": 902.3,
+    "y": 1202.8,
+    "radius": 11
   },
   {
     "code": "E15",
@@ -624,9 +624,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1630.4,
-    "y": 1758.5,
-    "radius": 20
+    "x": 902.3,
+    "y": 1236.9,
+    "radius": 11
   },
   {
     "code": "E16",
@@ -640,9 +640,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1630.4,
-    "y": 1809.5,
-    "radius": 20
+    "x": 901.9,
+    "y": 1270.6,
+    "radius": 11
   },
   {
     "code": "E17",
@@ -656,9 +656,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1630.4,
-    "y": 1860.5,
-    "radius": 20
+    "x": 897.7,
+    "y": 1304.3,
+    "radius": 11
   },
   {
     "code": "E18",
@@ -672,9 +672,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1630.4,
-    "y": 1911.5,
-    "radius": 20
+    "x": 939.6,
+    "y": 1340.5,
+    "radius": 11
   },
   {
     "code": "E19",
@@ -688,9 +688,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1630.4,
-    "y": 1962.5,
-    "radius": 20
+    "x": 978.5,
+    "y": 1378.2,
+    "radius": 11
   },
   {
     "code": "E20",
@@ -704,9 +704,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1630.4,
-    "y": 2013.5,
-    "radius": 20
+    "x": 1014.4,
+    "y": 1414.5,
+    "radius": 11
   },
   {
     "code": "E21",
@@ -720,9 +720,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1630.4,
-    "y": 2064.5,
-    "radius": 20
+    "x": 1051.6,
+    "y": 1450.6,
+    "radius": 11
   },
   {
     "code": "E22",
@@ -736,9 +736,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1642.8,
-    "y": 2103.1,
-    "radius": 20
+    "x": 1086.5,
+    "y": 1487.6,
+    "radius": 11
   },
   {
     "code": "E23",
@@ -752,9 +752,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1681.4,
-    "y": 2115.5,
-    "radius": 20
+    "x": 1121.6,
+    "y": 1524.8,
+    "radius": 11
   },
   {
     "code": "W1",
@@ -768,9 +768,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1028.2,
-    "y": 1279.2,
-    "radius": 20
+    "x": 494.1,
+    "y": 925.9,
+    "radius": 11
   },
   {
     "code": "S1",
@@ -784,9 +784,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1129.3,
-    "y": 1332.4,
-    "radius": 20
+    "x": 542.1,
+    "y": 929.0,
+    "radius": 11
   },
   {
     "code": "S2",
@@ -800,9 +800,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1159.4,
-    "y": 1386.0,
-    "radius": 20
+    "x": 551.2,
+    "y": 962.7,
+    "radius": 11
   },
   {
     "code": "S3",
@@ -816,9 +816,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1129.7,
-    "y": 1461.0,
-    "radius": 20
+    "x": 551.7,
+    "y": 1057.5,
+    "radius": 11
   },
   {
     "code": "S4",
@@ -832,9 +832,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1118.2,
-    "y": 1527.1,
-    "radius": 20
+    "x": 520.3,
+    "y": 1090.5,
+    "radius": 11
   },
   {
     "code": "S5",
@@ -848,9 +848,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1088.0,
-    "y": 1557.2,
-    "radius": 20
+    "x": 485.3,
+    "y": 1125.4,
+    "radius": 11
   },
   {
     "code": "S6",
@@ -864,9 +864,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1057.0,
-    "y": 1586.0,
-    "radius": 20
+    "x": 441.2,
+    "y": 1169.0,
+    "radius": 11
   },
   {
     "code": "S7",
@@ -880,9 +880,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 971.0,
-    "y": 1617.1,
-    "radius": 20
+    "x": 385.6,
+    "y": 1166.6,
+    "radius": 11
   },
   {
     "code": "S8",
@@ -896,9 +896,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 872.5,
-    "y": 1616.6,
-    "radius": 20
+    "x": 323.8,
+    "y": 1167.3,
+    "radius": 11
   },
   {
     "code": "S9",
@@ -912,9 +912,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 773.2,
-    "y": 1616.6,
-    "radius": 20
+    "x": 261.1,
+    "y": 1167.0,
+    "radius": 11
   },
   {
     "code": "S10",
@@ -928,9 +928,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 673.8,
-    "y": 1616.6,
-    "radius": 20
+    "x": 203.7,
+    "y": 1168.9,
+    "radius": 11
   },
   {
     "code": "S11",
@@ -944,9 +944,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 567.8,
-    "y": 1568.3,
-    "radius": 20
+    "x": 136.1,
+    "y": 1167.5,
+    "radius": 11
   },
   {
     "code": "S12",
@@ -960,9 +960,9 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 488.9,
-    "y": 1487.6,
-    "radius": 20
+    "x": 104.3,
+    "y": 1146.6,
+    "radius": 11
   },
   {
     "code": "G1",
@@ -1833,5 +1833,21 @@
     "hasLiveArrivals": false,
     "x": null,
     "y": null
+  },
+  {
+    "code": "N6",
+    "nameEn": "Sena Ruam",
+    "nameTh": "เสนาร่วม",
+    "lines": [
+      {
+        "line": "sukhumvit",
+        "name": "BTS Sukhumvit Line",
+        "color": "#76b729"
+      }
+    ],
+    "hasLiveArrivals": true,
+    "x": 525.6,
+    "y": 732.1,
+    "radius": 11
   }
 ]
