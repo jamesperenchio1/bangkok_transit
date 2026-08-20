@@ -13,7 +13,9 @@
     "hasLiveArrivals": true,
     "x": 569.9,
     "y": 68.0,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.932341,
+    "lon": 100.646626
   },
   {
     "code": "N23",
@@ -29,7 +31,9 @@
     "hasLiveArrivals": true,
     "x": 529.6,
     "y": 118.8,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.924983,
+    "lon": 100.625876
   },
   {
     "code": "N22",
@@ -45,7 +49,9 @@
     "hasLiveArrivals": true,
     "x": 529.8,
     "y": 152.3,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.917945,
+    "lon": 100.621715
   },
   {
     "code": "N21",
@@ -61,7 +67,9 @@
     "hasLiveArrivals": true,
     "x": 525.6,
     "y": 184.6,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.910722,
+    "lon": 100.617423
   },
   {
     "code": "N20",
@@ -77,7 +85,9 @@
     "hasLiveArrivals": true,
     "x": 528.7,
     "y": 217.5,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.896595,
+    "lon": 100.609132
   },
   {
     "code": "N19",
@@ -93,7 +103,9 @@
     "hasLiveArrivals": true,
     "x": 528.6,
     "y": 250.8,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.888442,
+    "lon": 100.604292
   },
   {
     "code": "N18",
@@ -109,7 +121,9 @@
     "hasLiveArrivals": true,
     "x": 522.5,
     "y": 285.0,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.882454,
+    "lon": 100.600766
   },
   {
     "code": "N17",
@@ -125,7 +139,9 @@
     "hasLiveArrivals": true,
     "x": 522.5,
     "y": 317.6,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.875286,
+    "lon": 100.596811
   },
   {
     "code": "N16",
@@ -141,7 +157,9 @@
     "hasLiveArrivals": true,
     "x": 528.0,
     "y": 349.7,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.867528,
+    "lon": 100.59194
   },
   {
     "code": "N15",
@@ -157,7 +175,9 @@
     "hasLiveArrivals": true,
     "x": 528.6,
     "y": 384.0,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.855994,
+    "lon": 100.585171
   },
   {
     "code": "N14",
@@ -173,7 +193,9 @@
     "hasLiveArrivals": true,
     "x": 528.7,
     "y": 416.9,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.850255,
+    "lon": 100.581794
   },
   {
     "code": "N13",
@@ -189,7 +211,9 @@
     "hasLiveArrivals": true,
     "x": 528.8,
     "y": 449.5,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.842065,
+    "lon": 100.577026
   },
   {
     "code": "N12",
@@ -205,7 +229,9 @@
     "hasLiveArrivals": true,
     "x": 528.5,
     "y": 483.8,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.836608,
+    "lon": 100.573802
   },
   {
     "code": "N11",
@@ -221,7 +247,9 @@
     "hasLiveArrivals": true,
     "x": 522.4,
     "y": 516.1,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.829684,
+    "lon": 100.569737
   },
   {
     "code": "N10",
@@ -237,7 +265,9 @@
     "hasLiveArrivals": true,
     "x": 528.3,
     "y": 549.5,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.823852,
+    "lon": 100.566356
   },
   {
     "code": "N9",
@@ -253,7 +283,9 @@
     "hasLiveArrivals": true,
     "x": 529.3,
     "y": 583.9,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.817229,
+    "lon": 100.5623432
   },
   {
     "code": "N8",
@@ -269,7 +301,9 @@
     "hasLiveArrivals": true,
     "x": 529.3,
     "y": 626.4,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.802649,
+    "lon": 100.553763
   },
   {
     "code": "N7",
@@ -285,7 +319,9 @@
     "hasLiveArrivals": true,
     "x": 525.6,
     "y": 669.1,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.793834,
+    "lon": 100.549696
   },
   {
     "code": "N5",
@@ -301,7 +337,9 @@
     "hasLiveArrivals": true,
     "x": 525.6,
     "y": 764.1,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.779788,
+    "lon": 100.544704
   },
   {
     "code": "N4",
@@ -317,7 +355,9 @@
     "hasLiveArrivals": true,
     "x": 528.1,
     "y": 795.9,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.772642,
+    "lon": 100.542103
   },
   {
     "code": "N3",
@@ -333,7 +373,9 @@
     "hasLiveArrivals": true,
     "x": 529.4,
     "y": 829.0,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.762793,
+    "lon": 100.537085
   },
   {
     "code": "N2",
@@ -349,7 +391,9 @@
     "hasLiveArrivals": true,
     "x": 527.5,
     "y": 876.5,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.756822,
+    "lon": 100.533782
   },
   {
     "code": "N1",
@@ -365,7 +409,9 @@
     "hasLiveArrivals": true,
     "x": 521.5,
     "y": 892.2,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.751931,
+    "lon": 100.531535
   },
   {
     "code": "CEN",
@@ -386,7 +432,9 @@
     "hasLiveArrivals": true,
     "x": 542.1,
     "y": 912.6,
-    "radius": 14
+    "radius": 14,
+    "lat": 13.745515,
+    "lon": 100.534605
   },
   {
     "code": "E1",
@@ -402,7 +450,9 @@
     "hasLiveArrivals": true,
     "x": 581.3,
     "y": 915.3,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.74409,
+    "lon": 100.543028
   },
   {
     "code": "E2",
@@ -418,7 +468,9 @@
     "hasLiveArrivals": true,
     "x": 624.4,
     "y": 915.5,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.74306,
+    "lon": 100.548849
   },
   {
     "code": "E3",
@@ -434,7 +486,9 @@
     "hasLiveArrivals": true,
     "x": 666.1,
     "y": 915.4,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.740508,
+    "lon": 100.555412
   },
   {
     "code": "E4",
@@ -450,7 +504,9 @@
     "hasLiveArrivals": true,
     "x": 696.4,
     "y": 915.7,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.736996,
+    "lon": 100.560387
   },
   {
     "code": "E5",
@@ -466,7 +522,9 @@
     "hasLiveArrivals": true,
     "x": 750.7,
     "y": 916.1,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.730434,
+    "lon": 100.569688
   },
   {
     "code": "E6",
@@ -482,7 +540,9 @@
     "hasLiveArrivals": true,
     "x": 784.1,
     "y": 948.7,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.724243,
+    "lon": 100.578502
   },
   {
     "code": "E7",
@@ -498,7 +558,9 @@
     "hasLiveArrivals": true,
     "x": 811.4,
     "y": 978.0,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.719439,
+    "lon": 100.585274
   },
   {
     "code": "E8",
@@ -514,7 +576,9 @@
     "hasLiveArrivals": true,
     "x": 843.2,
     "y": 1006.5,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.715178,
+    "lon": 100.591332
   },
   {
     "code": "E9",
@@ -530,7 +594,9 @@
     "hasLiveArrivals": true,
     "x": 874.8,
     "y": 1038.4,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.705545,
+    "lon": 100.601064
   },
   {
     "code": "E10",
@@ -546,7 +612,9 @@
     "hasLiveArrivals": true,
     "x": 901.0,
     "y": 1067.9,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.696551,
+    "lon": 100.605486
   },
   {
     "code": "E11",
@@ -562,7 +630,9 @@
     "hasLiveArrivals": true,
     "x": 899.3,
     "y": 1101.3,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.689303,
+    "lon": 100.609041
   },
   {
     "code": "E12",
@@ -578,7 +648,9 @@
     "hasLiveArrivals": true,
     "x": 902.3,
     "y": 1136.0,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.67993,
+    "lon": 100.609554
   },
   {
     "code": "E13",
@@ -594,7 +666,9 @@
     "hasLiveArrivals": true,
     "x": 899.4,
     "y": 1168.9,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.668122,
+    "lon": 100.604649
   },
   {
     "code": "E14",
@@ -610,7 +684,9 @@
     "hasLiveArrivals": true,
     "x": 902.3,
     "y": 1202.8,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.66117,
+    "lon": 100.601862
   },
   {
     "code": "E15",
@@ -626,7 +702,9 @@
     "hasLiveArrivals": true,
     "x": 902.3,
     "y": 1236.9,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.646192,
+    "lon": 100.595653
   },
   {
     "code": "E16",
@@ -642,7 +720,9 @@
     "hasLiveArrivals": true,
     "x": 901.9,
     "y": 1270.6,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.637247,
+    "lon": 100.591993
   },
   {
     "code": "E17",
@@ -658,7 +738,9 @@
     "hasLiveArrivals": true,
     "x": 897.7,
     "y": 1304.3,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.621447,
+    "lon": 100.590112
   },
   {
     "code": "E18",
@@ -674,7 +756,9 @@
     "hasLiveArrivals": true,
     "x": 939.6,
     "y": 1340.5,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.608552,
+    "lon": 100.594827
   },
   {
     "code": "E19",
@@ -690,7 +774,9 @@
     "hasLiveArrivals": true,
     "x": 978.5,
     "y": 1378.2,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.60207,
+    "lon": 100.597072
   },
   {
     "code": "E20",
@@ -706,7 +792,9 @@
     "hasLiveArrivals": true,
     "x": 1014.4,
     "y": 1414.5,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.592079,
+    "lon": 100.608906
   },
   {
     "code": "E21",
@@ -722,7 +810,9 @@
     "hasLiveArrivals": true,
     "x": 1051.6,
     "y": 1450.6,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.584324,
+    "lon": 100.608027
   },
   {
     "code": "E22",
@@ -738,7 +828,9 @@
     "hasLiveArrivals": true,
     "x": 1086.5,
     "y": 1487.6,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.577784,
+    "lon": 100.605396
   },
   {
     "code": "E23",
@@ -754,7 +846,9 @@
     "hasLiveArrivals": true,
     "x": 1121.6,
     "y": 1524.8,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.567647,
+    "lon": 100.607681
   },
   {
     "code": "W1",
@@ -770,7 +864,9 @@
     "hasLiveArrivals": true,
     "x": 494.1,
     "y": 925.9,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.746491,
+    "lon": 100.529351
   },
   {
     "code": "S1",
@@ -786,7 +882,9 @@
     "hasLiveArrivals": true,
     "x": 542.1,
     "y": 929.0,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.739471,
+    "lon": 100.539453
   },
   {
     "code": "S2",
@@ -802,7 +900,9 @@
     "hasLiveArrivals": true,
     "x": 551.2,
     "y": 962.7,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.72855,
+    "lon": 100.534347
   },
   {
     "code": "S3",
@@ -818,7 +918,9 @@
     "hasLiveArrivals": true,
     "x": 551.7,
     "y": 1057.5,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.723727,
+    "lon": 100.52943
   },
   {
     "code": "S4",
@@ -834,7 +936,9 @@
     "hasLiveArrivals": true,
     "x": 520.3,
     "y": 1090.5,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.7210655982596,
+    "lon": 100.526995996725
   },
   {
     "code": "S5",
@@ -850,7 +954,9 @@
     "hasLiveArrivals": true,
     "x": 485.3,
     "y": 1125.4,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.719314,
+    "lon": 100.521602
   },
   {
     "code": "S6",
@@ -866,7 +972,9 @@
     "hasLiveArrivals": true,
     "x": 441.2,
     "y": 1169.0,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.718801,
+    "lon": 100.514086
   },
   {
     "code": "S7",
@@ -882,7 +990,9 @@
     "hasLiveArrivals": true,
     "x": 385.6,
     "y": 1166.6,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.720877,
+    "lon": 100.502841
   },
   {
     "code": "S8",
@@ -898,7 +1008,9 @@
     "hasLiveArrivals": true,
     "x": 323.8,
     "y": 1167.3,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.721149,
+    "lon": 100.495259
   },
   {
     "code": "S9",
@@ -914,7 +1026,9 @@
     "hasLiveArrivals": true,
     "x": 261.1,
     "y": 1167.0,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.719221,
+    "lon": 100.485945
   },
   {
     "code": "S10",
@@ -930,7 +1044,9 @@
     "hasLiveArrivals": true,
     "x": 203.7,
     "y": 1168.9,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.714215,
+    "lon": 100.476677
   },
   {
     "code": "S11",
@@ -946,7 +1062,9 @@
     "hasLiveArrivals": true,
     "x": 136.1,
     "y": 1167.5,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.71297,
+    "lon": 100.468913
   },
   {
     "code": "S12",
@@ -962,7 +1080,9 @@
     "hasLiveArrivals": true,
     "x": 104.3,
     "y": 1146.6,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.720699,
+    "lon": 100.457795
   },
   {
     "code": "G1",
@@ -1848,6 +1968,8 @@
     "hasLiveArrivals": true,
     "x": 525.6,
     "y": 732.1,
-    "radius": 11
+    "radius": 11,
+    "lat": 13.7859356,
+    "lon": 100.546865
   }
 ]

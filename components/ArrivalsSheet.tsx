@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { X, MapPin } from "lucide-react";
 import { useArrivals } from "@/lib/use-arrivals";
 import type { Station } from "@/data/stations";
 
@@ -60,6 +60,18 @@ export function ArrivalsSheet({ station, onClose }: ArrivalsSheetProps) {
               <X size={20} />
             </button>
           </div>
+
+          {station.lat !== undefined && station.lon !== undefined && (
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${station.lat},${station.lon}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mb-3 flex w-fit items-center gap-1.5 rounded-full border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            >
+              <MapPin size={14} />
+              Open in Google Maps
+            </a>
+          )}
 
           {loading && !data && (
             <p className="py-6 text-center text-sm text-neutral-500">Loading…</p>

@@ -22,6 +22,11 @@ export interface Station {
   /** Hitbox shape/size, matching the marker as drawn on the map image. */
   shape?: "circle" | "interchange";
   radius?: number;
+  /** Real-world GPS coordinates, from the arrivals API's /stations endpoint
+   * (N6 sourced from OpenStreetMap since it's absent there). Used for the
+   * "Open in Google Maps" link - not related to x/y map-image position. */
+  lat?: number;
+  lon?: number;
 }
 
 export const stations: Station[] = raw as Station[];

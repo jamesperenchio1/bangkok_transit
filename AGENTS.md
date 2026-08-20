@@ -33,6 +33,18 @@ needed.
   hand-placed). `public/bts-map-network.jpg` is a secondary, larger
   full-network reference image (BTS+MRT+Gold+Yellow+Pink) shown via the
   "Full network" toggle on the home page - it has no hitboxes, view only.
+  `lat`/`lon` (separate from `x`/`y`) are the station's real GPS coordinates
+  from the arrivals API's `/stations` endpoint (N6 sourced from OpenStreetMap
+  since it's absent there) - used only for the "Open in Google Maps" link in
+  `ArrivalsSheet`, unrelated to map-image tap position.
+- **Tap detection**: `StationMap` does NOT hit-test individual station
+  circles - some interchanges (CEN/S1, N1/N2) sit as little as ~16px apart
+  in map space, too close for fat-finger-sized circles without overlap.
+  Instead every tap on the map finds the *nearest* station within
+  `MAX_TAP_DISTANCE`, which is fat-finger-tolerant with no ambiguity: every
+  point on the map belongs to whichever station is closest to it. The
+  small `<circle>`s still drawn per station are purely visual (`pointer-
+  events-none`), not the hit target.
 - **PWA**: Serwist service worker in `app/sw.ts`. Only wired in for the
   **production** build — `next.config.ts` skips the Serwist wrapper during
   `next dev` because it injects a `webpack` config key that conflicts with
