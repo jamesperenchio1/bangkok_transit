@@ -40,7 +40,16 @@ expanded. See `docs/` or ask the user for further design history if needed.
   class for a real reason, not decoration: Leaflet's internal panes use
   z-index up to ~700, and without a stacking context to contain them they
   render above anything else on the page (confirm bar, route sheet) that
-  isn't *also* pinned to a very high z-index.
+  isn't *also* pinned to a very high z-index. Line paths are NOT drawn as
+  straight segments between consecutive stations - that looks nothing like
+  the real track, which curves along roads and rivers. `data/line-geometry.json`
+  (built by `scripts/build-line-geometry.ts` from the same BMA GIS source as
+  the station data) holds each line's real curved geometry as one or more
+  independent coordinate segments; `lib/line-geometry.ts`'s `fullLineSegments()`
+  feeds the full-network view, and `trackBetween()` finds the real sub-curve
+  between two adjacent stations (by nearest-vertex snapping onto whichever
+  source segment contains both) for the highlighted-route overlay - falling
+  back to a straight line only if no segment is close enough to both stations.
 - **Data**: `data/stations.ts` (+ `data/stations.json`) is the full station
   list — 193 stations across every currently-operating line. BTS
   Sukhumvit/Silom (61 codes, including N6 Sena Ruam, absent from the live

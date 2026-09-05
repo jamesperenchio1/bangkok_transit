@@ -4,7 +4,7 @@ import "leaflet/dist/leaflet.css";
 import { useEffect, useMemo } from "react";
 import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from "react-leaflet";
 import { stations, type Station } from "@/data/stations";
-import lineSequences from "@/data/line-sequences.json";
+import { fullLineSegments, trackBetween } from "@/lib/line-geometry";
 import type { GeoPosition } from "@/lib/use-geolocation";
 import type { PathResult } from "@/lib/transit-graph";
 
@@ -55,11 +55,12 @@ function FitStationBounds() {
   return null;
 }
 
-function lineCoords(codes: string[]): [number, number][] {
-  return codes
-    .map((code) => stations.find((s) => s.code === code))
-    .filter((s): s is Station => Boolean(s))
-    .map((s) => [s.lat, s.lon]);
+function lineColor(lineKey: string): string {
+  for (const s of stations) {
+    const match = s.lines.find((l) => l.line === lineKey);
+    if (match) return match.color;
+  }
+  return "#999";
 }
 
 export function TransitMap({
@@ -75,16 +76,19 @@ export function TransitMap({
   );
   const isRouting = path !== null;
 
+  const lineKeys = useMemo(
+    () => [...new Set(stations.flatMap((s) => s.lines.map((l) => l.line)))],
+    [],
+  );
+
   const lines = useMemo(
     () =>
-      Object.entries(lineSequences).map(([line, codes]) => ({
+      lineKeys.map((line) => ({
         line,
-        color: stations.find((s) => s.lines.some((l) => l.line === line))?.lines.find(
-          (l) => l.line === line,
-        )?.color ?? "#999",
-        coords: lineCoords(codes as string[]),
+        color: lineColor(line),
+        segments: fullLineSegments(line),
       })),
-    [],
+    [lineKeys],
   );
 
   return (
@@ -100,19 +104,24 @@ export function TransitMap({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      {lines.map(({ line, color, coords }) => (
-        <Polyline
-          key={line}
-          positions={coords}
-          pathOptions={
-            isRouting
-              ? { color: "#ccc", weight: 3, opacity: 0.6 }
-              : { color, weight: 4, opacity: 0.9 }
-          }
-        />
-      ))}
+      {lines.map(({ line, color, segments }) =>
+        segments.map((positions, i) => (
+          <Polyline
+            key={`${line}-${i}`}
+            positions={positions}
+            pathOptions={
+              isRouting
+                ? { color: "#ccc", weight: 3, opacity: 0.6 }
+                : { color, weight: 4, opacity: 0.9 }
+            }
+            smoothFactor={1.5}
+          />
+        )),
+      )}
 
-      {/* Highlighted path segments drawn on top, in each leg's own line color. */}
+      {/* Highlighted path drawn on top, following the real track curve
+          between each pair of adjacent stations rather than a straight
+          chord between them. */}
       {isRouting &&
         path!.slice(1).map((leg, i) => {
           const prevStation = path![i].station;
@@ -120,15 +129,13 @@ export function TransitMap({
           return (
             <Polyline
               key={`path-${i}`}
-              positions={[
-                [prevStation.lat, prevStation.lon],
-                [leg.station.lat, leg.station.lon],
-              ]}
+              positions={trackBetween(leg.line, prevStation, leg.station)}
               pathOptions={{
                 color: leg.station.lines.find((l) => l.line === leg.line)?.color ?? "#333",
                 weight: 5,
                 opacity: 1,
               }}
+              smoothFactor={1.5}
             />
           );
         })}
