@@ -1,6 +1,9 @@
 # Bangkok Transit
 
-Tap a BTS station on the network map, see its live arrival times.
+Tap a station on a real interactive map (BTS, MRT, Gold, Yellow, Pink,
+Airport Rail Link, SRT Red) to set your route start, tap another for your
+destination, confirm to see the path highlighted with transfers. Shows your
+live location on the map.
 
 ## Setup
 
@@ -11,12 +14,5 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
-
-## The map image
-
-The app needs `public/bts-map.jpg` — the official-style BTS/MRT network
-diagram — to render the tappable station map. Station hitboxes in
-`data/stations.json` are positioned in pixel coordinates matching that
-specific image file; if the image changes, coordinates need remeasuring.
 
 See [AGENTS.md](./AGENTS.md) for architecture and conventions.

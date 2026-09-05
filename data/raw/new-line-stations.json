@@ -1,0 +1,1127 @@
+[
+  {
+    "code": "BL01",
+    "nameEn": "Lak Song",
+    "nameTh": "หลักสอง",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.710863794909384,
+    "lon": 100.40945617573898
+  },
+  {
+    "code": "BL02",
+    "nameEn": "Bang Khae",
+    "nameTh": "บางแค",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.711911275691747,
+    "lon": 100.42235972702922
+  },
+  {
+    "code": "BL03",
+    "nameEn": "Phasi Charoen",
+    "nameTh": "ภาษีเจริญ",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.712885760258139,
+    "lon": 100.43434209945593
+  },
+  {
+    "code": "BL04",
+    "nameEn": "Phetkasem 48",
+    "nameTh": "เพชรเกษม 48",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.715516780263513,
+    "lon": 100.44546478340723
+  },
+  {
+    "code": "BL05",
+    "nameEn": "Bang Wa",
+    "nameTh": "บางหว้า",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.720218612642231,
+    "lon": 100.45699613419411
+  },
+  {
+    "code": "BL06",
+    "nameEn": "Bang Phai",
+    "nameTh": "บางไผ่",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.724617114419665,
+    "lon": 100.46513000988998
+  },
+  {
+    "code": "BL07",
+    "nameEn": "Tha Phra",
+    "nameTh": "ท่าพระ",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.729656942975506,
+    "lon": 100.47406086597772
+  },
+  {
+    "code": "BL08",
+    "nameEn": "Charan Sanitwong 13",
+    "nameTh": "จรัลสนิทวงศ์ 13",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.740153799943117,
+    "lon": 100.47071320569422
+  },
+  {
+    "code": "BL09",
+    "nameEn": "Itsaraphap",
+    "nameTh": "อิสรภาพ",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.738370838410598,
+    "lon": 100.48567431807568
+  },
+  {
+    "code": "BL10",
+    "nameEn": "Sanam Chai",
+    "nameTh": "สนามไชย",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.744176365122792,
+    "lon": 100.49468099259173
+  },
+  {
+    "code": "BL11",
+    "nameEn": "Sam Yot",
+    "nameTh": "สามยอด",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.747033474632707,
+    "lon": 100.50226020331674
+  },
+  {
+    "code": "BL12",
+    "nameEn": "Wat Mangkon",
+    "nameTh": "วังมังกร",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.742119299285713,
+    "lon": 100.51012536494106
+  },
+  {
+    "code": "BL13",
+    "nameEn": "Hua Lamphong",
+    "nameTh": "หัวลำโพง",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.737446241115105,
+    "lon": 100.5172916713306
+  },
+  {
+    "code": "BL14",
+    "nameEn": "Sam Yan",
+    "nameTh": "สามย่าน",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.732533267159184,
+    "lon": 100.52948813062424
+  },
+  {
+    "code": "BL15",
+    "nameEn": "Si Lom",
+    "nameTh": "สีลม",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.729356490595986,
+    "lon": 100.5371440989799
+  },
+  {
+    "code": "BL16",
+    "nameEn": "Lumphini",
+    "nameTh": "ลุมพินี",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.72580841374866,
+    "lon": 100.54566789185247
+  },
+  {
+    "code": "BL17",
+    "nameEn": "Khlong Toei",
+    "nameTh": "คลองเตย",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.722321208961196,
+    "lon": 100.55405666636102
+  },
+  {
+    "code": "BL18",
+    "nameEn": "Queen Sirikit National Convention Centre",
+    "nameTh": "ศูนย์การประชุมแห่งชาติสิริกิติ์",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.722881168902376,
+    "lon": 100.55995004366616
+  },
+  {
+    "code": "BL19",
+    "nameEn": "Sukhumvit",
+    "nameTh": "สุขุมวิท",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.737571123131113,
+    "lon": 100.56148943519563
+  },
+  {
+    "code": "BL20",
+    "nameEn": "Phetchaburi",
+    "nameTh": "เพชรบุรี",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.749111258297111,
+    "lon": 100.56344121796725
+  },
+  {
+    "code": "BL21",
+    "nameEn": "Phra Ram 9",
+    "nameTh": "พระราม 9",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.757365452330987,
+    "lon": 100.56527207934501
+  },
+  {
+    "code": "BL22",
+    "nameEn": "Thailand Cultural Centre",
+    "nameTh": "ศูนย์วัฒนธรรมแห่งประเทศไทย",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.766104804115782,
+    "lon": 100.57018975885745
+  },
+  {
+    "code": "BL23",
+    "nameEn": "Huai Khwang",
+    "nameTh": "ห้วยขวาง",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.778437386449964,
+    "lon": 100.57362126376566
+  },
+  {
+    "code": "BL24",
+    "nameEn": "Sutthisan",
+    "nameTh": "สุทธิสาร",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.789841707858296,
+    "lon": 100.57413977230637
+  },
+  {
+    "code": "BL25",
+    "nameEn": "Ratchadaphisek",
+    "nameTh": "รัชดาภิเษก",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.798973765276267,
+    "lon": 100.57462025613631
+  },
+  {
+    "code": "BL26",
+    "nameEn": "Lat Phrao",
+    "nameTh": "ลาดพร้าว",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.806511301075735,
+    "lon": 100.57288593461601
+  },
+  {
+    "code": "BL27",
+    "nameEn": "Phahon Yothin",
+    "nameTh": "พหลโยธิน",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.812925738278558,
+    "lon": 100.56138654614438
+  },
+  {
+    "code": "BL28",
+    "nameEn": "Mo Chit",
+    "nameTh": "หมอชิต",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.803169882307078,
+    "lon": 100.5535141531621
+  },
+  {
+    "code": "BL29",
+    "nameEn": "Kamphaeng Phet",
+    "nameTh": "กำแพงเพชร",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.798410902256249,
+    "lon": 100.54776165719015
+  },
+  {
+    "code": "BL30",
+    "nameEn": "Bang Sue",
+    "nameTh": "บางซื่อ",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.802255249845489,
+    "lon": 100.54103359208698
+  },
+  {
+    "code": "BL31",
+    "nameEn": "Tao Poon",
+    "nameTh": "เตาปูน",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.806171848564684,
+    "lon": 100.53074200337414
+  },
+  {
+    "code": "BL32",
+    "nameEn": "Bang Pho",
+    "nameTh": "บางโพ",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.806416040218044,
+    "lon": 100.52104729387648
+  },
+  {
+    "code": "BL33",
+    "nameEn": "Bang O",
+    "nameTh": "บางอ้อ",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.798989693914582,
+    "lon": 100.50981142060049
+  },
+  {
+    "code": "BL34",
+    "nameEn": "Bang Phlat",
+    "nameTh": "บางพลัด",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.792414781024066,
+    "lon": 100.50490218543445
+  },
+  {
+    "code": "BL35",
+    "nameEn": "Sirindhorn",
+    "nameTh": "สิรินธร",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.7838772000209,
+    "lon": 100.49338832532167
+  },
+  {
+    "code": "BL36",
+    "nameEn": "Bang Yi Khan",
+    "nameTh": "บางยี่ขัน",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.777387509276341,
+    "lon": 100.48527220782609
+  },
+  {
+    "code": "BL37",
+    "nameEn": "Bang Khun Non",
+    "nameTh": "บางขุนนนท์",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.763337273310345,
+    "lon": 100.47333909924184
+  },
+  {
+    "code": "BL38",
+    "nameEn": "Fai Chai",
+    "nameTh": "แยกไฟฉาย",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.755743999224602,
+    "lon": 100.46933419610271
+  },
+  {
+    "code": "PP01",
+    "nameEn": "Khlong Bang Phai",
+    "nameTh": "คลองบางไผ่",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.892419213203963,
+    "lon": 100.40816253934241
+  },
+  {
+    "code": "PP02",
+    "nameEn": "Talat Bang Yai",
+    "nameTh": "ตลาดบางใหญ่",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.88098041017384,
+    "lon": 100.40923763502467
+  },
+  {
+    "code": "PP03",
+    "nameEn": "Sam Yaek Bang Yai",
+    "nameTh": "สามแยกบางใหญ่",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.874724230158076,
+    "lon": 100.41949151486551
+  },
+  {
+    "code": "PP04",
+    "nameEn": "Bang Phlu",
+    "nameTh": "บางพลู",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.875787425155334,
+    "lon": 100.43376059958949
+  },
+  {
+    "code": "PP05",
+    "nameEn": "Bang Rak Yai",
+    "nameTh": "บางรักใหญ่",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.876625543541723,
+    "lon": 100.44496364897886
+  },
+  {
+    "code": "PP06",
+    "nameEn": "Tha It",
+    "nameTh": "ท่าอิฐ",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.872998228087779,
+    "lon": 100.45993212267838
+  },
+  {
+    "code": "PP07",
+    "nameEn": "Sai Ma",
+    "nameTh": "ไทรม้า",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.870566232881645,
+    "lon": 100.46638324162701
+  },
+  {
+    "code": "PP08",
+    "nameEn": "Phra Nang Klao Bridge",
+    "nameTh": "สะพานพระนั่งเกล้า",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.870326042600114,
+    "lon": 100.48022695988223
+  },
+  {
+    "code": "PP09",
+    "nameEn": "Yaek Nonthaburi 1",
+    "nameTh": "แยกนนทบุรี 1",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.865929377063926,
+    "lon": 100.49425875074799
+  },
+  {
+    "code": "PP10",
+    "nameEn": "Si Phon Sawan",
+    "nameTh": "ศรีพรสวรรค์",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.861617445549356,
+    "lon": 100.50493196038968
+  },
+  {
+    "code": "PP11",
+    "nameEn": "Nonthaburi Civic Center",
+    "nameTh": "ศูนย์ราชการนนทบุรี",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.860199466435358,
+    "lon": 100.51307256011626
+  },
+  {
+    "code": "PP12",
+    "nameEn": "Ministry of Public Health",
+    "nameTh": "กระทรวงสาธารณสุข",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.848563437611348,
+    "lon": 100.51468347035699
+  },
+  {
+    "code": "PP13",
+    "nameEn": "Yaek Tiwanon",
+    "nameTh": "แยกติวานนท์",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.839614111987094,
+    "lon": 100.51489821716412
+  },
+  {
+    "code": "PP14",
+    "nameEn": "Wong Sawang",
+    "nameTh": "วงศ์สว่าง",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.829958323616792,
+    "lon": 100.52652095780105
+  },
+  {
+    "code": "PP15",
+    "nameEn": "Bang Son",
+    "nameTh": "บางซ่อน",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.820216243060685,
+    "lon": 100.53246505272209
+  },
+  {
+    "code": "PP16",
+    "nameEn": "Tao Poon",
+    "nameTh": "เตาปูน",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.80626155539657,
+    "lon": 100.53075283431318
+  },
+  {
+    "code": "A01",
+    "nameEn": "Phaya Thai",
+    "nameTh": "พญาไท",
+    "lines": [
+      {
+        "line": "arl",
+        "name": "Airport Rail Link",
+        "color": "#8b3f97"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.756731995054242,
+    "lon": 100.53490407515967
+  },
+  {
+    "code": "A02",
+    "nameEn": "Ratchaprarop",
+    "nameTh": "ราชปรารถ",
+    "lines": [
+      {
+        "line": "arl",
+        "name": "Airport Rail Link",
+        "color": "#8b3f97"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.755108258847038,
+    "lon": 100.54216737813728
+  },
+  {
+    "code": "A03",
+    "nameEn": "Makkasan",
+    "nameTh": "มักกะสัน",
+    "lines": [
+      {
+        "line": "arl",
+        "name": "Airport Rail Link",
+        "color": "#8b3f97"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.75087241588897,
+    "lon": 100.56120676949311
+  },
+  {
+    "code": "A04",
+    "nameEn": "Ramkhamhaeng",
+    "nameTh": "รามคำแหง",
+    "lines": [
+      {
+        "line": "arl",
+        "name": "Airport Rail Link",
+        "color": "#8b3f97"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.742996674942665,
+    "lon": 100.60003833832549
+  },
+  {
+    "code": "A05",
+    "nameEn": "Hua Mak",
+    "nameTh": "หัวหมาก",
+    "lines": [
+      {
+        "line": "arl",
+        "name": "Airport Rail Link",
+        "color": "#8b3f97"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.738006106483512,
+    "lon": 100.64515826157051
+  },
+  {
+    "code": "A06",
+    "nameEn": "Ban Thap Chang",
+    "nameTh": "บ้านทับช้าง",
+    "lines": [
+      {
+        "line": "arl",
+        "name": "Airport Rail Link",
+        "color": "#8b3f97"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.732879136208222,
+    "lon": 100.69081534779214
+  },
+  {
+    "code": "A07",
+    "nameEn": "Lat Krabang",
+    "nameTh": "ลาดกระบัง",
+    "lines": [
+      {
+        "line": "arl",
+        "name": "Airport Rail Link",
+        "color": "#8b3f97"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.72769160401732,
+    "lon": 100.74855301688604
+  },
+  {
+    "code": "A08",
+    "nameEn": "Suvarnabhumi",
+    "nameTh": "สุวรรณภูมิ",
+    "lines": [
+      {
+        "line": "arl",
+        "name": "Airport Rail Link",
+        "color": "#8b3f97"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.69422050027411,
+    "lon": 100.7511932209504
+  },
+  {
+    "code": "RD01",
+    "nameEn": "Bang Son",
+    "nameTh": "บางซ่อน",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.822109027754028,
+    "lon": 100.53433356237338
+  },
+  {
+    "code": "RD02",
+    "nameEn": "Bang Bamru",
+    "nameTh": "บางบำหรุ",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.792145798025908,
+    "lon": 100.4772492880274
+  },
+  {
+    "code": "RD03",
+    "nameEn": "Taling Chan",
+    "nameTh": "ตลิ่งชัน",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.789134777576098,
+    "lon": 100.44022295862801
+  },
+  {
+    "code": "RD04",
+    "nameEn": "Krung Thep Aphiwat (Bang Sue Grand)",
+    "nameTh": "กลางบางซื่อ",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.803830082652595,
+    "lon": 100.54164716231749
+  },
+  {
+    "code": "RD05",
+    "nameEn": "Chatuchak",
+    "nameTh": "จตุจักร",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.826592555364131,
+    "lon": 100.54942082569339
+  },
+  {
+    "code": "RD06",
+    "nameEn": "Wat Samian Nari",
+    "nameTh": "วัดเสมียนนารี",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.8417404982677,
+    "lon": 100.557621395847
+  },
+  {
+    "code": "RD07",
+    "nameEn": "Bang Khen",
+    "nameTh": "บางเขน",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.849401673704001,
+    "lon": 100.56171228965236
+  },
+  {
+    "code": "RD08",
+    "nameEn": "Thung Song Hong",
+    "nameTh": "ทุ่งสองห้อง",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.860091926421473,
+    "lon": 100.56747428416949
+  },
+  {
+    "code": "RD09",
+    "nameEn": "Lak Si",
+    "nameTh": "หลักสี่",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.886243005651332,
+    "lon": 100.5818912651377
+  },
+  {
+    "code": "RD10",
+    "nameEn": "Kan Kheha",
+    "nameTh": "การเคหะ",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.89871415780924,
+    "lon": 100.58892947518612
+  },
+  {
+    "code": "RD11",
+    "nameEn": "Don Mueang",
+    "nameTh": "ดอนเมือง",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.91464916751675,
+    "lon": 100.59799337244206
+  },
+  {
+    "code": "RD12",
+    "nameEn": "Lak Hok",
+    "nameTh": "หลักหก",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.96601599491414,
+    "lon": 100.60528201267114
+  },
+  {
+    "code": "RD13",
+    "nameEn": "Rangsit",
+    "nameTh": "รังสิต",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.990433654388603,
+    "lon": 100.6022966982089
+  }
+]

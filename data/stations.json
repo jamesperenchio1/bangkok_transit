@@ -11,9 +11,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 569.9,
-    "y": 68.0,
-    "radius": 11,
     "lat": 13.932341,
     "lon": 100.646626
   },
@@ -29,9 +26,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 529.6,
-    "y": 118.8,
-    "radius": 11,
     "lat": 13.924983,
     "lon": 100.625876
   },
@@ -47,9 +41,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 529.8,
-    "y": 152.3,
-    "radius": 11,
     "lat": 13.917945,
     "lon": 100.621715
   },
@@ -65,9 +56,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 525.6,
-    "y": 184.6,
-    "radius": 11,
     "lat": 13.910722,
     "lon": 100.617423
   },
@@ -83,9 +71,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 528.7,
-    "y": 217.5,
-    "radius": 11,
     "lat": 13.896595,
     "lon": 100.609132
   },
@@ -101,9 +86,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 528.6,
-    "y": 250.8,
-    "radius": 11,
     "lat": 13.888442,
     "lon": 100.604292
   },
@@ -119,9 +101,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 522.5,
-    "y": 285.0,
-    "radius": 11,
     "lat": 13.882454,
     "lon": 100.600766
   },
@@ -137,9 +116,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 522.5,
-    "y": 317.6,
-    "radius": 11,
     "lat": 13.875286,
     "lon": 100.596811
   },
@@ -155,9 +131,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 528.0,
-    "y": 349.7,
-    "radius": 11,
     "lat": 13.867528,
     "lon": 100.59194
   },
@@ -173,9 +146,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 528.6,
-    "y": 384.0,
-    "radius": 11,
     "lat": 13.855994,
     "lon": 100.585171
   },
@@ -191,9 +161,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 528.7,
-    "y": 416.9,
-    "radius": 11,
     "lat": 13.850255,
     "lon": 100.581794
   },
@@ -209,9 +176,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 528.8,
-    "y": 449.5,
-    "radius": 11,
     "lat": 13.842065,
     "lon": 100.577026
   },
@@ -227,9 +191,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 528.5,
-    "y": 483.8,
-    "radius": 11,
     "lat": 13.836608,
     "lon": 100.573802
   },
@@ -245,9 +206,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 522.4,
-    "y": 516.1,
-    "radius": 11,
     "lat": 13.829684,
     "lon": 100.569737
   },
@@ -263,9 +221,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 528.3,
-    "y": 549.5,
-    "radius": 11,
     "lat": 13.823852,
     "lon": 100.566356
   },
@@ -281,9 +236,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 529.3,
-    "y": 583.9,
-    "radius": 11,
     "lat": 13.817229,
     "lon": 100.5623432
   },
@@ -299,9 +251,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 529.3,
-    "y": 626.4,
-    "radius": 11,
     "lat": 13.802649,
     "lon": 100.553763
   },
@@ -317,9 +266,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 525.6,
-    "y": 669.1,
-    "radius": 11,
     "lat": 13.793834,
     "lon": 100.549696
   },
@@ -335,9 +281,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 525.6,
-    "y": 764.1,
-    "radius": 11,
     "lat": 13.779788,
     "lon": 100.544704
   },
@@ -353,9 +296,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 528.1,
-    "y": 795.9,
-    "radius": 11,
     "lat": 13.772642,
     "lon": 100.542103
   },
@@ -371,9 +311,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 529.4,
-    "y": 829.0,
-    "radius": 11,
     "lat": 13.762793,
     "lon": 100.537085
   },
@@ -389,9 +326,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 527.5,
-    "y": 876.5,
-    "radius": 11,
     "lat": 13.756822,
     "lon": 100.533782
   },
@@ -407,9 +341,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 521.5,
-    "y": 892.2,
-    "radius": 11,
     "lat": 13.751931,
     "lon": 100.531535
   },
@@ -430,9 +361,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 542.1,
-    "y": 912.6,
-    "radius": 14,
     "lat": 13.745515,
     "lon": 100.534605
   },
@@ -448,9 +376,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 581.3,
-    "y": 915.3,
-    "radius": 11,
     "lat": 13.74409,
     "lon": 100.543028
   },
@@ -466,9 +391,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 624.4,
-    "y": 915.5,
-    "radius": 11,
     "lat": 13.74306,
     "lon": 100.548849
   },
@@ -484,9 +406,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 666.1,
-    "y": 915.4,
-    "radius": 11,
     "lat": 13.740508,
     "lon": 100.555412
   },
@@ -502,9 +421,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 696.4,
-    "y": 915.7,
-    "radius": 11,
     "lat": 13.736996,
     "lon": 100.560387
   },
@@ -520,9 +436,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 750.7,
-    "y": 916.1,
-    "radius": 11,
     "lat": 13.730434,
     "lon": 100.569688
   },
@@ -538,9 +451,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 784.1,
-    "y": 948.7,
-    "radius": 11,
     "lat": 13.724243,
     "lon": 100.578502
   },
@@ -556,9 +466,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 811.4,
-    "y": 978.0,
-    "radius": 11,
     "lat": 13.719439,
     "lon": 100.585274
   },
@@ -574,9 +481,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 843.2,
-    "y": 1006.5,
-    "radius": 11,
     "lat": 13.715178,
     "lon": 100.591332
   },
@@ -592,9 +496,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 874.8,
-    "y": 1038.4,
-    "radius": 11,
     "lat": 13.705545,
     "lon": 100.601064
   },
@@ -610,9 +511,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 901.0,
-    "y": 1067.9,
-    "radius": 11,
     "lat": 13.696551,
     "lon": 100.605486
   },
@@ -628,9 +526,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 899.3,
-    "y": 1101.3,
-    "radius": 11,
     "lat": 13.689303,
     "lon": 100.609041
   },
@@ -646,9 +541,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 902.3,
-    "y": 1136.0,
-    "radius": 11,
     "lat": 13.67993,
     "lon": 100.609554
   },
@@ -664,9 +556,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 899.4,
-    "y": 1168.9,
-    "radius": 11,
     "lat": 13.668122,
     "lon": 100.604649
   },
@@ -682,9 +571,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 902.3,
-    "y": 1202.8,
-    "radius": 11,
     "lat": 13.66117,
     "lon": 100.601862
   },
@@ -700,9 +586,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 902.3,
-    "y": 1236.9,
-    "radius": 11,
     "lat": 13.646192,
     "lon": 100.595653
   },
@@ -718,9 +601,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 901.9,
-    "y": 1270.6,
-    "radius": 11,
     "lat": 13.637247,
     "lon": 100.591993
   },
@@ -736,9 +616,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 897.7,
-    "y": 1304.3,
-    "radius": 11,
     "lat": 13.621447,
     "lon": 100.590112
   },
@@ -754,9 +631,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 939.6,
-    "y": 1340.5,
-    "radius": 11,
     "lat": 13.608552,
     "lon": 100.594827
   },
@@ -772,9 +646,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 978.5,
-    "y": 1378.2,
-    "radius": 11,
     "lat": 13.60207,
     "lon": 100.597072
   },
@@ -790,9 +661,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1014.4,
-    "y": 1414.5,
-    "radius": 11,
     "lat": 13.592079,
     "lon": 100.608906
   },
@@ -808,9 +676,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1051.6,
-    "y": 1450.6,
-    "radius": 11,
     "lat": 13.584324,
     "lon": 100.608027
   },
@@ -826,9 +691,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1086.5,
-    "y": 1487.6,
-    "radius": 11,
     "lat": 13.577784,
     "lon": 100.605396
   },
@@ -844,9 +706,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 1121.6,
-    "y": 1524.8,
-    "radius": 11,
     "lat": 13.567647,
     "lon": 100.607681
   },
@@ -862,9 +721,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 494.1,
-    "y": 925.9,
-    "radius": 11,
     "lat": 13.746491,
     "lon": 100.529351
   },
@@ -880,9 +736,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 542.1,
-    "y": 929.0,
-    "radius": 11,
     "lat": 13.739471,
     "lon": 100.539453
   },
@@ -898,9 +751,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 551.2,
-    "y": 962.7,
-    "radius": 11,
     "lat": 13.72855,
     "lon": 100.534347
   },
@@ -916,9 +766,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 551.7,
-    "y": 1057.5,
-    "radius": 11,
     "lat": 13.723727,
     "lon": 100.52943
   },
@@ -934,9 +781,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 520.3,
-    "y": 1090.5,
-    "radius": 11,
     "lat": 13.7210655982596,
     "lon": 100.526995996725
   },
@@ -952,9 +796,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 485.3,
-    "y": 1125.4,
-    "radius": 11,
     "lat": 13.719314,
     "lon": 100.521602
   },
@@ -970,9 +811,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 441.2,
-    "y": 1169.0,
-    "radius": 11,
     "lat": 13.718801,
     "lon": 100.514086
   },
@@ -988,9 +826,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 385.6,
-    "y": 1166.6,
-    "radius": 11,
     "lat": 13.720877,
     "lon": 100.502841
   },
@@ -1006,9 +841,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 323.8,
-    "y": 1167.3,
-    "radius": 11,
     "lat": 13.721149,
     "lon": 100.495259
   },
@@ -1024,9 +856,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 261.1,
-    "y": 1167.0,
-    "radius": 11,
     "lat": 13.719221,
     "lon": 100.485945
   },
@@ -1042,9 +871,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 203.7,
-    "y": 1168.9,
-    "radius": 11,
     "lat": 13.714215,
     "lon": 100.476677
   },
@@ -1060,9 +886,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 136.1,
-    "y": 1167.5,
-    "radius": 11,
     "lat": 13.71297,
     "lon": 100.468913
   },
@@ -1078,9 +901,6 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 104.3,
-    "y": 1146.6,
-    "radius": 11,
     "lat": 13.720699,
     "lon": 100.457795
   },
@@ -1096,8 +916,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.721120976769702,
+    "lon": 100.50348262893421
   },
   {
     "code": "G2",
@@ -1111,8 +931,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.726475809173255,
+    "lon": 100.50904765519574
   },
   {
     "code": "G3",
@@ -1126,8 +946,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.730365922332348,
+    "lon": 100.50769011336835
   },
   {
     "code": "YL01",
@@ -1141,8 +961,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.806938243394248,
+    "lon": 100.57483752955888
   },
   {
     "code": "YL02",
@@ -1156,8 +976,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.800158072266358,
+    "lon": 100.58417049215485
   },
   {
     "code": "YL03",
@@ -1171,8 +991,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.794490181768998,
+    "lon": 100.59433532439711
   },
   {
     "code": "YL04",
@@ -1186,8 +1006,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.78715804585712,
+    "lon": 100.60744382452751
   },
   {
     "code": "YL05",
@@ -1201,8 +1021,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.783728329953021,
+    "lon": 100.61360387460041
   },
   {
     "code": "YL06",
@@ -1216,8 +1036,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.77841048478401,
+    "lon": 100.62308944823036
   },
   {
     "code": "YL07",
@@ -1231,8 +1051,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.77466358426965,
+    "lon": 100.62979280746903
   },
   {
     "code": "YL08",
@@ -1246,8 +1066,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.769162148886515,
+    "lon": 100.63962454433391
   },
   {
     "code": "YL09",
@@ -1261,8 +1081,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.761768294762838,
+    "lon": 100.64553882333317
   },
   {
     "code": "YL10",
@@ -1276,8 +1096,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.750360285413239,
+    "lon": 100.64478643269163
   },
   {
     "code": "YL11",
@@ -1291,8 +1111,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.7362462122232,
+    "lon": 100.64116123380339
   },
   {
     "code": "YL12",
@@ -1306,8 +1126,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.725285718594401,
+    "lon": 100.6417823841401
   },
   {
     "code": "YL13",
@@ -1321,8 +1141,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.711099553435313,
+    "lon": 100.64414372358256
   },
   {
     "code": "YL14",
@@ -1336,8 +1156,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.701073732586265,
+    "lon": 100.64647379367169
   },
   {
     "code": "YL15",
@@ -1351,8 +1171,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.690772450196254,
+    "lon": 100.64707054479462
   },
   {
     "code": "YL16",
@@ -1366,8 +1186,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.676570831551238,
+    "lon": 100.64615829758921
   },
   {
     "code": "YL17",
@@ -1381,8 +1201,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.66762086815459,
+    "lon": 100.64510292480573
   },
   {
     "code": "YL18",
@@ -1396,8 +1216,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.654993574615872,
+    "lon": 100.6421189447451
   },
   {
     "code": "YL19",
@@ -1411,8 +1231,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.643419618664385,
+    "lon": 100.6362613402729
   },
   {
     "code": "YL20",
@@ -1426,8 +1246,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.633075706801183,
+    "lon": 100.63013605260682
   },
   {
     "code": "YL21",
@@ -1441,8 +1261,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.629908935040962,
+    "lon": 100.62274380870456
   },
   {
     "code": "YL22",
@@ -1456,8 +1276,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.636759907871879,
+    "lon": 100.60995855798554
   },
   {
     "code": "YL23",
@@ -1471,8 +1291,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.645121571424129,
+    "lon": 100.59648616173641
   },
   {
     "code": "PK01",
@@ -1486,8 +1306,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.860183204515646,
+    "lon": 100.51398262304934
   },
   {
     "code": "PK02",
@@ -1501,8 +1321,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.862613602654726,
+    "lon": 100.52066139426064
   },
   {
     "code": "PK03",
@@ -1516,8 +1336,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.874039541210978,
+    "lon": 100.51631762245015
   },
   {
     "code": "PK04",
@@ -1531,8 +1351,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.889153415153862,
+    "lon": 100.51060338058542
   },
   {
     "code": "PK05",
@@ -1546,8 +1366,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.898511809335375,
+    "lon": 100.50710387479907
   },
   {
     "code": "PK06",
@@ -1561,8 +1381,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.906207521840381,
+    "lon": 100.50551120786935
   },
   {
     "code": "PK07",
@@ -1576,8 +1396,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.906412950829344,
+    "lon": 100.51554536961571
   },
   {
     "code": "PK08",
@@ -1591,8 +1411,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.9041111278627,
+    "lon": 100.52916530993664
   },
   {
     "code": "PK09",
@@ -1606,8 +1426,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.90054793122423,
+    "lon": 100.54016574719002
   },
   {
     "code": "PK10",
@@ -1621,8 +1441,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.897335653160987,
+    "lon": 100.54842691496603
   },
   {
     "code": "PK11",
@@ -1636,8 +1456,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.893281878609109,
+    "lon": 100.56022520165442
   },
   {
     "code": "PK12",
@@ -1651,8 +1471,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.890739701047906,
+    "lon": 100.56726976502584
   },
   {
     "code": "PK13",
@@ -1666,8 +1486,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.887518686766175,
+    "lon": 100.57575016263905
   },
   {
     "code": "PK14",
@@ -1681,8 +1501,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.88407388403004,
+    "lon": 100.58255389098898
   },
   {
     "code": "PK15",
@@ -1696,8 +1516,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.879890773322023,
+    "lon": 100.589265783349
   },
   {
     "code": "PK16",
@@ -1711,8 +1531,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.874523160382704,
+    "lon": 100.59701580151327
   },
   {
     "code": "PK17",
@@ -1726,8 +1546,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.87091562575583,
+    "lon": 100.60263667344815
   },
   {
     "code": "PK18",
@@ -1741,8 +1561,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.86278595030346,
+    "lon": 100.61776868486078
   },
   {
     "code": "PK19",
@@ -1756,8 +1576,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.858264244357535,
+    "lon": 100.62614382346457
   },
   {
     "code": "PK20",
@@ -1771,8 +1591,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.854990651940959,
+    "lon": 100.63228392359467
   },
   {
     "code": "PK21",
@@ -1786,8 +1606,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.849207122667101,
+    "lon": 100.6429193730931
   },
   {
     "code": "PK22",
@@ -1801,8 +1621,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.84523417770289,
+    "lon": 100.65021300336161
   },
   {
     "code": "PK23",
@@ -1816,8 +1636,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.840583132581648,
+    "lon": 100.65878643758977
   },
   {
     "code": "PK24",
@@ -1831,8 +1651,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.833857983464055,
+    "lon": 100.66744917468962
   },
   {
     "code": "PK25",
@@ -1846,8 +1666,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.82453311208507,
+    "lon": 100.67706431770895
   },
   {
     "code": "PK26",
@@ -1861,8 +1681,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.816576999197538,
+    "lon": 100.6855484179385
   },
   {
     "code": "PK27",
@@ -1876,8 +1696,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.81273451608767,
+    "lon": 100.70282621351934
   },
   {
     "code": "PK28",
@@ -1891,8 +1711,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.812726213672313,
+    "lon": 100.7125293975531
   },
   {
     "code": "PK29",
@@ -1906,8 +1726,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.812537398310244,
+    "lon": 100.72568922418971
   },
   {
     "code": "PK30",
@@ -1921,8 +1741,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.808338487996675,
+    "lon": 100.7326658198351
   },
   {
     "code": "MT01",
@@ -1936,8 +1756,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.910393970589748,
+    "lon": 100.54428909486488
   },
   {
     "code": "MT02",
@@ -1951,8 +1771,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "x": null,
-    "y": null
+    "lat": 13.9183209737189,
+    "lon": 100.54565438914052
   },
   {
     "code": "N6",
@@ -1966,10 +1786,1122 @@
       }
     ],
     "hasLiveArrivals": true,
-    "x": 525.6,
-    "y": 732.1,
-    "radius": 11,
     "lat": 13.7859356,
     "lon": 100.546865
+  },
+  {
+    "code": "BL01",
+    "nameEn": "Lak Song",
+    "nameTh": "หลักสอง",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.710863794909384,
+    "lon": 100.40945617573898
+  },
+  {
+    "code": "BL02",
+    "nameEn": "Bang Khae",
+    "nameTh": "บางแค",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.711911275691747,
+    "lon": 100.42235972702922
+  },
+  {
+    "code": "BL03",
+    "nameEn": "Phasi Charoen",
+    "nameTh": "ภาษีเจริญ",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.712885760258139,
+    "lon": 100.43434209945593
+  },
+  {
+    "code": "BL04",
+    "nameEn": "Phetkasem 48",
+    "nameTh": "เพชรเกษม 48",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.715516780263513,
+    "lon": 100.44546478340723
+  },
+  {
+    "code": "BL05",
+    "nameEn": "Bang Wa",
+    "nameTh": "บางหว้า",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.720218612642231,
+    "lon": 100.45699613419411
+  },
+  {
+    "code": "BL06",
+    "nameEn": "Bang Phai",
+    "nameTh": "บางไผ่",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.724617114419665,
+    "lon": 100.46513000988998
+  },
+  {
+    "code": "BL07",
+    "nameEn": "Tha Phra",
+    "nameTh": "ท่าพระ",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.729656942975506,
+    "lon": 100.47406086597772
+  },
+  {
+    "code": "BL08",
+    "nameEn": "Charan Sanitwong 13",
+    "nameTh": "จรัลสนิทวงศ์ 13",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.740153799943117,
+    "lon": 100.47071320569422
+  },
+  {
+    "code": "BL09",
+    "nameEn": "Itsaraphap",
+    "nameTh": "อิสรภาพ",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.738370838410598,
+    "lon": 100.48567431807568
+  },
+  {
+    "code": "BL10",
+    "nameEn": "Sanam Chai",
+    "nameTh": "สนามไชย",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.744176365122792,
+    "lon": 100.49468099259173
+  },
+  {
+    "code": "BL11",
+    "nameEn": "Sam Yot",
+    "nameTh": "สามยอด",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.747033474632707,
+    "lon": 100.50226020331674
+  },
+  {
+    "code": "BL12",
+    "nameEn": "Wat Mangkon",
+    "nameTh": "วังมังกร",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.742119299285713,
+    "lon": 100.51012536494106
+  },
+  {
+    "code": "BL13",
+    "nameEn": "Hua Lamphong",
+    "nameTh": "หัวลำโพง",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.737446241115105,
+    "lon": 100.5172916713306
+  },
+  {
+    "code": "BL14",
+    "nameEn": "Sam Yan",
+    "nameTh": "สามย่าน",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.732533267159184,
+    "lon": 100.52948813062424
+  },
+  {
+    "code": "BL15",
+    "nameEn": "Si Lom",
+    "nameTh": "สีลม",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.729356490595986,
+    "lon": 100.5371440989799
+  },
+  {
+    "code": "BL16",
+    "nameEn": "Lumphini",
+    "nameTh": "ลุมพินี",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.72580841374866,
+    "lon": 100.54566789185247
+  },
+  {
+    "code": "BL17",
+    "nameEn": "Khlong Toei",
+    "nameTh": "คลองเตย",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.722321208961196,
+    "lon": 100.55405666636102
+  },
+  {
+    "code": "BL18",
+    "nameEn": "Queen Sirikit National Convention Centre",
+    "nameTh": "ศูนย์การประชุมแห่งชาติสิริกิติ์",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.722881168902376,
+    "lon": 100.55995004366616
+  },
+  {
+    "code": "BL19",
+    "nameEn": "Sukhumvit",
+    "nameTh": "สุขุมวิท",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.737571123131113,
+    "lon": 100.56148943519563
+  },
+  {
+    "code": "BL20",
+    "nameEn": "Phetchaburi",
+    "nameTh": "เพชรบุรี",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.749111258297111,
+    "lon": 100.56344121796725
+  },
+  {
+    "code": "BL21",
+    "nameEn": "Phra Ram 9",
+    "nameTh": "พระราม 9",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.757365452330987,
+    "lon": 100.56527207934501
+  },
+  {
+    "code": "BL22",
+    "nameEn": "Thailand Cultural Centre",
+    "nameTh": "ศูนย์วัฒนธรรมแห่งประเทศไทย",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.766104804115782,
+    "lon": 100.57018975885745
+  },
+  {
+    "code": "BL23",
+    "nameEn": "Huai Khwang",
+    "nameTh": "ห้วยขวาง",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.778437386449964,
+    "lon": 100.57362126376566
+  },
+  {
+    "code": "BL24",
+    "nameEn": "Sutthisan",
+    "nameTh": "สุทธิสาร",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.789841707858296,
+    "lon": 100.57413977230637
+  },
+  {
+    "code": "BL25",
+    "nameEn": "Ratchadaphisek",
+    "nameTh": "รัชดาภิเษก",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.798973765276267,
+    "lon": 100.57462025613631
+  },
+  {
+    "code": "BL26",
+    "nameEn": "Lat Phrao",
+    "nameTh": "ลาดพร้าว",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.806511301075735,
+    "lon": 100.57288593461601
+  },
+  {
+    "code": "BL27",
+    "nameEn": "Phahon Yothin",
+    "nameTh": "พหลโยธิน",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.812925738278558,
+    "lon": 100.56138654614438
+  },
+  {
+    "code": "BL28",
+    "nameEn": "Mo Chit",
+    "nameTh": "หมอชิต",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.803169882307078,
+    "lon": 100.5535141531621
+  },
+  {
+    "code": "BL29",
+    "nameEn": "Kamphaeng Phet",
+    "nameTh": "กำแพงเพชร",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.798410902256249,
+    "lon": 100.54776165719015
+  },
+  {
+    "code": "BL30",
+    "nameEn": "Bang Sue",
+    "nameTh": "บางซื่อ",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.802255249845489,
+    "lon": 100.54103359208698
+  },
+  {
+    "code": "BL31",
+    "nameEn": "Tao Poon",
+    "nameTh": "เตาปูน",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      },
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.806171848564684,
+    "lon": 100.53074200337414
+  },
+  {
+    "code": "BL32",
+    "nameEn": "Bang Pho",
+    "nameTh": "บางโพ",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.806416040218044,
+    "lon": 100.52104729387648
+  },
+  {
+    "code": "BL33",
+    "nameEn": "Bang O",
+    "nameTh": "บางอ้อ",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.798989693914582,
+    "lon": 100.50981142060049
+  },
+  {
+    "code": "BL34",
+    "nameEn": "Bang Phlat",
+    "nameTh": "บางพลัด",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.792414781024066,
+    "lon": 100.50490218543445
+  },
+  {
+    "code": "BL35",
+    "nameEn": "Sirindhorn",
+    "nameTh": "สิรินธร",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.7838772000209,
+    "lon": 100.49338832532167
+  },
+  {
+    "code": "BL36",
+    "nameEn": "Bang Yi Khan",
+    "nameTh": "บางยี่ขัน",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.777387509276341,
+    "lon": 100.48527220782609
+  },
+  {
+    "code": "BL37",
+    "nameEn": "Bang Khun Non",
+    "nameTh": "บางขุนนนท์",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.763337273310345,
+    "lon": 100.47333909924184
+  },
+  {
+    "code": "BL38",
+    "nameEn": "Fai Chai",
+    "nameTh": "แยกไฟฉาย",
+    "lines": [
+      {
+        "line": "blue",
+        "name": "MRT Blue Line",
+        "color": "#1c3f94"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.755743999224602,
+    "lon": 100.46933419610271
+  },
+  {
+    "code": "PP01",
+    "nameEn": "Khlong Bang Phai",
+    "nameTh": "คลองบางไผ่",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.892419213203963,
+    "lon": 100.40816253934241
+  },
+  {
+    "code": "PP02",
+    "nameEn": "Talat Bang Yai",
+    "nameTh": "ตลาดบางใหญ่",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.88098041017384,
+    "lon": 100.40923763502467
+  },
+  {
+    "code": "PP03",
+    "nameEn": "Sam Yaek Bang Yai",
+    "nameTh": "สามแยกบางใหญ่",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.874724230158076,
+    "lon": 100.41949151486551
+  },
+  {
+    "code": "PP04",
+    "nameEn": "Bang Phlu",
+    "nameTh": "บางพลู",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.875787425155334,
+    "lon": 100.43376059958949
+  },
+  {
+    "code": "PP05",
+    "nameEn": "Bang Rak Yai",
+    "nameTh": "บางรักใหญ่",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.876625543541723,
+    "lon": 100.44496364897886
+  },
+  {
+    "code": "PP06",
+    "nameEn": "Tha It",
+    "nameTh": "ท่าอิฐ",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.872998228087779,
+    "lon": 100.45993212267838
+  },
+  {
+    "code": "PP07",
+    "nameEn": "Sai Ma",
+    "nameTh": "ไทรม้า",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.870566232881645,
+    "lon": 100.46638324162701
+  },
+  {
+    "code": "PP08",
+    "nameEn": "Phra Nang Klao Bridge",
+    "nameTh": "สะพานพระนั่งเกล้า",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.870326042600114,
+    "lon": 100.48022695988223
+  },
+  {
+    "code": "PP09",
+    "nameEn": "Yaek Nonthaburi 1",
+    "nameTh": "แยกนนทบุรี 1",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.865929377063926,
+    "lon": 100.49425875074799
+  },
+  {
+    "code": "PP10",
+    "nameEn": "Si Phon Sawan",
+    "nameTh": "ศรีพรสวรรค์",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.861617445549356,
+    "lon": 100.50493196038968
+  },
+  {
+    "code": "PP11",
+    "nameEn": "Nonthaburi Civic Center",
+    "nameTh": "ศูนย์ราชการนนทบุรี",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.860199466435358,
+    "lon": 100.51307256011626
+  },
+  {
+    "code": "PP12",
+    "nameEn": "Ministry of Public Health",
+    "nameTh": "กระทรวงสาธารณสุข",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.848563437611348,
+    "lon": 100.51468347035699
+  },
+  {
+    "code": "PP13",
+    "nameEn": "Yaek Tiwanon",
+    "nameTh": "แยกติวานนท์",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.839614111987094,
+    "lon": 100.51489821716412
+  },
+  {
+    "code": "PP14",
+    "nameEn": "Wong Sawang",
+    "nameTh": "วงศ์สว่าง",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.829958323616792,
+    "lon": 100.52652095780105
+  },
+  {
+    "code": "PP15",
+    "nameEn": "Bang Son",
+    "nameTh": "บางซ่อน",
+    "lines": [
+      {
+        "line": "purple",
+        "name": "MRT Purple Line",
+        "color": "#a1458e"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.820216243060685,
+    "lon": 100.53246505272209
+  },
+  {
+    "code": "A01",
+    "nameEn": "Phaya Thai",
+    "nameTh": "พญาไท",
+    "lines": [
+      {
+        "line": "arl",
+        "name": "Airport Rail Link",
+        "color": "#8b3f97"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.756731995054242,
+    "lon": 100.53490407515967
+  },
+  {
+    "code": "A02",
+    "nameEn": "Ratchaprarop",
+    "nameTh": "ราชปรารถ",
+    "lines": [
+      {
+        "line": "arl",
+        "name": "Airport Rail Link",
+        "color": "#8b3f97"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.755108258847038,
+    "lon": 100.54216737813728
+  },
+  {
+    "code": "A03",
+    "nameEn": "Makkasan",
+    "nameTh": "มักกะสัน",
+    "lines": [
+      {
+        "line": "arl",
+        "name": "Airport Rail Link",
+        "color": "#8b3f97"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.75087241588897,
+    "lon": 100.56120676949311
+  },
+  {
+    "code": "A04",
+    "nameEn": "Ramkhamhaeng",
+    "nameTh": "รามคำแหง",
+    "lines": [
+      {
+        "line": "arl",
+        "name": "Airport Rail Link",
+        "color": "#8b3f97"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.742996674942665,
+    "lon": 100.60003833832549
+  },
+  {
+    "code": "A05",
+    "nameEn": "Hua Mak",
+    "nameTh": "หัวหมาก",
+    "lines": [
+      {
+        "line": "arl",
+        "name": "Airport Rail Link",
+        "color": "#8b3f97"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.738006106483512,
+    "lon": 100.64515826157051
+  },
+  {
+    "code": "A06",
+    "nameEn": "Ban Thap Chang",
+    "nameTh": "บ้านทับช้าง",
+    "lines": [
+      {
+        "line": "arl",
+        "name": "Airport Rail Link",
+        "color": "#8b3f97"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.732879136208222,
+    "lon": 100.69081534779214
+  },
+  {
+    "code": "A07",
+    "nameEn": "Lat Krabang",
+    "nameTh": "ลาดกระบัง",
+    "lines": [
+      {
+        "line": "arl",
+        "name": "Airport Rail Link",
+        "color": "#8b3f97"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.72769160401732,
+    "lon": 100.74855301688604
+  },
+  {
+    "code": "A08",
+    "nameEn": "Suvarnabhumi",
+    "nameTh": "สุวรรณภูมิ",
+    "lines": [
+      {
+        "line": "arl",
+        "name": "Airport Rail Link",
+        "color": "#8b3f97"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.69422050027411,
+    "lon": 100.7511932209504
+  },
+  {
+    "code": "RD01",
+    "nameEn": "Bang Son",
+    "nameTh": "บางซ่อน",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.822109027754028,
+    "lon": 100.53433356237338
+  },
+  {
+    "code": "RD02",
+    "nameEn": "Bang Bamru",
+    "nameTh": "บางบำหรุ",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.792145798025908,
+    "lon": 100.4772492880274
+  },
+  {
+    "code": "RD03",
+    "nameEn": "Taling Chan",
+    "nameTh": "ตลิ่งชัน",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.789134777576098,
+    "lon": 100.44022295862801
+  },
+  {
+    "code": "RD04",
+    "nameEn": "Krung Thep Aphiwat (Bang Sue Grand)",
+    "nameTh": "กลางบางซื่อ",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.803830082652595,
+    "lon": 100.54164716231749
+  },
+  {
+    "code": "RD05",
+    "nameEn": "Chatuchak",
+    "nameTh": "จตุจักร",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.826592555364131,
+    "lon": 100.54942082569339
+  },
+  {
+    "code": "RD06",
+    "nameEn": "Wat Samian Nari",
+    "nameTh": "วัดเสมียนนารี",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.8417404982677,
+    "lon": 100.557621395847
+  },
+  {
+    "code": "RD07",
+    "nameEn": "Bang Khen",
+    "nameTh": "บางเขน",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.849401673704001,
+    "lon": 100.56171228965236
+  },
+  {
+    "code": "RD08",
+    "nameEn": "Thung Song Hong",
+    "nameTh": "ทุ่งสองห้อง",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.860091926421473,
+    "lon": 100.56747428416949
+  },
+  {
+    "code": "RD09",
+    "nameEn": "Lak Si",
+    "nameTh": "หลักสี่",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.886243005651332,
+    "lon": 100.5818912651377
+  },
+  {
+    "code": "RD10",
+    "nameEn": "Kan Kheha",
+    "nameTh": "การเคหะ",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.89871415780924,
+    "lon": 100.58892947518612
+  },
+  {
+    "code": "RD11",
+    "nameEn": "Don Mueang",
+    "nameTh": "ดอนเมือง",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.91464916751675,
+    "lon": 100.59799337244206
+  },
+  {
+    "code": "RD12",
+    "nameEn": "Lak Hok",
+    "nameTh": "หลักหก",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.96601599491414,
+    "lon": 100.60528201267114
+  },
+  {
+    "code": "RD13",
+    "nameEn": "Rangsit",
+    "nameTh": "รังสิต",
+    "lines": [
+      {
+        "line": "srtRed",
+        "name": "SRT Red Line",
+        "color": "#a5122a"
+      }
+    ],
+    "hasLiveArrivals": false,
+    "lat": 13.990433654388603,
+    "lon": 100.6022966982089
   }
 ]

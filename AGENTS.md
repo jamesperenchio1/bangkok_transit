@@ -12,39 +12,74 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## What this app is
 
-Tap a BTS station on the network map image, see its live arrival times. That's
-the whole app — no interactive Leaflet map, no route planner, no multi-modal
-data. See `docs/` or ask the user for the design history if more context is
-needed.
+Tap a station on a real interactive map (BTS, MRT, Gold, Yellow, Pink, Airport
+Rail Link, SRT Red — every currently-operating line), see it marked as your
+route start; tap a second station to pick a destination; confirm to see the
+actual multi-line path highlighted (with line-change transfers) and
+everything else grayed out. Your live GPS position is always shown on the
+map. This supersedes an earlier, deliberately much smaller version of this
+app (tap-a-BTS-station-for-arrivals only, no interactive map, no routing) —
+see git history around the "new-app-idea" branch for why that scope was
+expanded. See `docs/` or ask the user for further design history if needed.
 
 ## Project Conventions
 
 - **Framework**: Next.js 16 App Router, React 19, TypeScript.
 - **Styling**: Tailwind CSS v4. Minimal hand-rolled components (no shadcn CLI
   dependency) styled with `clsx`/`tailwind-merge` via `lib/utils.ts`'s `cn()`.
+- **Map**: `components/TransitMap.tsx`, built on `react-leaflet` + Leaflet
+  with free OpenStreetMap raster tiles (no API key). Every station has real
+  `lat`/`lon` (no more pixel coordinates on a map image) so markers, line
+  polylines, and the user's own GPS dot all place directly via projection —
+  no manual calibration needed. `FitStationBounds` inside that file works
+  around a real Leaflet gotcha: `fitBounds()` computed at mount can see a
+  zero-size container (flex-layout race, or a backgrounded tab) and lock
+  onto a wildly wrong zoom with no way to recover on its own; it retries via
+  a `ResizeObserver` until the container actually has room. The wrapping
+  `<div>` around `<TransitMap />` in `app/page.tsx` has Tailwind's `isolate`
+  class for a real reason, not decoration: Leaflet's internal panes use
+  z-index up to ~700, and without a stacking context to contain them they
+  render above anything else on the page (confirm bar, route sheet) that
+  isn't *also* pinned to a very high z-index.
 - **Data**: `data/stations.ts` (+ `data/stations.json`) is the full station
-  list — all 61 live BTS Sukhumvit/Silom codes (including N6 Sena Ruam,
-  which has live arrivals but is absent from the API's own `/stations`
-  listing) plus Gold/Yellow/Pink names carried forward from an earlier
-  dataset (no coordinates - those lines aren't drawn on the current map).
-  `x`/`y` are pixel coordinates on `public/bts-map.jpg`, the primary
-  interactive map (the operator's own official BTS-only route map,
-  measured via automated circle detection - see git history - not
-  hand-placed). `public/bts-map-network.jpg` is a secondary, larger
-  full-network reference image (BTS+MRT+Gold+Yellow+Pink) shown via the
-  "Full network" toggle on the home page - it has no hitboxes, view only.
-  `lat`/`lon` (separate from `x`/`y`) are the station's real GPS coordinates
-  from the arrivals API's `/stations` endpoint (N6 sourced from OpenStreetMap
-  since it's absent there) - used only for the "Open in Google Maps" link in
-  `ArrivalsSheet`, unrelated to map-image tap position.
-- **Tap detection**: `StationMap` does NOT hit-test individual station
-  circles - some interchanges (CEN/S1, N1/N2) sit as little as ~16px apart
-  in map space, too close for fat-finger-sized circles without overlap.
-  Instead every tap on the map finds the *nearest* station within
-  `MAX_TAP_DISTANCE`, which is fat-finger-tolerant with no ambiguity: every
-  point on the map belongs to whichever station is closest to it. The
-  small `<circle>`s still drawn per station are purely visual (`pointer-
-  events-none`), not the hit target.
+  list — 193 stations across every currently-operating line. BTS
+  Sukhumvit/Silom (61 codes, including N6 Sena Ruam, absent from the live
+  API's own `/stations` listing) and Gold/Yellow/Pink keep their original
+  hand-curated codes; MRT Blue/Purple, Airport Rail Link, and SRT Red were
+  added from BMA's public ArcGIS REST API (see "External station/line data"
+  below) with locally-assigned codes (`BL01`, `PP01`, `A01`, `RD01`, ...)
+  since none of those systems have a live arrivals API. Every station has
+  real `lat`/`lon` now (backfilled for Gold/Yellow/Pink, which previously had
+  none at all). `data/line-sequences.json` is the ordered per-line stop list
+  the routing graph needs — nothing in any source data provides stop order,
+  so this is hand-verified (see `scripts/build-line-sequences.ts`'s comments
+  for the one-off quirks: N6 inserted mid-sequence, Silom's mixed W/CEN/S
+  prefixes, the Pink Line's unopened Muang Thong Thani branch, Tao Poon
+  getting merged into the Blue Line's `BL31` code since it's the same
+  physical Blue/Purple interchange station).
+- **Routing**: `lib/transit-graph.ts` builds a graph from `data/stations.ts` +
+  `data/line-sequences.json` (adjacent-stop edges per line, plus MRT Blue's
+  loop-closure edge since it's a closed loop, not a line with two ends) and
+  runs a Dijkstra-ish shortest-hop search (`findPath`). Walking transfers
+  between *distinct* nearby stations on different lines (e.g. Mo Chit BTS
+  <-> Chatuchak Park MRT) are generated automatically for any two stations
+  within ~400m — no hand-curated list of interchange names to maintain.
+  Same-complex interchanges (Siam, Tao Poon, ...) need no special edge at
+  all: they're modeled as one station node carrying multiple lines, so ride
+  edges on each of its lines are already present.
+- **External station/line data**: BMA's public, unauthenticated ArcGIS REST
+  API at `cityplangis.bangkok.go.th/arcgis/rest/services/bma/Basemap/MapServer`
+  (layer 1 = station points, layer 3 = line geometry) was the one-time source
+  for every non-BTS/Gold/Yellow/Pink station — fetched via
+  `scripts/fetch-transit-network.ts` into `data/raw/*.geojson` and turned into
+  station records via `scripts/build-stations.ts` (see that file's comments
+  for real data-quality issues found along the way: Siam is only tagged with
+  one of its two actual lines in that dataset, Orange Line entries are all
+  marked under-construction and excluded, and English station names had to be
+  filled in by hand in `scripts/fill-english-names.ts` since the source has
+  Thai names only). This is a one-time/rarely-rerun pipeline, not a runtime
+  dependency — the network doesn't change often enough to justify hitting a
+  third-party government server on every build or request.
 - **PWA**: Serwist service worker in `app/sw.ts`. Only wired in for the
   **production** build — `next.config.ts` skips the Serwist wrapper during
   `next dev` because it injects a `webpack` config key that conflicts with
@@ -81,16 +116,22 @@ npm start         # serve production build
 ## Adding Data
 
 1. Update `data/stations.json` directly (flat array, see `data/stations.ts`
-   for the `Station` type).
-2. Station `x`/`y` coordinates must be measured against the actual pixel
-   dimensions of `public/bts-map.jpg` — if that file changes, coordinates
-   need remeasuring.
-3. Run `npm run build` to validate TypeScript.
+   for the `Station` type) — every station needs real `lat`/`lon`, there are
+   no pixel coordinates to measure anymore.
+2. If you add or reorder stations on an existing line, update that line's
+   entry in `data/line-sequences.json` to match the real physical stop
+   order — the routing graph in `lib/transit-graph.ts` trusts this file
+   completely and has no way to detect a wrong order on its own.
+3. To pull in a newly-opened line or station from BMA's GIS data, re-run
+   `scripts/fetch-transit-network.ts` then `scripts/build-stations.ts` (or
+   fold the new data in by hand if the scripts' line-specific logic doesn't
+   cover it) - review the diff carefully given the known data-quality issues
+   noted above, this is not a script to run and blindly trust.
+4. Run `npm run build` to validate TypeScript.
 
 ## Notes
 
 - Keep everything free-tier friendly (Vercel hobby, Upstash free tier,
-  GitHub Actions free minutes).
-- No route planner / travel-time calculator in this app (explicitly out of
-  scope) — don't add one without checking with the user first.
+  GitHub Actions free minutes, OpenStreetMap's free tile server, BMA's free
+  GIS API hit only rarely via the one-time fetch script above).
 - Avoid AI assistant features.
