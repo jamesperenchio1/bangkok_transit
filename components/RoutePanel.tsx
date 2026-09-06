@@ -6,7 +6,6 @@ import { useArrivals } from "@/lib/use-arrivals";
 import type { Station } from "@/data/stations";
 import type { PathResult } from "@/lib/transit-graph";
 import type { GeoPosition } from "@/lib/use-geolocation";
-import { StationActions } from "@/components/StationActions";
 import { LINE_COLORS } from "@/lib/line-colors";
 
 function minutesLabel(minutes?: number): string {
@@ -86,7 +85,7 @@ function ArrivalsList({ station }: { station: Station }) {
                 <ul className="flex flex-col gap-1">
                   {p.trains.map((t, i) => (
                     <li key={i} className="text-sm">
-                      {isStale ? "updating…" : minutesLabel(t.minutes as number)}
+                      {isStale ? "updating…" : minutesLabel(t.eta_minutes)}
                     </li>
                   ))}
                 </ul>
@@ -106,20 +105,10 @@ export type RoutePanelState =
 export interface RoutePanelProps {
   state: RoutePanelState | null;
   userPosition: GeoPosition | null;
-  startCode: string | null;
-  onSetStart: (station: Station) => void;
-  onSetDestination: (station: Station) => void;
   onClose: () => void;
 }
 
-export function RoutePanel({
-  state,
-  userPosition,
-  startCode,
-  onSetStart,
-  onSetDestination,
-  onClose,
-}: RoutePanelProps) {
+export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
   const open = state !== null;
 
   return (
@@ -139,14 +128,6 @@ export function RoutePanel({
             badgeText={state.station.code}
             onClose={onClose}
           />
-          <div className="mb-3">
-            <StationActions
-              station={state.station}
-              startCode={startCode}
-              onSetStart={onSetStart}
-              onSetDestination={onSetDestination}
-            />
-          </div>
           <div className="mb-3">
             <GoogleMapsLink
               href={
@@ -244,7 +225,7 @@ export function RoutePanel({
 
 function LiveEta({ station }: { station: Station }) {
   const { data } = useArrivals(station.code);
-  const next = data?.platforms?.[0]?.trains?.[0]?.minutes as number | undefined;
+  const next = data?.platforms?.[0]?.trains?.[0]?.eta_minutes;
   if (next === undefined) return null;
   return <p className="text-xs text-neutral-500">Next arrival ~{minutesLabel(next)}</p>;
 }

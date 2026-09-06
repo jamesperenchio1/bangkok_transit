@@ -23,6 +23,7 @@ export function StationActions({ station, startCode, onSetStart, onSetDestinatio
       <button
         onClick={() => onSetDestination(station)}
         disabled={startCode === null || isStart}
+        title={startCode === null ? "Set a start station first" : undefined}
         className="flex-1 rounded-full border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 enabled:hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-neutral-700 dark:text-neutral-300 dark:enabled:hover:bg-neutral-800"
       >
         Set as destination

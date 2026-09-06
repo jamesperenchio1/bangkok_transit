@@ -16,9 +16,13 @@ export const UPSTREAM_TIMEOUT_MS = 12_000;
 export const FRESH_FOR_MS = 90_000;
 
 export interface ArrivalTrain {
+  train_no: string;
+  destination: string;
+  destination_key: string;
   /** Minutes until arrival, as reported upstream. */
-  minutes?: number;
-  [key: string]: unknown;
+  eta_minutes?: number;
+  eta_precise?: number;
+  status: string;
 }
 
 export interface ArrivalPlatform {

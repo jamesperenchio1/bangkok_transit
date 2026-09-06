@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Bangkok Transit",
-  description: "Tap a BTS station for live arrival times.",
+  description: "Plan routes and see live arrivals across every BTS, MRT, and rail line in Bangkok.",
   manifest: "/manifest.json",
 };
 
