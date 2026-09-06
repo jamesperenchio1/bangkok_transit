@@ -158,7 +158,7 @@ export function TransitMap({
         const onPath = pathCodes.has(s.code);
         const isEndpoint = s.code === startCode || s.code === destinationCode;
         const dimmed = isRouting && !onPath;
-        const color = s.lines[0]?.color ?? "#666";
+        const color = s.lines[0] ? LINE_COLORS[s.lines[0].line] : "#666";
         return (
           <CircleMarker
             key={s.code}
@@ -172,16 +172,16 @@ export function TransitMap({
             }}
             eventHandlers={{ click: () => onSelectStation(s) }}
           >
-            <Popup offset={[0, -4]} minWidth={200}>
+            <Popup offset={[0, -4]} minWidth={200} maxWidth={240} autoPanPadding={[24, 24]}>
               <div className="flex flex-col gap-2 py-0.5">
                 <div className="flex items-center gap-2">
                   <span
-                    className="rounded px-1.5 py-0.5 text-xs font-semibold text-white"
-                    style={{ backgroundColor: s.lines[0]?.color ?? "#666" }}
+                    className="shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold text-white"
+                    style={{ backgroundColor: color }}
                   >
                     {s.code}
                   </span>
-                  <span className="text-sm font-semibold text-neutral-900">{s.nameEn}</span>
+                  <span className="truncate text-sm font-semibold text-neutral-900">{s.nameEn}</span>
                 </div>
                 <StationActions
                   station={s}

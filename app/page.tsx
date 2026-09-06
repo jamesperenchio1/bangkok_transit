@@ -145,14 +145,7 @@ export default function Home() {
         </div>
       )}
 
-      <RoutePanel
-        state={panelState}
-        userPosition={position}
-        startCode={startCode}
-        onSetStart={handleSetStart}
-        onSetDestination={handleSetDestination}
-        onClose={reset}
-      />
+      <RoutePanel state={panelState} userPosition={position} onClose={reset} />
     </main>
   );
 }

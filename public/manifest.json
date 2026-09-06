@@ -1,7 +1,7 @@
 {
   "name": "Bangkok Transit",
   "short_name": "BKK Transit",
-  "description": "Tap a BTS station for live arrival times.",
+  "description": "Plan routes and see live arrivals across every BTS, MRT, and rail line in Bangkok.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
