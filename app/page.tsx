@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { X, Check, AlertTriangle } from "lucide-react";
 import type { Station } from "@/data/stations";
 import { RoutePanel, type RoutePanelState } from "@/components/RoutePanel";
+import { StationSearch } from "@/components/StationSearch";
 import { findPath, type PathResult } from "@/lib/transit-graph";
 import { useGeolocation } from "@/lib/use-geolocation";
 
@@ -21,6 +22,7 @@ type RouteState =
 
 export default function Home() {
   const [route, setRoute] = useState<RouteState>({ mode: "idle" });
+  const [focusStation, setFocusStation] = useState<Station | null>(null);
   const { position, error: geoError } = useGeolocation();
 
   const handleSelectStation = (station: Station) => {
@@ -38,6 +40,15 @@ export default function Home() {
     }
   };
 
+  const handleSetStart = (station: Station) => {
+    setRoute({ mode: "start-selected", start: station });
+  };
+
+  const handleSetDestination = (station: Station) => {
+    if (route.mode === "idle" || station.code === route.start.code) return;
+    setRoute({ mode: "confirm-pending", start: route.start, destination: station });
+  };
+
   const confirmRoute = () => {
     if (route.mode !== "confirm-pending") return;
     const path = findPath(route.start.code, route.destination.code);
@@ -45,6 +56,11 @@ export default function Home() {
   };
 
   const reset = () => setRoute({ mode: "idle" });
+
+  const handleSearchSelect = (station: Station) => {
+    handleSelectStation(station);
+    setFocusStation(station);
+  };
 
   const panelState: RoutePanelState | null = useMemo(() => {
     if (route.mode === "start-selected") return { mode: "station", station: route.start };
@@ -70,14 +86,17 @@ export default function Home() {
             {route.mode === "confirmed" && "Route highlighted — tap any station to start over"}
           </p>
         </div>
-        {route.mode !== "idle" && (
-          <button
-            onClick={reset}
-            className="shrink-0 rounded-full border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-          >
-            New route
-          </button>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          {route.mode !== "idle" && (
+            <button
+              onClick={reset}
+              className="rounded-full border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            >
+              New route
+            </button>
+          )}
+          <StationSearch onSelectStation={handleSearchSelect} />
+        </div>
       </header>
 
       {geoError === "denied" && (
@@ -90,10 +109,13 @@ export default function Home() {
       <div className="relative isolate flex-1 overflow-hidden">
         <TransitMap
           onSelectStation={handleSelectStation}
+          onSetStart={handleSetStart}
+          onSetDestination={handleSetDestination}
           startCode={startCode}
           destinationCode={destinationCode}
           path={path}
           userPosition={position}
+          focusStation={focusStation}
         />
       </div>
 
@@ -123,7 +145,14 @@ export default function Home() {
         </div>
       )}
 
-      <RoutePanel state={panelState} userPosition={position} onClose={reset} />
+      <RoutePanel
+        state={panelState}
+        userPosition={position}
+        startCode={startCode}
+        onSetStart={handleSetStart}
+        onSetDestination={handleSetDestination}
+        onClose={reset}
+      />
     </main>
   );
 }

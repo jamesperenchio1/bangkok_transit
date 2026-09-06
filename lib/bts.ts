@@ -53,6 +53,20 @@ export function isFresh(timestampIso: string, now = Date.now()): boolean {
   return now - dataAt < FRESH_FOR_MS;
 }
 
+/**
+ * The upstream is undocumented and, for stations outside its real coverage
+ * (e.g. the northern Sukhumvit extension), can return HTTP 200 with a body
+ * that's missing `platforms` entirely rather than an error status. Treat
+ * that shape as a failure too, so it goes through the normal
+ * stale-cache-or-502 path instead of being forwarded to the client as if it
+ * were valid data.
+ */
+export function isValidArrivals(data: unknown): data is Arrivals {
+  if (!data || typeof data !== "object") return false;
+  const d = data as Partial<Arrivals>;
+  return Array.isArray(d.platforms) && typeof d.station?.code === "string";
+}
+
 export async function fetchUpstream(code: string): Promise<Arrivals> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
@@ -64,7 +78,11 @@ export async function fetchUpstream(code: string): Promise<Arrivals> {
     if (!res.ok) {
       throw new Error(`upstream ${res.status} for ${code}`);
     }
-    return (await res.json()) as Arrivals;
+    const data = await res.json();
+    if (!isValidArrivals(data)) {
+      throw new Error(`upstream returned malformed arrivals for ${code}`);
+    }
+    return data;
   } finally {
     clearTimeout(timeout);
   }

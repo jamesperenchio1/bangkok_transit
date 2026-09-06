@@ -2,11 +2,13 @@
 
 import "leaflet/dist/leaflet.css";
 import { useEffect, useMemo } from "react";
-import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip, useMap } from "react-leaflet";
+import { CircleMarker, MapContainer, Polyline, Popup, TileLayer, useMap } from "react-leaflet";
 import { stations, type Station } from "@/data/stations";
 import { fullLineSegments, trackBetween } from "@/lib/line-geometry";
 import type { GeoPosition } from "@/lib/use-geolocation";
 import type { PathResult } from "@/lib/transit-graph";
+import { StationActions } from "@/components/StationActions";
+import { LINE_COLORS } from "@/lib/line-colors";
 
 const STATION_BOUNDS: [[number, number], [number, number]] = [
   [Math.min(...stations.map((s) => s.lat)), Math.min(...stations.map((s) => s.lon))],
@@ -15,10 +17,26 @@ const STATION_BOUNDS: [[number, number], [number, number]] = [
 
 export interface TransitMapProps {
   onSelectStation: (station: Station) => void;
+  onSetStart: (station: Station) => void;
+  onSetDestination: (station: Station) => void;
   startCode: string | null;
   destinationCode: string | null;
   path: PathResult | null;
   userPosition: GeoPosition | null;
+  /** Set (e.g. from a search result) to fly the map to a station on demand. */
+  focusStation: Station | null;
+}
+
+// Flies the map to a station whenever `station` changes (e.g. a search
+// result was picked) - a plain prop rather than local state, since the map
+// itself has no other reason to know about search.
+function FocusStation({ station }: { station: Station | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!station) return;
+    map.flyTo([station.lat, station.lon], Math.max(map.getZoom(), 15), { duration: 0.6 });
+  }, [station, map]);
+  return null;
 }
 
 // Leaflet computes fitBounds() from the container's size at mount time. If
@@ -55,20 +73,15 @@ function FitStationBounds() {
   return null;
 }
 
-function lineColor(lineKey: string): string {
-  for (const s of stations) {
-    const match = s.lines.find((l) => l.line === lineKey);
-    if (match) return match.color;
-  }
-  return "#999";
-}
-
 export function TransitMap({
   onSelectStation,
+  onSetStart,
+  onSetDestination,
   startCode,
   destinationCode,
   path,
   userPosition,
+  focusStation,
 }: TransitMapProps) {
   const pathCodes = useMemo(
     () => new Set(path?.map((leg) => leg.station.code) ?? []),
@@ -85,7 +98,7 @@ export function TransitMap({
     () =>
       lineKeys.map((line) => ({
         line,
-        color: lineColor(line),
+        color: LINE_COLORS[line],
         segments: fullLineSegments(line),
       })),
     [lineKeys],
@@ -99,6 +112,7 @@ export function TransitMap({
       preferCanvas
     >
       <FitStationBounds />
+      <FocusStation station={focusStation} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -131,7 +145,7 @@ export function TransitMap({
               key={`path-${i}`}
               positions={trackBetween(leg.line, prevStation, leg.station)}
               pathOptions={{
-                color: leg.station.lines.find((l) => l.line === leg.line)?.color ?? "#333",
+                color: LINE_COLORS[leg.line],
                 weight: 5,
                 opacity: 1,
               }}
@@ -158,9 +172,25 @@ export function TransitMap({
             }}
             eventHandlers={{ click: () => onSelectStation(s) }}
           >
-            <Tooltip direction="top" offset={[0, -4]}>
-              {s.nameEn} ({s.code})
-            </Tooltip>
+            <Popup offset={[0, -4]} minWidth={200}>
+              <div className="flex flex-col gap-2 py-0.5">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="rounded px-1.5 py-0.5 text-xs font-semibold text-white"
+                    style={{ backgroundColor: s.lines[0]?.color ?? "#666" }}
+                  >
+                    {s.code}
+                  </span>
+                  <span className="text-sm font-semibold text-neutral-900">{s.nameEn}</span>
+                </div>
+                <StationActions
+                  station={s}
+                  startCode={startCode}
+                  onSetStart={onSetStart}
+                  onSetDestination={onSetDestination}
+                />
+              </div>
+            </Popup>
           </CircleMarker>
         );
       })}

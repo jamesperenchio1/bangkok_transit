@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
-import { fetchUpstream, isFresh, type Arrivals } from "@/lib/bts";
+import { fetchUpstream, isFresh, isValidArrivals, type Arrivals } from "@/lib/bts";
 import { readCached, writeCached } from "@/lib/arrivals-cache";
 import { stationsByCode } from "@/data/stations";
 
@@ -23,7 +23,8 @@ async function getArrivals(code: string): Promise<{ data: Arrivals; stale: boole
     return { data: hot.data, stale: false };
   }
 
-  const cached = await readCached(code);
+  const cachedRaw = await readCached(code);
+  const cached = cachedRaw && isValidArrivals(cachedRaw) ? cachedRaw : null;
   if (cached && isFresh(cached.timestamp)) {
     hotCache.set(code, { data: cached, at: Date.now() });
     return { data: cached, stale: false };

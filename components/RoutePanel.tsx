@@ -6,6 +6,8 @@ import { useArrivals } from "@/lib/use-arrivals";
 import type { Station } from "@/data/stations";
 import type { PathResult } from "@/lib/transit-graph";
 import type { GeoPosition } from "@/lib/use-geolocation";
+import { StationActions } from "@/components/StationActions";
+import { LINE_COLORS } from "@/lib/line-colors";
 
 function minutesLabel(minutes?: number): string {
   if (minutes === undefined || minutes === null) return "—";
@@ -52,14 +54,26 @@ function ArrivalsList({ station }: { station: Station }) {
 
   return (
     <>
-      {loading && !data && <p className="py-4 text-center text-sm text-neutral-500">Loading…</p>}
+      {loading && !data && (
+        <div className="flex flex-col gap-2">
+          {[0, 1].map((i) => (
+            <div
+              key={i}
+              className="h-14 animate-pulse rounded-lg border border-neutral-200 bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-800"
+            />
+          ))}
+        </div>
+      )}
       {error && !data && <p className="py-4 text-center text-sm text-red-500">{error}</p>}
       {data && !data.service_active && (
         <p className="mb-2 text-sm text-neutral-500">
           Service is not currently running. Next service ~{data.next_service}.
         </p>
       )}
-      {data && (
+      {data && !data.platforms?.length && (
+        <p className="py-2 text-sm text-neutral-500">No live arrivals for this station.</p>
+      )}
+      {data && data.platforms?.length > 0 && (
         <div className="flex flex-col gap-2">
           {data.platforms.map((p) => (
             <div key={p.platform} className="rounded-lg border border-neutral-200 p-2.5 dark:border-neutral-800">
@@ -92,10 +106,20 @@ export type RoutePanelState =
 export interface RoutePanelProps {
   state: RoutePanelState | null;
   userPosition: GeoPosition | null;
+  startCode: string | null;
+  onSetStart: (station: Station) => void;
+  onSetDestination: (station: Station) => void;
   onClose: () => void;
 }
 
-export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
+export function RoutePanel({
+  state,
+  userPosition,
+  startCode,
+  onSetStart,
+  onSetDestination,
+  onClose,
+}: RoutePanelProps) {
   const open = state !== null;
 
   return (
@@ -111,11 +135,18 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
           <Header
             title={state.station.nameEn}
             subtitle={state.station.nameTh}
-            badgeColor={state.station.lines[0]?.color}
+            badgeColor={state.station.lines[0] ? LINE_COLORS[state.station.lines[0].line] : undefined}
             badgeText={state.station.code}
             onClose={onClose}
           />
-          <p className="mb-3 text-xs text-neutral-500">Tap another station to plan a route from here.</p>
+          <div className="mb-3">
+            <StationActions
+              station={state.station}
+              startCode={startCode}
+              onSetStart={onSetStart}
+              onSetDestination={onSetDestination}
+            />
+          </div>
           <div className="mb-3">
             <GoogleMapsLink
               href={
@@ -159,33 +190,50 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
           )}
 
           {state.path && (
-            <ul className="flex flex-col gap-2">
-              {state.path.map((leg, i) => (
-                <li key={leg.station.code} className="flex items-center gap-2">
-                  <span
-                    className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{
-                      backgroundColor:
-                        leg.station.lines.find((l) => l.line === leg.line)?.color ??
-                        leg.station.lines[0]?.color ??
-                        "#999",
-                    }}
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">
-                      {leg.station.nameEn}
-                      {leg.isTransfer && (
-                        <span className="ml-1.5 inline-flex items-center gap-1 text-xs font-normal text-amber-600 dark:text-amber-400">
-                          <RefreshCw size={11} /> Change line
-                        </span>
+            <ul className="flex flex-col">
+              {state.path.map((leg, i) => {
+                const isLast = i === state.path!.length - 1;
+                const nextLeg = state.path![i + 1];
+                const incomingColor = leg.line ? LINE_COLORS[leg.line] : null;
+                const outgoingColor = nextLeg?.line ? LINE_COLORS[nextLeg.line] : null;
+                const dotColor = incomingColor ?? outgoingColor ?? "#999";
+
+                return (
+                  <li key={leg.station.code} className="flex items-stretch gap-3">
+                    <div className="relative w-4 shrink-0">
+                      {incomingColor && (
+                        <span
+                          className="absolute top-0 left-1/2 h-1/2 w-0.5 -translate-x-1/2"
+                          style={{ backgroundColor: incomingColor }}
+                        />
                       )}
-                    </p>
-                    {leg.station.hasLiveArrivals && i === state.path!.length - 1 && (
-                      <LiveEta station={leg.station} />
-                    )}
-                  </div>
-                </li>
-              ))}
+                      {!isLast && outgoingColor && (
+                        <span
+                          className="absolute bottom-0 left-1/2 h-1/2 w-0.5 -translate-x-1/2"
+                          style={{ backgroundColor: outgoingColor }}
+                        />
+                      )}
+                      <span
+                        className="absolute top-1/2 left-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white dark:ring-neutral-900"
+                        style={{ backgroundColor: dotColor }}
+                      />
+                    </div>
+                    <div className="flex-1 py-1.5">
+                      <p className="text-sm font-medium">
+                        {leg.station.nameEn}
+                        {leg.isTransfer && (
+                          <span className="ml-1.5 inline-flex items-center gap-1 text-xs font-normal text-amber-600 dark:text-amber-400">
+                            <RefreshCw size={11} />
+                            Change line
+                            {leg.towardStation && ` · Toward ${leg.towardStation.nameEn}`}
+                          </span>
+                        )}
+                      </p>
+                      {leg.station.hasLiveArrivals && isLast && <LiveEta station={leg.station} />}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -196,7 +244,7 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
 
 function LiveEta({ station }: { station: Station }) {
   const { data } = useArrivals(station.code);
-  const next = data?.platforms[0]?.trains[0]?.minutes as number | undefined;
+  const next = data?.platforms?.[0]?.trains?.[0]?.minutes as number | undefined;
   if (next === undefined) return null;
   return <p className="text-xs text-neutral-500">Next arrival ~{minutesLabel(next)}</p>;
 }

@@ -4,7 +4,15 @@ import { useEffect, useState } from "react";
 import type { Arrivals } from "./bts";
 
 const POLL_MS = 60_000;
+// Past this age, a localStorage-cached entry is from a much earlier visit
+// (or a stale browser tab reopened later) rather than merely "a minute
+// behind" - don't seed it as if it were current data on cold start.
+const LOCAL_STORAGE_STALE_CUTOFF_MS = 10 * 60_000;
 const memCache = new Map<string, Arrivals & { stale?: boolean }>();
+
+function dataAgeMs(data: Arrivals): number {
+  return Date.now() - Date.parse(data.timestamp.endsWith("Z") ? data.timestamp : data.timestamp + "Z");
+}
 
 function storageKey(code: string) {
   return `bts:arr:${code}`;
@@ -43,12 +51,12 @@ interface State {
 }
 
 function initialState(code: string | null): State {
-  return {
-    code,
-    data: code ? memCache.get(code) ?? readLocalStorage(code) : null,
-    error: null,
-    loading: Boolean(code),
-  };
+  if (!code) return { code, data: null, error: null, loading: false };
+
+  const cached = memCache.get(code) ?? readLocalStorage(code);
+  const usable = cached && dataAgeMs(cached) <= LOCAL_STORAGE_STALE_CUTOFF_MS ? cached : null;
+
+  return { code, data: usable, error: null, loading: true };
 }
 
 export function useArrivals(code: string | null): UseArrivalsResult {

@@ -7,6 +7,13 @@ export interface PathLeg {
   line: LineKey | null;
   /** True if this leg is a change of line at the same or a nearby station. */
   isTransfer: boolean;
+  /**
+   * For a transfer leg, the terminus of the just-boarded line in the
+   * direction the route continues (e.g. "board toward Khu Khot"). Omitted
+   * when the transfer is the final leg, or the immediate next hop isn't a
+   * ride on that same line (so direction can't be inferred from it).
+   */
+  towardStation?: (typeof stations)[number];
 }
 
 export type PathResult = PathLeg[];
@@ -29,6 +36,41 @@ const LOOP_CLOSURES: [string, string][] = [["BL38", "BL07"]];
 // interchange pair to be hand-curated by name.
 const WALKING_TRANSFER_METERS = 400;
 const TRANSFER_PENALTY = 1.5; // extra "hops" a transfer costs, so same-line paths are preferred when equally short
+
+const sequences = lineSequences as Record<LineKey, string[]>;
+
+// data/line-sequences.json's `pink` array has the unopened Muang Thong Thani
+// branch (MT01/MT02) appended after the real trunk terminus (Min Buri)
+// rather than spliced in where it physically branches off (see
+// scripts/build-line-sequences.ts) - so the array's last element isn't the
+// right "forward" terminus to show as transfer direction guidance.
+const TRUNK_TERMINUS_OVERRIDES: Partial<Record<LineKey, string>> = {
+  pink: "PK30",
+};
+
+/**
+ * The terminus of `line`, in the direction of travel from `fromCode` to
+ * `towardCode` (an immediate next stop on that same line). Handles MRT
+ * Blue's loop-closure edge specially, since its two "ends" are far apart in
+ * the sequence array despite being physically adjacent.
+ */
+function terminusInDirection(line: LineKey, fromCode: string, towardCode: string): string | undefined {
+  const seq = sequences[line];
+  if (!seq) return undefined;
+
+  const forwardTerminus = TRUNK_TERMINUS_OVERRIDES[line] ?? seq[seq.length - 1];
+
+  for (const [a, b] of LOOP_CLOSURES) {
+    if (fromCode === a && towardCode === b) return forwardTerminus;
+    if (fromCode === b && towardCode === a) return seq[0];
+  }
+
+  const fromIdx = seq.indexOf(fromCode);
+  const towardIdx = seq.indexOf(towardCode);
+  if (fromIdx === -1 || towardIdx === -1) return undefined;
+
+  return towardIdx > fromIdx ? forwardTerminus : seq[0];
+}
 
 function haversineMeters(a: [number, number], b: [number, number]): number {
   const R = 6371000;
@@ -137,10 +179,22 @@ export function findPath(fromCode: string, toCode: string): PathResult | null {
   return codes.map((c, i) => {
     const station = stationsByCode.get(c.code)!;
     const prevLine = i > 0 ? codes[i - 1].line : null;
+    const isTransfer = i > 0 && prevLine !== null && c.line !== null && prevLine !== c.line;
+
+    let towardStation: (typeof stations)[number] | undefined;
+    if (isTransfer && c.line) {
+      const next = codes[i + 1];
+      if (next && next.line === c.line) {
+        const terminusCode = terminusInDirection(c.line, c.code, next.code);
+        towardStation = terminusCode ? stationsByCode.get(terminusCode) : undefined;
+      }
+    }
+
     return {
       station,
       line: c.line,
-      isTransfer: i > 0 && prevLine !== null && c.line !== null && prevLine !== c.line,
+      isTransfer,
+      towardStation,
     };
   });
 }
