@@ -1,8 +1,10 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import type { Popup as LeafletPopup } from "leaflet";
 import { CircleMarker, MapContainer, Polyline, Popup, TileLayer, useMap } from "react-leaflet";
+import { LocateFixed } from "lucide-react";
 import { stations, type Station } from "@/data/stations";
 import { fullLineSegments, trackBetween } from "@/lib/line-geometry";
 import type { GeoPosition } from "@/lib/use-geolocation";
@@ -37,6 +39,27 @@ function FocusStation({ station }: { station: Station | null }) {
     map.flyTo([station.lat, station.lon], Math.max(map.getZoom(), 15), { duration: 0.6 });
   }, [station, map]);
   return null;
+}
+
+// Recenters the map on the user's live GPS position. There was previously
+// no way to get back to it after panning around - the blue dot rendered but
+// nothing let you jump to it.
+function LocateButton({ position }: { position: GeoPosition | null }) {
+  const map = useMap();
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (position) map.flyTo([position.lat, position.lon], Math.max(map.getZoom(), 16), { duration: 0.6 });
+      }}
+      disabled={!position}
+      aria-label="Center on my location"
+      title={position ? "Center on my location" : "Waiting for your location…"}
+      className="absolute top-3 right-3 z-[1000] rounded-full border border-neutral-300 bg-white p-2.5 text-neutral-700 shadow-md hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+    >
+      <LocateFixed size={18} />
+    </button>
+  );
 }
 
 // Leaflet computes fitBounds() from the container's size at mount time. If
@@ -89,6 +112,19 @@ export function TransitMap({
   );
   const isRouting = path !== null;
 
+  // Closing a station's popup after an action lets the user immediately tap
+  // another station to pick the other end of their route, rather than
+  // having to dismiss the popup themselves first.
+  const popupRefs = useRef(new Map<string, LeafletPopup>());
+  const handleSetStart = (station: Station) => {
+    onSetStart(station);
+    popupRefs.current.get(station.code)?.close();
+  };
+  const handleSetDestination = (station: Station) => {
+    onSetDestination(station);
+    popupRefs.current.get(station.code)?.close();
+  };
+
   const lineKeys = useMemo(
     () => [...new Set(stations.flatMap((s) => s.lines.map((l) => l.line)))],
     [],
@@ -113,6 +149,7 @@ export function TransitMap({
     >
       <FitStationBounds />
       <FocusStation station={focusStation} />
+      <LocateButton position={userPosition} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -172,7 +209,16 @@ export function TransitMap({
             }}
             eventHandlers={{ click: () => onSelectStation(s) }}
           >
-            <Popup offset={[0, -4]} minWidth={200} maxWidth={240} autoPanPadding={[24, 24]}>
+            <Popup
+              ref={(el) => {
+                if (el) popupRefs.current.set(s.code, el);
+                else popupRefs.current.delete(s.code);
+              }}
+              offset={[0, -4]}
+              minWidth={200}
+              maxWidth={240}
+              autoPanPadding={[24, 24]}
+            >
               <div className="flex flex-col gap-2 py-0.5">
                 <div className="flex items-center gap-2">
                   <span
@@ -186,8 +232,8 @@ export function TransitMap({
                 <StationActions
                   station={s}
                   startCode={startCode}
-                  onSetStart={onSetStart}
-                  onSetDestination={onSetDestination}
+                  onSetStart={handleSetStart}
+                  onSetDestination={handleSetDestination}
                 />
               </div>
             </Popup>

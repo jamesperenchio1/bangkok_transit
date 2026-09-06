@@ -68,7 +68,9 @@ export function isFresh(timestampIso: string, now = Date.now()): boolean {
 export function isValidArrivals(data: unknown): data is Arrivals {
   if (!data || typeof data !== "object") return false;
   const d = data as Partial<Arrivals>;
-  return Array.isArray(d.platforms) && typeof d.station?.code === "string";
+  return (
+    Array.isArray(d.platforms) && typeof d.station?.code === "string" && typeof d.timestamp === "string"
+  );
 }
 
 export async function fetchUpstream(code: string): Promise<Arrivals> {
