@@ -62,8 +62,10 @@ export default function Home() {
     setFocusStation(station);
   };
 
+  // The route sheet only appears once a destination is picked too - a start
+  // alone shouldn't cover the map, since browsing several candidate start
+  // stations (each with its own popup) is a normal part of picking one.
   const panelState: RoutePanelState | null = useMemo(() => {
-    if (route.mode === "start-selected") return { mode: "station", station: route.start };
     if (route.mode === "confirmed")
       return { mode: "route", start: route.start, destination: route.destination, path: route.path };
     return null;

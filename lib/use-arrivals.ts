@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Arrivals } from "./bts";
+import { isValidArrivals, type Arrivals } from "./bts";
 
 const POLL_MS = 60_000;
 // Past this age, a localStorage-cached entry is from a much earlier visit
@@ -22,7 +22,11 @@ function readLocalStorage(code: string): (Arrivals & { stale?: boolean }) | null
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(storageKey(code));
-    return raw ? (JSON.parse(raw) as Arrivals & { stale?: boolean }) : null;
+    if (!raw) return null;
+    // A persisted entry can predate a schema change (or just be corrupted) -
+    // trusting its shape blindly is what crashed the whole page on mount.
+    const parsed: unknown = JSON.parse(raw);
+    return isValidArrivals(parsed) ? (parsed as Arrivals & { stale?: boolean }) : null;
   } catch {
     return null;
   }
