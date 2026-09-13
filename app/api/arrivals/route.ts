@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isValidArrivals, type Arrivals } from "@/lib/bts";
-import { readCachedMany, cacheEnabled } from "@/lib/arrivals-cache";
+import { readCachedMany } from "@/lib/arrivals-cache";
 import { liveStations } from "@/data/stations";
 
 /**
@@ -12,17 +12,14 @@ import { liveStations } from "@/data/stations";
  */
 export async function GET() {
   try {
-    console.log("DEBUG cacheEnabled:", cacheEnabled);
     const codes = liveStations.map((s) => s.code);
     const raw = await readCachedMany(codes);
-    console.log("DEBUG bulk raw keys:", Object.keys(raw).length, JSON.stringify(raw).slice(0, 200));
     const out: Record<string, Arrivals> = {};
     for (const [code, data] of Object.entries(raw)) {
       if (isValidArrivals(data)) out[code] = data;
     }
     return NextResponse.json(out, { headers: { "Cache-Control": "no-store" } });
-  } catch (err) {
-    console.error("DEBUG bulk arrivals error:", err);
+  } catch {
     return NextResponse.json({}, { headers: { "Cache-Control": "no-store" } });
   }
 }
