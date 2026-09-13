@@ -31,3 +31,15 @@ export async function writeCached(code: string, data: Arrivals): Promise<void> {
   if (!redis) return;
   await redis.set(key(code), data, { ex: TTL_SECONDS });
 }
+
+/** Bulk read for priming the client cache in one round trip instead of one request per station. */
+export async function readCachedMany(codes: string[]): Promise<Record<string, Arrivals>> {
+  if (!redis || codes.length === 0) return {};
+  const keys = codes.map(key);
+  const values = await redis.mget<(Arrivals | null)[]>(...keys);
+  const out: Record<string, Arrivals> = {};
+  values.forEach((v, i) => {
+    if (v) out[codes[i]] = v;
+  });
+  return out;
+}

@@ -8,6 +8,7 @@ import { RoutePanel, type RoutePanelState } from "@/components/RoutePanel";
 import { StationSearch } from "@/components/StationSearch";
 import { findPath, type PathResult } from "@/lib/transit-graph";
 import { useGeolocation } from "@/lib/use-geolocation";
+import { useArrivalsPriming } from "@/lib/use-arrivals";
 
 const TransitMap = dynamic(
   () => import("@/components/TransitMap").then((m) => m.TransitMap),
@@ -21,6 +22,7 @@ type RouteState =
   | { mode: "confirmed"; start: Station; destination: Station; path: PathResult | null };
 
 export default function Home() {
+  useArrivalsPriming();
   const [route, setRoute] = useState<RouteState>({ mode: "idle" });
   const [focusStation, setFocusStation] = useState<Station | null>(null);
   const { position, error: geoError } = useGeolocation();

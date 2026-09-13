@@ -15,7 +15,10 @@ export function StationEta({ station }: { station: Station }) {
   if (!station.hasLiveArrivals || !data) return null;
 
   if (!data.service_active) {
-    return <p className="text-xs text-neutral-500">Not running - next ~{data.next_service}</p>;
+    // Upstream's next_service string already includes its own leading "~"
+    // (e.g. "~05:30") - strip it before adding ours, or it doubles up.
+    const nextService = data.next_service?.replace(/^~\s*/, "") ?? "?";
+    return <p className="text-xs text-neutral-500">Not running - next ~{nextService}</p>;
   }
 
   const trains = data.platforms?.[0]?.trains ?? [];

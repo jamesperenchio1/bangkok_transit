@@ -63,6 +63,46 @@ function initialState(code: string | null): State {
   return { code, data: usable, error: null, loading: true };
 }
 
+// The warm cron only refreshes Redis every ~5 min, so priming faster than
+// that just re-reads the same values. Deliberately slower than the
+// per-station POLL_MS (60s): once a popup is open, its own poll is the
+// source of truth already - bulk priming only needs to keep *unopened*
+// stations reasonably fresh.
+const BULK_PRIME_MS = 4 * 60_000;
+
+async function primeArrivalsCache(): Promise<void> {
+  try {
+    const res = await fetch("/api/arrivals", { cache: "no-store" });
+    if (!res.ok) return;
+    const json: Record<string, Arrivals> = await res.json();
+    for (const [code, data] of Object.entries(json)) {
+      if (!isValidArrivals(data)) continue;
+      // Don't clobber a fresher entry a station's own poll already wrote.
+      const existing = memCache.get(code);
+      if (existing && dataAgeMs(existing) < dataAgeMs(data)) continue;
+      memCache.set(code, data);
+      writeLocalStorage(code, data);
+    }
+  } catch {
+    // Best-effort background priming - must never surface to the UI or
+    // block anything; per-station polling is unaffected.
+  }
+}
+
+/**
+ * Primes every live-arrivals station's cache as soon as the app mounts, and
+ * keeps it refreshed on an interval, so useArrivals's synchronous
+ * initialState() already has data the very first time a station's popup is
+ * opened on this device. Call once near the root of the app.
+ */
+export function useArrivalsPriming(): void {
+  useEffect(() => {
+    primeArrivalsCache();
+    const interval = setInterval(primeArrivalsCache, BULK_PRIME_MS);
+    return () => clearInterval(interval);
+  }, []);
+}
+
 export function useArrivals(code: string | null): UseArrivalsResult {
   const [state, setState] = useState<State>(() => initialState(code));
 
