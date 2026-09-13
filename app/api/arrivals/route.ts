@@ -14,12 +14,14 @@ export async function GET() {
   try {
     const codes = liveStations.map((s) => s.code);
     const raw = await readCachedMany(codes);
+    console.log("DEBUG bulk raw keys:", Object.keys(raw).length, JSON.stringify(raw).slice(0, 200));
     const out: Record<string, Arrivals> = {};
     for (const [code, data] of Object.entries(raw)) {
       if (isValidArrivals(data)) out[code] = data;
     }
     return NextResponse.json(out, { headers: { "Cache-Control": "no-store" } });
-  } catch {
+  } catch (err) {
+    console.error("DEBUG bulk arrivals error:", err);
     return NextResponse.json({}, { headers: { "Cache-Control": "no-store" } });
   }
 }
