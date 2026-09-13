@@ -18,3 +18,17 @@ export const LINE_COLORS: Record<LineKey, string> = {
   arl: "#8b3f97",
   srtRed: "#a5122a",
 };
+
+/**
+ * White text is illegible on the Gold and Yellow lines' pale, high-luminance
+ * brand colors - everything else is dark enough for white to stay readable.
+ * YIQ luminance (ITU-R BT.601 weights) rather than a plain RGB average since
+ * the eye is far more sensitive to green than red/blue.
+ */
+export function readableTextColor(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  return yiq >= 150 ? "#171717" : "#ffffff";
+}

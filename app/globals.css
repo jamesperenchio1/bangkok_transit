@@ -28,3 +28,17 @@ body {
 svg circle {
   touch-action: manipulation;
 }
+
+/* Leaflet's popup chrome doesn't follow the page theme on its own - it's
+   plain white in both light and dark mode, which makes the `dark:` classes
+   on the popup's own content (station name, action buttons) land on the
+   wrong background and become unreadable. Theme the chrome to match. */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+.leaflet-popup-close-button {
+  color: var(--foreground) !important;
+}

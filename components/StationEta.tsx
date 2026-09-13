@@ -2,7 +2,7 @@
 
 import { isFresh } from "@/lib/bts";
 import { useArrivals } from "@/lib/use-arrivals";
-import { minutesLabel } from "@/lib/format-eta";
+import { arrivalClockTime, minutesLabel } from "@/lib/format-eta";
 import type { Station } from "@/data/stations";
 
 /**
@@ -22,10 +22,14 @@ export function StationEta({ station }: { station: Station }) {
   if (!next) return <p className="text-xs text-neutral-500">No live arrivals right now</p>;
 
   const stale = !isFresh(data.timestamp);
+  const clockTime = arrivalClockTime(data.timestamp, next.eta_minutes);
 
   return (
     <p className="text-xs text-neutral-500">
-      Next {stale ? "updating…" : `~${minutesLabel(next.eta_minutes)}`}
+      Next{" "}
+      {stale
+        ? "updating…"
+        : `~${minutesLabel(next.eta_minutes)}${clockTime ? ` · ${clockTime}` : ""}`}
     </p>
   );
 }

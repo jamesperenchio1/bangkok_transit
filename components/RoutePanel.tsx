@@ -2,7 +2,7 @@
 
 import { X, MapPin, ArrowRight } from "lucide-react";
 import { useArrivals } from "@/lib/use-arrivals";
-import { minutesLabel } from "@/lib/format-eta";
+import { arrivalClockTime, minutesLabel } from "@/lib/format-eta";
 import type { Station } from "@/data/stations";
 import type { PathResult } from "@/lib/transit-graph";
 import type { GeoPosition } from "@/lib/use-geolocation";
@@ -146,6 +146,12 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
 function LiveEta({ station }: { station: Station }) {
   const { data } = useArrivals(station.code);
   const next = data?.platforms?.[0]?.trains?.[0]?.eta_minutes;
-  if (next === undefined) return null;
-  return <p className="text-xs text-neutral-500">Next arrival ~{minutesLabel(next)}</p>;
+  if (next === undefined || !data) return null;
+  const clockTime = arrivalClockTime(data.timestamp, next);
+  return (
+    <p className="text-xs text-neutral-500">
+      Next arrival ~{minutesLabel(next)}
+      {clockTime ? ` · ${clockTime}` : ""}
+    </p>
+  );
 }

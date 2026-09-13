@@ -10,7 +10,7 @@ import { fullLineSegments, trackBetween } from "@/lib/line-geometry";
 import type { GeoPosition } from "@/lib/use-geolocation";
 import type { PathResult } from "@/lib/transit-graph";
 import { StationActions } from "@/components/StationActions";
-import { LINE_COLORS } from "@/lib/line-colors";
+import { LINE_COLORS, readableTextColor } from "@/lib/line-colors";
 
 const STATION_BOUNDS: [[number, number], [number, number]] = [
   [Math.min(...stations.map((s) => s.lat)), Math.min(...stations.map((s) => s.lon))],
@@ -222,12 +222,14 @@ export function TransitMap({
               <div className="flex flex-col gap-2 py-0.5">
                 <div className="flex items-center gap-2">
                   <span
-                    className="shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold text-white"
-                    style={{ backgroundColor: color }}
+                    className="shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold"
+                    style={{ backgroundColor: color, color: readableTextColor(color) }}
                   >
                     {s.code}
                   </span>
-                  <span className="truncate text-sm font-semibold text-neutral-900">{s.nameEn}</span>
+                  <span className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                    {s.nameEn}
+                  </span>
                 </div>
                 <StationActions
                   station={s}
