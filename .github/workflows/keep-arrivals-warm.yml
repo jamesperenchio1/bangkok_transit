@@ -1,20 +1,24 @@
 name: Keep arrivals cache warm
 
-# Periodically taps every BTS station's /api/arrivals/[code] route so the
-# Redis cache rarely goes fully cold. This does NOT make arrival times
-# "always fresh" - they're only considered fresh for ~90s after the
-# upstream call (see lib/bts.ts FRESH_FOR_MS), so a live user tap still
-# hits upstream most of the time. This job exists only to avoid the worst
-# case: the very first tap after a long idle period paying the full
-# ~2-6s cold-start cost. Runs on GitHub's free public-repo Actions minutes.
+# There is no batch endpoint on the upstream BTS API (confirmed by probing
+# /arrivals/all, comma-separated codes, /arrivals/batch, and multi-segment
+# paths - all 400/404), so "fetch everything at once" means this: loop over
+# every station sequentially on a fixed interval and populate the shared
+# Redis cache, so a real user's tap almost always finds fresh-enough data
+# already sitting there instead of paying the ~2-6s upstream round trip.
+# See lib/bts.ts CACHE_SERVE_MS - the API route trusts a Redis entry up to
+# 6 minutes old, a comfortable multiple of this job's interval, so ordinary
+# cron jitter never forces a slow on-demand fetch.
 #
-# GitHub's cron scheduler can delay runs by several minutes under load,
-# especially around the top of the hour - that's fine here since this is
-# a best-effort warm-up, not a correctness requirement.
+# 5 minutes is GitHub Actions' practical floor for scheduled workflows (it
+# can be delayed further under load, especially around the top of the
+# hour) - fine here since exact timing isn't a correctness requirement,
+# just "close enough, most of the time." Runs on GitHub's free
+# public-repo Actions minutes.
 
 on:
   schedule:
-    - cron: "*/12 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch: {}
 
 jobs:

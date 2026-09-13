@@ -15,6 +15,21 @@ export const UPSTREAM_TIMEOUT_MS = 12_000;
 /** Past this age, an arrival time is wrong rather than merely stale. */
 export const FRESH_FOR_MS = 90_000;
 
+/**
+ * There is no batch endpoint on the upstream API - confirmed by probing
+ * `/arrivals/all`, comma-separated codes, `/arrivals/batch`, and multi-segment
+ * paths, all of which 400/404. The closest equivalent is our own server
+ * fetching every station sequentially on a fixed interval (see
+ * .github/workflows/keep-arrivals-warm.yml) and caching the results - so an
+ * on-demand request almost never needs to hit upstream itself. This is the
+ * ceiling on how old a Redis-cached read is allowed to be before a request
+ * falls back to the slow upstream call. The warm job targets a 5-minute
+ * interval, but GitHub's scheduler can delay runs by several minutes under
+ * load, so this needs real headroom above that - it's meant to catch the
+ * warm job actually being down, not fire on ordinary cron jitter.
+ */
+export const CACHE_SERVE_MS = 10 * 60_000;
+
 export interface ArrivalTrain {
   train_no: string;
   destination: string;
@@ -51,10 +66,13 @@ export interface Arrivals {
   timestamp: string;
 }
 
-export function isFresh(timestampIso: string, now = Date.now()): boolean {
+export function ageMs(timestampIso: string, now = Date.now()): number {
   const dataAt = Date.parse(timestampIso.endsWith("Z") ? timestampIso : timestampIso + "Z");
-  if (Number.isNaN(dataAt)) return false;
-  return now - dataAt < FRESH_FOR_MS;
+  return Number.isNaN(dataAt) ? Infinity : now - dataAt;
+}
+
+export function isFresh(timestampIso: string, now = Date.now()): boolean {
+  return ageMs(timestampIso, now) < FRESH_FOR_MS;
 }
 
 /**
