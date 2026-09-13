@@ -1,102 +1,127 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { X, Check, AlertTriangle } from "lucide-react";
+import { AlertTriangle, ArrowRight, X } from "lucide-react";
 import type { Station } from "@/data/stations";
 import { RoutePanel, type RoutePanelState } from "@/components/RoutePanel";
 import { StationSearch } from "@/components/StationSearch";
-import { findPath, type PathResult } from "@/lib/transit-graph";
+import { findPath } from "@/lib/transit-graph";
 import { useGeolocation } from "@/lib/use-geolocation";
-import { useArrivalsPriming } from "@/lib/use-arrivals";
+import { startArrivalsPolling } from "@/lib/arrivals-store";
 
 const TransitMap = dynamic(
   () => import("@/components/TransitMap").then((m) => m.TransitMap),
   { ssr: false },
 );
 
-type RouteState =
-  | { mode: "idle" }
-  | { mode: "start-selected"; start: Station }
-  | { mode: "confirm-pending"; start: Station; destination: Station }
-  | { mode: "confirmed"; start: Station; destination: Station; path: PathResult | null };
-
 export default function Home() {
-  useArrivalsPriming();
-  const [route, setRoute] = useState<RouteState>({ mode: "idle" });
+  const [start, setStart] = useState<Station | null>(null);
+  const [destination, setDestination] = useState<Station | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [focusStation, setFocusStation] = useState<Station | null>(null);
   const { position, error: geoError } = useGeolocation();
 
-  const handleSelectStation = (station: Station) => {
-    if (route.mode === "idle") {
-      setRoute({ mode: "start-selected", start: station });
-    } else if (route.mode === "start-selected") {
-      if (station.code === route.start.code) {
-        setRoute({ mode: "idle" });
-      } else {
-        setRoute({ mode: "confirm-pending", start: route.start, destination: station });
-      }
-    } else {
-      // Already confirmed or mid-confirmation - tapping anywhere new starts over.
-      setRoute({ mode: "start-selected", start: station });
-    }
-  };
+  useEffect(() => {
+    startArrivalsPolling();
+  }, []);
+
+  // The route is derived, not staged: as soon as both ends exist the path is
+  // highlighted. There is no separate confirm step to get stuck on.
+  const path = useMemo(
+    () => (start && destination ? findPath(start.code, destination.code) : null),
+    [start, destination],
+  );
 
   const handleSetStart = (station: Station) => {
-    setRoute({ mode: "start-selected", start: station });
+    setStart(station);
+    if (destination?.code === station.code) setDestination(null);
   };
 
   const handleSetDestination = (station: Station) => {
-    if (route.mode === "idle" || station.code === route.start.code) return;
-    setRoute({ mode: "confirm-pending", start: route.start, destination: station });
+    if (start?.code === station.code) return;
+    setDestination(station);
+    setSheetOpen(true);
   };
 
-  const confirmRoute = () => {
-    if (route.mode !== "confirm-pending") return;
-    const path = findPath(route.start.code, route.destination.code);
-    setRoute({ mode: "confirmed", start: route.start, destination: route.destination, path });
+  // Tapping a station only opens its info card (a Leaflet popup). It never
+  // mutates route state - routes change through the card's buttons or the
+  // header chips. Dismissing the sheet keeps the card visible.
+  const handleSelectStation = () => {
+    setSheetOpen(false);
   };
 
-  const reset = () => setRoute({ mode: "idle" });
+  const clearRoute = () => {
+    setStart(null);
+    setDestination(null);
+    setSheetOpen(false);
+  };
 
   const handleSearchSelect = (station: Station) => {
-    handleSelectStation(station);
     setFocusStation(station);
+    setSheetOpen(false);
   };
 
-  // The route sheet only appears once a destination is picked too - a start
-  // alone shouldn't cover the map, since browsing several candidate start
-  // stations (each with its own popup) is a normal part of picking one.
   const panelState: RoutePanelState | null = useMemo(() => {
-    if (route.mode === "confirmed")
-      return { mode: "route", start: route.start, destination: route.destination, path: route.path };
+    if (start && destination) return { mode: "route", start, destination, path };
     return null;
-  }, [route]);
+  }, [start, destination, path]);
 
-  const startCode = route.mode !== "idle" ? route.start.code : null;
-  const destinationCode =
-    route.mode === "confirm-pending" || route.mode === "confirmed" ? route.destination.code : null;
-  const path = route.mode === "confirmed" ? route.path : null;
+  const startCode = start?.code ?? null;
+  const destinationCode = destination?.code ?? null;
+  const hasRoute = start !== null && destination !== null;
+
+  const subtitle = !start && !destination
+    ? "Tap a station, then choose Start or Destination"
+    : start && !destination
+      ? "Start set — now pick a destination"
+      : !start && destination
+        ? "Destination set — now pick a start"
+        : "Route highlighted below";
 
   return (
     <main className="flex flex-1 flex-col">
       <header className="flex items-center justify-between gap-2 border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-base font-semibold">Bangkok Transit</h1>
-          <p className="text-xs text-neutral-500">
-            {route.mode === "idle" && "Tap a station to start a route"}
-            {route.mode === "start-selected" && `From ${route.start.nameEn} — tap your destination`}
-            {route.mode === "confirm-pending" && "Confirm your route below"}
-            {route.mode === "confirmed" && "Route highlighted — tap any station to start over"}
-          </p>
+          <p className="truncate text-xs text-neutral-500">{subtitle}</p>
+          {(start || destination) && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span className="inline-flex max-w-[45vw] items-center gap-1 rounded-full bg-green-600 px-2 py-0.5 text-[11px] font-medium text-white">
+                <span className="shrink-0 opacity-80">Start:</span>
+                <span className="truncate">{start ? start.nameEn : "—"}</span>
+                {start && (
+                  <button onClick={() => setStart(null)} aria-label="Clear start" className="shrink-0">
+                    <X size={11} />
+                  </button>
+                )}
+              </span>
+              <span className="inline-flex max-w-[45vw] items-center gap-1 rounded-full border border-green-600 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:text-green-400">
+                <span className="shrink-0 opacity-80">Destination:</span>
+                <span className="truncate">{destination ? destination.nameEn : "—"}</span>
+                {destination && (
+                  <button
+                    onClick={() => {
+                      setDestination(null);
+                      setSheetOpen(false);
+                    }}
+                    aria-label="Clear destination"
+                    className="shrink-0"
+                  >
+                    <X size={11} />
+                  </button>
+                )}
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {route.mode !== "idle" && (
+          {(start || destination) && (
             <button
-              onClick={reset}
+              onClick={clearRoute}
               className="rounded-full border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
             >
-              New route
+              Clear
             </button>
           )}
           <StationSearch onSelectStation={handleSearchSelect} />
@@ -121,35 +146,22 @@ export default function Home() {
           userPosition={position}
           focusStation={focusStation}
         />
+
+        {hasRoute && !sheetOpen && (
+          <button
+            onClick={() => setSheetOpen(true)}
+            className="absolute bottom-4 left-1/2 z-[1000] flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-lg hover:bg-green-700"
+          >
+            View route <ArrowRight size={15} />
+          </button>
+        )}
       </div>
 
-      {route.mode === "confirm-pending" && (
-        <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-neutral-200 bg-white px-4 py-3 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
-          <p className="text-sm">
-            <span className="font-medium">{route.start.nameEn}</span>
-            {" → "}
-            <span className="font-medium">{route.destination.nameEn}</span>
-          </p>
-          <div className="flex shrink-0 gap-2">
-            <button
-              onClick={reset}
-              className="rounded-full p-2 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-              aria-label="Cancel"
-            >
-              <X size={18} />
-            </button>
-            <button
-              onClick={confirmRoute}
-              className="flex items-center gap-1.5 rounded-full bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-white dark:text-neutral-900"
-            >
-              <Check size={16} />
-              Confirm
-            </button>
-          </div>
-        </div>
-      )}
-
-      <RoutePanel state={panelState} userPosition={position} onClose={reset} />
+      <RoutePanel
+        state={sheetOpen ? panelState : null}
+        userPosition={position}
+        onClose={() => setSheetOpen(false)}
+      />
     </main>
   );
 }

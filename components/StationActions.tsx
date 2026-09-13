@@ -6,12 +6,20 @@ import { StationEta } from "@/components/StationEta";
 export interface StationActionsProps {
   station: Station;
   startCode: string | null;
+  destinationCode: string | null;
   onSetStart: (station: Station) => void;
   onSetDestination: (station: Station) => void;
 }
 
-export function StationActions({ station, startCode, onSetStart, onSetDestination }: StationActionsProps) {
+export function StationActions({
+  station,
+  startCode,
+  destinationCode,
+  onSetStart,
+  onSetDestination,
+}: StationActionsProps) {
   const isStart = station.code === startCode;
+  const isDestination = station.code === destinationCode;
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -19,17 +27,15 @@ export function StationActions({ station, startCode, onSetStart, onSetDestinatio
       <div className="flex gap-2">
         <button
           onClick={() => onSetStart(station)}
-          className="flex-1 rounded-full bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-700 dark:bg-white dark:text-neutral-900"
+          className="flex-1 rounded-full bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700"
         >
-          {isStart ? "Start ✓" : "Set as start"}
+          {isStart ? "Start ✓" : "Start"}
         </button>
         <button
           onClick={() => onSetDestination(station)}
-          disabled={startCode === null || isStart}
-          title={startCode === null ? "Set a start station first" : undefined}
-          className="flex-1 rounded-full border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 enabled:hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-neutral-700 dark:text-neutral-300 dark:enabled:hover:bg-neutral-800"
+          className="flex-1 rounded-full border border-green-600 bg-white px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50 dark:bg-neutral-900 dark:text-green-400 dark:hover:bg-neutral-800"
         >
-          Set as destination
+          {isDestination ? "Destination ✓" : "Destination"}
         </button>
       </div>
     </div>

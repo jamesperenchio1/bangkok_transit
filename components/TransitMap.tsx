@@ -36,7 +36,7 @@ function FocusStation({ station }: { station: Station | null }) {
   const map = useMap();
   useEffect(() => {
     if (!station) return;
-    map.flyTo([station.lat, station.lon], Math.max(map.getZoom(), 15), { duration: 0.6 });
+    map.flyTo([station.lat, station.lon], Math.max(map.getZoom(), 13), { duration: 0.6 });
   }, [station, map]);
   return null;
 }
@@ -193,7 +193,9 @@ export function TransitMap({
 
       {stations.map((s) => {
         const onPath = pathCodes.has(s.code);
-        const isEndpoint = s.code === startCode || s.code === destinationCode;
+        const isStart = s.code === startCode;
+        const isDestination = s.code === destinationCode;
+        const isEndpoint = isStart || isDestination;
         const dimmed = isRouting && !onPath;
         const color = s.lines[0] ? LINE_COLORS[s.lines[0].line] : "#666";
         return (
@@ -202,8 +204,11 @@ export function TransitMap({
             center={[s.lat, s.lon]}
             radius={isEndpoint ? 8 : s.lines.length > 1 ? 6 : 4}
             pathOptions={{
-              color: dimmed ? "#ccc" : "#fff",
-              weight: isEndpoint ? 3 : 1.5,
+              // Green ring = start, dashed green ring = destination, so the
+              // two ends of the route are distinguishable at a glance.
+              color: dimmed ? "#ccc" : isEndpoint ? "#16a34a" : "#fff",
+              weight: isEndpoint ? 4 : 1.5,
+              dashArray: isDestination && !isStart ? "3 2" : undefined,
               fillColor: dimmed ? "#ddd" : color,
               fillOpacity: dimmed ? 0.7 : 1,
             }}
@@ -234,6 +239,7 @@ export function TransitMap({
                 <StationActions
                   station={s}
                   startCode={startCode}
+                  destinationCode={destinationCode}
                   onSetStart={handleSetStart}
                   onSetDestination={handleSetDestination}
                 />

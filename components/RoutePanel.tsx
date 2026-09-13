@@ -130,7 +130,9 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
                           </span>
                         )}
                       </p>
-                      {leg.station.hasLiveArrivals && isLast && <LiveEta station={leg.station} />}
+                      {leg.station.hasLiveArrivals && (isLast || i === 0) && (
+                        <LiveEta station={leg.station} />
+                      )}
                     </div>
                   </li>
                 );
@@ -145,9 +147,16 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
 
 function LiveEta({ station }: { station: Station }) {
   const { data } = useArrivals(station.code);
-  const trains = data?.platforms?.[0]?.trains ?? [];
+  if (!data) return null;
+  if (!data.service_active) {
+    // Upstream's next_service string already includes its own leading "~"
+    // (e.g. "~05:30") - strip it before adding ours, or it doubles up.
+    const nextService = data.next_service?.replace(/^~\s*/, "") ?? "?";
+    return <p className="text-xs text-neutral-500">Not running — next ~{nextService}</p>;
+  }
+  const trains = data.platforms?.[0]?.trains ?? [];
   const [next, ...upcoming] = trains;
-  if (!next || !data) return null;
+  if (!next) return null;
   const clockTime = arrivalClockTime(data.timestamp, next.eta_minutes);
   const laterMinutes = upcoming
     .slice(0, 2)
