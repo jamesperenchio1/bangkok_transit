@@ -145,13 +145,19 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
 
 function LiveEta({ station }: { station: Station }) {
   const { data } = useArrivals(station.code);
-  const next = data?.platforms?.[0]?.trains?.[0]?.eta_minutes;
-  if (next === undefined || !data) return null;
-  const clockTime = arrivalClockTime(data.timestamp, next);
+  const trains = data?.platforms?.[0]?.trains ?? [];
+  const [next, ...upcoming] = trains;
+  if (!next || !data) return null;
+  const clockTime = arrivalClockTime(data.timestamp, next.eta_minutes);
+  const laterMinutes = upcoming
+    .slice(0, 2)
+    .map((t) => minutesLabel(t.eta_minutes))
+    .join(", ");
   return (
     <p className="text-xs text-neutral-500">
-      Next arrival ~{minutesLabel(next)}
+      Next arrival ~{minutesLabel(next.eta_minutes)}
       {clockTime ? ` · ${clockTime}` : ""}
+      {laterMinutes ? ` (then ~${laterMinutes})` : ""}
     </p>
   );
 }

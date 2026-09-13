@@ -18,18 +18,28 @@ export function StationEta({ station }: { station: Station }) {
     return <p className="text-xs text-neutral-500">Not running - next ~{data.next_service}</p>;
   }
 
-  const next = data.platforms?.[0]?.trains?.[0];
+  const trains = data.platforms?.[0]?.trains ?? [];
+  const [next, ...upcoming] = trains;
   if (!next) return <p className="text-xs text-neutral-500">No live arrivals right now</p>;
 
   const stale = !isFresh(data.timestamp);
   const clockTime = arrivalClockTime(data.timestamp, next.eta_minutes);
+  const laterMinutes = upcoming
+    .slice(0, 2)
+    .map((t) => minutesLabel(t.eta_minutes))
+    .join(", ");
 
   return (
-    <p className="text-xs text-neutral-500">
-      Next{" "}
-      {stale
-        ? "updating…"
-        : `~${minutesLabel(next.eta_minutes)}${clockTime ? ` · ${clockTime}` : ""}`}
-    </p>
+    <div className="flex flex-col gap-0.5">
+      <p className="text-xs text-neutral-500">
+        Next{" "}
+        {stale
+          ? "updating…"
+          : `~${minutesLabel(next.eta_minutes)}${clockTime ? ` · ${clockTime}` : ""}`}
+      </p>
+      {!stale && laterMinutes && (
+        <p className="text-xs text-neutral-400">Then ~{laterMinutes}</p>
+      )}
+    </div>
   );
 }
