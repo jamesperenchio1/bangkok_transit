@@ -1,39 +1,38 @@
 import { NextResponse } from "next/server";
-import { getManyArrivals } from "@/lib/arrivals-service";
+import { refreshInBackground, snapshotMany } from "@/lib/arrivals-service";
 import { liveStations } from "@/data/stations";
 
 /**
  * Bulk arrivals for every station that has a live API, so the client can
  * paint times instantly for any station without a per-station round trip.
- * Response shape: `{ arrivals: { [code]: Arrivals }, stale: { [code]: bool } }`.
+ *
+ * This route never waits on upstream: it returns whatever memory/Redis already
+ * holds and refreshes the missing or ageing stations in the background. That
+ * keeps the response fast for a visitor with an empty cache, not just for
+ * revisits. Stations still being fetched are simply absent from `arrivals`;
+ * the client retries quickly until `total` codes have arrived.
+ *
+ * Response shape: `{ arrivals: { [code]: Arrivals }, stale: { [code]: bool },
+ * total: number }`.
  */
 export async function GET() {
-  try {
-    const results = await getManyArrivals(liveStations.map((s) => s.code));
+  const codes = liveStations.map((s) => s.code);
+  const results = await snapshotMany(codes);
 
-    const arrivals: Record<string, unknown> = {};
-    const stale: Record<string, boolean> = {};
-    for (const [code, result] of Object.entries(results)) {
-      arrivals[code] = result.data;
-      if (result.stale) stale[code] = true;
-    }
+  // Warm everything missing or ageing once this response has been sent.
+  refreshInBackground(codes);
 
-    return NextResponse.json(
-      { arrivals, stale },
-      // Shared at the edge for 45s so every client sees the same payload
-      // without each one re-fetching all 61 stations. 45+45 = 90s, the same
-      // window the data is considered fresh for, so nothing served is ever
-      // past its useful life.
-      {
-        headers: {
-          "Cache-Control": "public, s-maxage=45, stale-while-revalidate=45",
-        },
-      },
-    );
-  } catch {
-    return NextResponse.json(
-      { error: "Could not reach the arrivals service." },
-      { status: 502, headers: { "Cache-Control": "no-store" } },
-    );
+  const arrivals: Record<string, unknown> = {};
+  const stale: Record<string, boolean> = {};
+  for (const [code, result] of Object.entries(results)) {
+    arrivals[code] = result.data;
+    if (result.stale) stale[code] = true;
   }
+
+  // Never cached: a partial snapshot must not be held at the edge, or clients
+  // would keep seeing the gap instead of the stations that have since landed.
+  return NextResponse.json(
+    { arrivals, stale, total: codes.length },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }

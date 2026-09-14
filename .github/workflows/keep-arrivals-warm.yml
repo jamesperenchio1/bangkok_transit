@@ -1,20 +1,21 @@
 name: Keep arrivals cache warm
 
-# There is no batch endpoint on the upstream BTS API (confirmed by probing
+# The upstream BTS API has no batch endpoint (confirmed by probing
 # /arrivals/all, comma-separated codes, /arrivals/batch, and multi-segment
-# paths - all 400/404), so "fetch everything at once" means this: loop over
-# every station sequentially on a fixed interval and populate the shared
-# Redis cache, so a real user's tap almost always finds fresh-enough data
-# already sitting there instead of paying the ~2-6s upstream round trip.
-# See lib/bts.ts CACHE_SERVE_MS - the API route trusts a Redis entry up to
-# 6 minutes old, a comfortable multiple of this job's interval, so ordinary
-# cron jitter never forces a slow on-demand fetch.
+# paths - all 400/404), so the server fans out over every station itself.
 #
-# 5 minutes is GitHub Actions' practical floor for scheduled workflows (it
-# can be delayed further under load, especially around the top of the
-# hour) - fine here since exact timing isn't a correctness requirement,
-# just "close enough, most of the time." Runs on GitHub's free
-# public-repo Actions minutes.
+# /api/arrivals is the bulk endpoint: it returns immediately from memory/Redis
+# and refreshes anything missing or ageing in the background. So a single
+# request here warms the whole shared cache, which is why this job no longer
+# loops over 61 stations one at a time.
+#
+# Timing note: GitHub throttles scheduled workflows on free/public repos far
+# beyond the requested interval - observed runs land 2-6 HOURS apart, not every
+# 5 minutes. That is no longer a correctness problem: the bulk route also
+# refreshes in the background on every real page load, so visitors keep the
+# cache warm themselves. This job is just a backstop for long quiet periods.
+#
+# See lib/bts.ts CACHE_SERVE_MS - a Redis entry is trusted up to 10 minutes old.
 
 on:
   schedule:
@@ -25,18 +26,26 @@ jobs:
   warm:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping every BTS station's arrivals endpoint
+      - name: Warm the bulk arrivals cache, then confirm it filled
         env:
           BASE_URL: ${{ vars.APP_URL || 'https://bangkok-transit.vercel.app' }}
         run: |
-          codes="N24 N23 N22 N21 N20 N19 N18 N17 N16 N15 N14 N13 N12 N11 N10 N9 N8 N7 N6 N5 N4 N3 N2 N1 CEN E1 E2 E3 E4 E5 E6 E7 E8 E9 E10 E11 E12 E13 E14 E15 E16 E17 E18 E19 E20 E21 E22 E23 W1 S1 S2 S3 S4 S5 S6 S7 S8 S9 S10 S11 S12"
-          fail=0
-          for code in $codes; do
-            status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$BASE_URL/api/arrivals/$code")
-            if [ "$status" != "200" ]; then
-              echo "warn: $code returned $status"
-              fail=$((fail+1))
-            fi
-            sleep 0.4
-          done
-          echo "done: $fail/61 non-200 responses"
+          set -euo pipefail
+
+          echo "triggering background refresh..."
+          curl -s -o /dev/null -w "bulk: %{http_code} in %{time_total}s\n" \
+            --max-time 30 "$BASE_URL/api/arrivals"
+
+          # The first call only returns what Redis already had; the refresh it
+          # kicked off runs after the response. Give it time to land, then ask
+          # again and count how many of the 61 live stations are now present.
+          echo "waiting for the background refresh to finish..."
+          sleep 20
+
+          body=$(curl -s --max-time 30 "$BASE_URL/api/arrivals")
+          count=$(printf '%s' "$body" | grep -o '"code"' | wc -l | tr -d ' ')
+          echo "warm: $count/61 stations cached"
+
+          if [ "$count" -lt 55 ]; then
+            echo "::warning::only $count/61 stations cached after refresh"
+          fi

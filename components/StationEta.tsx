@@ -51,7 +51,12 @@ export function StationEta({ station }: { station: Station }) {
   if (!station.hasLiveArrivals) {
     return <p className="text-xs text-neutral-500">No live data for this line</p>;
   }
-  if (!data) return null;
+  if (!data) {
+    // Only reachable on a true cold start, before the bulk snapshot or the
+    // single-station fallback lands (~2s). Reserve the space so the card does
+    // not jump when the times arrive.
+    return <p className="text-xs text-neutral-400">Checking times…</p>;
+  }
 
   if (!data.service_active) {
     // Upstream's next_service string already includes its own leading "~"

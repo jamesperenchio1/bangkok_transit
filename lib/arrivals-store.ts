@@ -11,6 +11,15 @@ import { isValidArrivals, type Arrivals } from "./bts";
  */
 
 const POLL_MS = 60_000;
+/**
+ * The bulk endpoint returns immediately and fills in from the server's
+ * background refresh, so a first-time visitor (empty localStorage) starts with
+ * a partial payload. Poll fast until every live station has arrived, then fall
+ * back to the slow interval.
+ */
+const FAST_POLL_MS = 2_000;
+const MAX_FAST_POLLS = 15;
+
 const SNAPSHOT_KEY = "bts:arrivals:v1";
 // Past this age a persisted entry is from an earlier visit rather than merely
 // a minute behind; don't present it as current data.
@@ -71,6 +80,26 @@ export const useArrivalsStore = create<ArrivalsStore>((set) => ({
     }),
 }));
 
+/** Single-station fallback used when the bulk payload hasn't reached a code yet. */
+const stationFetches = new Set<string>();
+
+export async function fetchStationArrivals(code: string): Promise<void> {
+  if (stationFetches.has(code)) return;
+  stationFetches.add(code);
+  try {
+    const res = await fetch(`/api/arrivals/${code}`, { cache: "no-store" });
+    if (!res.ok) return;
+    const json = (await res.json()) as Arrivals & { stale?: boolean };
+    if (!isValidArrivals(json)) return;
+    const entry: ArrivalsEntry = json.stale ? { ...json, stale: true } : json;
+    useArrivalsStore.getState().merge({ [code]: entry });
+  } catch {
+    // keep showing whatever we already have; the next poll will retry
+  } finally {
+    stationFetches.delete(code);
+  }
+}
+
 let started = false;
 
 /** Seed from localStorage, fetch everything once, then poll. Idempotent. */
@@ -83,27 +112,45 @@ export function startArrivalsPolling() {
     useArrivalsStore.getState().setMap(seeded);
   }
 
+  let expected = 0;
+  let fastPolls = 0;
+
   async function poll() {
+    let complete = true;
     try {
       const res = await fetch("/api/arrivals", { cache: "no-store" });
-      if (!res.ok) return;
-      const json = (await res.json()) as {
-        arrivals?: Record<string, Arrivals>;
-        stale?: Record<string, boolean>;
-      };
-      if (!json.arrivals) return;
-
-      const incoming: ArrivalsMap = {};
-      for (const [code, data] of Object.entries(json.arrivals)) {
-        if (!isValidArrivals(data)) continue;
-        incoming[code] = json.stale?.[code] ? { ...data, stale: true } : data;
+      if (res.ok) {
+        const json = (await res.json()) as {
+          arrivals?: Record<string, Arrivals>;
+          stale?: Record<string, boolean>;
+          total?: number;
+        };
+        if (json.arrivals) {
+          const incoming: ArrivalsMap = {};
+          for (const [code, data] of Object.entries(json.arrivals)) {
+            if (!isValidArrivals(data)) continue;
+            incoming[code] = json.stale?.[code] ? { ...data, stale: true } : data;
+          }
+          useArrivalsStore.getState().merge(incoming);
+        }
+        if (typeof json.total === "number") expected = json.total;
       }
-      useArrivalsStore.getState().merge(incoming);
     } catch {
       // network hiccup - keep showing what we have and retry next tick
     }
+
+    const held = Object.keys(useArrivalsStore.getState().map).length;
+    complete = expected > 0 && held >= expected;
+
+    let delay = POLL_MS;
+    if (!complete && fastPolls < MAX_FAST_POLLS) {
+      fastPolls += 1;
+      delay = FAST_POLL_MS;
+    } else {
+      fastPolls = 0;
+    }
+    setTimeout(poll, delay);
   }
 
   poll();
-  setInterval(poll, POLL_MS);
 }
