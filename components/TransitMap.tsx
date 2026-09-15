@@ -1,7 +1,7 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import { canvas } from "leaflet";
+import { canvas, Draggable } from "leaflet";
 import { useEffect, useMemo, useRef } from "react";
 import type { Popup as LeafletPopup } from "leaflet";
 import { CircleMarker, MapContainer, Polyline, Popup, TileLayer, useMap } from "react-leaflet";
@@ -24,6 +24,16 @@ const STATION_BOUNDS: [[number, number], [number, number]] = [
 // `tolerance` pads every shape's hit-test area (not its drawn appearance) by
 // this many pixels in every direction, so a tap near a marker still counts.
 const touchFriendlyRenderer = canvas({ tolerance: 15 });
+
+// Leaflet's own map-dragging handler discards any tap where the finger
+// moved more than 3px between touchdown and touchup (its hard-coded
+// default), treating it as a micro-drag instead of a click - real fingers
+// almost always move at least that much, so on a real device this silently
+// ate every station tap before it ever reached the canvas hit-test above.
+// clickTolerance isn't exposed as a per-map option in Leaflet; the only way
+// to raise it is patching it globally on Draggable's shared prototype, once,
+// before any Draggable (and therefore any map) is created.
+Draggable.mergeOptions({ clickTolerance: 15 });
 
 export interface TransitMapProps {
   onSelectStation: (station: Station) => void;
