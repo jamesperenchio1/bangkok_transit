@@ -18,13 +18,6 @@ const STATION_BOUNDS: [[number, number], [number, number]] = [
   [Math.max(...stations.map((s) => s.lat)), Math.max(...stations.map((s) => s.lon))],
 ];
 
-// Station markers are drawn a few pixels wide - fine for a mouse cursor, but
-// a real fingertip is much wider than that and consistently misses them,
-// which reads as "tapping does nothing" on mobile. The canvas renderer's
-// `tolerance` pads every shape's hit-test area (not its drawn appearance) by
-// this many pixels in every direction, so a tap near a marker still counts.
-const touchFriendlyRenderer = canvas({ tolerance: 15 });
-
 // Leaflet's own map-dragging handler discards any tap where the finger
 // moved more than 3px between touchdown and touchup (its hard-coded
 // default), treating it as a micro-drag instead of a click - real fingers
@@ -157,6 +150,18 @@ export function TransitMap({
       })),
     [lineKeys],
   );
+
+  // Station markers are drawn a few pixels wide - fine for a mouse cursor,
+  // but a real fingertip is much wider than that and consistently misses
+  // them, which reads as "tapping does nothing" on mobile. The canvas
+  // renderer's `tolerance` pads every shape's hit-test area (not its drawn
+  // appearance) by this many pixels in every direction, so a tap near a
+  // marker still counts. This must be created fresh per mount (not shared
+  // at module scope): an `L.Canvas` renderer binds to exactly one map
+  // instance, and reusing one across mounts (e.g. React Strict Mode's
+  // double-mount in dev) leaves it bound to a stale map, so the canvas
+  // painted lines/markers stop tracking pan/zoom on the live map.
+  const touchFriendlyRenderer = useMemo(() => canvas({ tolerance: 15 }), []);
 
   return (
     <MapContainer
