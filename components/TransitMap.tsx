@@ -1,6 +1,7 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
+import { canvas } from "leaflet";
 import { useEffect, useMemo, useRef } from "react";
 import type { Popup as LeafletPopup } from "leaflet";
 import { CircleMarker, MapContainer, Polyline, Popup, TileLayer, useMap } from "react-leaflet";
@@ -16,6 +17,13 @@ const STATION_BOUNDS: [[number, number], [number, number]] = [
   [Math.min(...stations.map((s) => s.lat)), Math.min(...stations.map((s) => s.lon))],
   [Math.max(...stations.map((s) => s.lat)), Math.max(...stations.map((s) => s.lon))],
 ];
+
+// Station markers are drawn a few pixels wide - fine for a mouse cursor, but
+// a real fingertip is much wider than that and consistently misses them,
+// which reads as "tapping does nothing" on mobile. The canvas renderer's
+// `tolerance` pads every shape's hit-test area (not its drawn appearance) by
+// this many pixels in every direction, so a tap near a marker still counts.
+const touchFriendlyRenderer = canvas({ tolerance: 15 });
 
 export interface TransitMapProps {
   onSelectStation: (station: Station) => void;
@@ -145,7 +153,7 @@ export function TransitMap({
       center={[13.75, 100.55]}
       zoom={11}
       className="h-full w-full"
-      preferCanvas
+      renderer={touchFriendlyRenderer}
     >
       <FitStationBounds />
       <FocusStation station={focusStation} />

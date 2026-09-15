@@ -43,7 +43,12 @@ export function useGeolocation(): UseGeolocationResult {
         else if (err.code === err.TIMEOUT) setError("timeout");
         else setError("timeout");
       },
-      { enableHighAccuracy: true, maximumAge: 10_000, timeout: 15_000 },
+      // maximumAge: 0 forces a fresh GPS fix on every update instead of ever
+      // handing back a cached one - with a cache allowed, the browser can
+      // keep reporting the same stale fix for its whole maximumAge window
+      // while the user is actually walking, which is the opposite of "real
+      // time" tracking.
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 },
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
