@@ -44,7 +44,7 @@ export default function Home() {
     setSheetOpen(true);
   };
 
-  // Tapping a station only opens its info card (a Leaflet popup). It never
+  // Tapping a station only opens its info card (a MapLibre popup). It never
   // mutates route state - routes change through the card's buttons or the
   // header chips. Dismissing the sheet keeps the card visible.
   const handleSelectStation = () => {

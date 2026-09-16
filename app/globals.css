@@ -29,16 +29,26 @@ svg circle {
   touch-action: manipulation;
 }
 
-/* Leaflet's popup chrome doesn't follow the page theme on its own - it's
+/* MapLibre's popup chrome doesn't follow the page theme on its own - it's
    plain white in both light and dark mode, which makes the `dark:` classes
    on the popup's own content (station name, action buttons) land on the
-   wrong background and become unreadable. Theme the chrome to match. */
-.leaflet-popup-content-wrapper,
-.leaflet-popup-tip {
+   wrong background and become unreadable. Theme the chrome to match. The
+   tip's visible color depends on which edge is colored per anchor side
+   (border-bottom-color for a top-anchored tip, border-top-color for
+   bottom-anchored, etc.) - overriding all four covers every anchor without
+   needing a rule per direction. */
+.maplibregl-popup-content {
   background: var(--background) !important;
   color: var(--foreground) !important;
 }
 
-.leaflet-popup-close-button {
+.maplibregl-popup-tip {
+  border-top-color: var(--background) !important;
+  border-bottom-color: var(--background) !important;
+  border-left-color: var(--background) !important;
+  border-right-color: var(--background) !important;
+}
+
+.maplibregl-popup-close-button {
   color: var(--foreground) !important;
 }

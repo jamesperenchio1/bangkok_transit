@@ -1,10 +1,16 @@
 /**
  * Extracts the REAL curved track geometry from data/raw/bma-lines.geojson
  * (BMA's GIS data - see scripts/fetch-transit-network.ts) into
- * data/line-geometry.json, keyed by our LineKey. This is what
+ * public/line-geometry.json, keyed by our LineKey. This is what
  * components/TransitMap.tsx draws for each line - straight station-to-
  * station segments (derived from data/line-sequences.json) look nothing
  * like the real track, which curves along roads/rivers between stops.
+ *
+ * Written to public/ (fetched at runtime by lib/line-geometry.ts) rather
+ * than imported as a TS module, so it downloads in parallel with the map's
+ * own JS/style/tile requests instead of being bundled inline with them.
+ * This is a one-time/rarely-rerun pipeline (nothing regenerates it on
+ * install or build), so the output must be committed to the repo.
  *
  * A line can map to multiple GIS features (built in phases, or with a
  * branch) and each feature can be a LineString or a MultiLineString - all
@@ -72,7 +78,7 @@ for (const f of features) {
 }
 
 writeFileSync(
-  path.join(ROOT, "data", "line-geometry.json"),
+  path.join(ROOT, "public", "line-geometry.json"),
   JSON.stringify(segmentsByLine),
 );
 

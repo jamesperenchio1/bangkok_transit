@@ -6,7 +6,8 @@ import type { Arrivals } from "./bts";
  * keep billing off Vercel). If env vars are missing, caching is a no-op —
  * the app still works, just always pays the upstream cost.
  */
-const redis =
+/** Exported so lib/rate-limit.ts can reuse this same Redis instance instead of opening a second connection. */
+export const redis =
   process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
     ? new Redis({
         url: process.env.UPSTASH_REDIS_REST_URL,

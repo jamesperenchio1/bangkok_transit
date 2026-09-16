@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, type RefObject } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { LocateFixed } from "lucide-react";
 import { stations, type Station } from "@/data/stations";
-import { fullLineSegments, trackBetween } from "@/lib/line-geometry";
+import { fetchLineGeometry, fullLineSegments, trackBetween, type LineSegments } from "@/lib/line-geometry";
 import type { GeoPosition } from "@/lib/use-geolocation";
 import type { PathResult } from "@/lib/transit-graph";
 import { StationActions } from "@/components/StationActions";
@@ -20,6 +20,10 @@ const STATION_BOUNDS: [[number, number], [number, number]] = [
 ];
 
 const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
+
+// Start/destination marker accent color, shared by the station GeoJSON
+// builder, the destination dashed-ring icon, and the popup content.
+const ENDPOINT_COLOR = "#16a34a";
 
 // MapLibre's `new Worker(new URL('./maplibre-gl-worker.mjs', import.meta.url))`
 // pattern doesn't resolve correctly under Next's bundler (Turbopack or
@@ -62,11 +66,16 @@ const LINE_COLOR_MATCH = [
   "#666",
 ] as unknown as maplibregl.ExpressionSpecification;
 
-function baseLinesGeoJSON(): GeoJSON.FeatureCollection<GeoJSON.LineString> {
+/** The line-brand color for a station's primary line, or a neutral fallback. */
+function stationLineColor(station: Station): string {
+  return station.lines[0] ? LINE_COLORS[station.lines[0].line] : "#666";
+}
+
+function baseLinesGeoJSON(segmentsByLine: LineSegments): GeoJSON.FeatureCollection<GeoJSON.LineString> {
   return {
     type: "FeatureCollection",
     features: lineKeys.flatMap((line) =>
-      fullLineSegments(line).map((positions) => ({
+      fullLineSegments(segmentsByLine, line).map((positions) => ({
         type: "Feature",
         properties: { line },
         geometry: {
@@ -78,13 +87,16 @@ function baseLinesGeoJSON(): GeoJSON.FeatureCollection<GeoJSON.LineString> {
   };
 }
 
-function routeGeoJSON(path: PathResult): GeoJSON.FeatureCollection<GeoJSON.LineString> {
+function routeGeoJSON(
+  path: PathResult,
+  segmentsByLine: LineSegments,
+): GeoJSON.FeatureCollection<GeoJSON.LineString> {
   return {
     type: "FeatureCollection",
     features: path.slice(1).flatMap((leg, i) => {
       const prevStation = path[i].station;
       if (!leg.line) return [];
-      const positions = trackBetween(leg.line, prevStation, leg.station);
+      const positions = trackBetween(segmentsByLine, leg.line, prevStation, leg.station);
       return [
         {
           type: "Feature" as const,
@@ -113,7 +125,6 @@ function stationsGeoJSON(
       const isDestination = s.code === destinationCode;
       const isEndpoint = isStart || isDestination;
       const dimmed = isRouting && !onPath;
-      const color = s.lines[0] ? LINE_COLORS[s.lines[0].line] : "#666";
       return {
         type: "Feature",
         properties: {
@@ -121,9 +132,9 @@ function stationsGeoJSON(
           radius: isEndpoint ? 8 : s.lines.length > 1 ? 6 : 4,
           // Green fill = start, white fill/green outline = destination, so
           // the two ends of the route are distinguishable at a glance.
-          strokeColor: dimmed ? "#ccc" : isEndpoint ? "#16a34a" : "#fff",
+          strokeColor: dimmed ? "#ccc" : isEndpoint ? ENDPOINT_COLOR : "#fff",
           strokeWidth: isEndpoint ? 4 : 1.5,
-          fillColor: dimmed ? "#ddd" : isStart ? "#16a34a" : color,
+          fillColor: dimmed ? "#ddd" : isStart ? ENDPOINT_COLOR : stationLineColor(s),
           fillOpacity: dimmed ? 0.7 : 1,
           isDestination,
         },
@@ -160,6 +171,8 @@ export function TransitMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const loadedRef = useRef(false);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const geometryRef = useRef<LineSegments | null>(null);
   const popupsRef = useRef(new Map<string, { popup: maplibregl.Popup; root: Root; render: () => void }>());
 
   const pathCodes = useMemo(
@@ -202,7 +215,11 @@ export function TransitMap({
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
 
     map.on("load", () => {
-      map.addSource(LINES_SOURCE, { type: "geojson", data: baseLinesGeoJSON() });
+      // Starts empty and fills in once the line-geometry fetch (kicked off
+      // below, in parallel with the map/style itself) resolves, rather than
+      // blocking the rest of this handler (fitBounds, click handlers, other
+      // sources) on that fetch.
+      map.addSource(LINES_SOURCE, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addLayer({
         id: LINES_LAYER,
         type: "line",
@@ -213,6 +230,13 @@ export function TransitMap({
           "line-width": 4,
           "line-opacity": 0.9,
         },
+      });
+      fetchLineGeometry().then((segmentsByLine) => {
+        geometryRef.current = segmentsByLine;
+        // The component may have unmounted (and torn down `map`) before
+        // this fetch resolved - `mapRef` is nulled out in that cleanup.
+        if (mapRef.current !== map) return;
+        map.getSource<maplibregl.GeoJSONSource>(LINES_SOURCE)?.setData(baseLinesGeoJSON(segmentsByLine));
       });
 
       map.addSource(ROUTE_SOURCE, {
@@ -272,14 +296,16 @@ export function TransitMap({
         const canvas = document.createElement("canvas");
         canvas.width = size;
         canvas.height = size;
-        const ctx = canvas.getContext("2d")!;
-        ctx.strokeStyle = "#16a34a";
-        ctx.lineWidth = 3;
-        ctx.setLineDash([3, 3]);
-        ctx.beginPath();
-        ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
-        ctx.stroke();
-        map.addImage(DEST_RING_ICON, ctx.getImageData(0, 0, size, size));
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.strokeStyle = ENDPOINT_COLOR;
+          ctx.lineWidth = 3;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
+          ctx.stroke();
+          map.addImage(DEST_RING_ICON, ctx.getImageData(0, 0, size, size));
+        }
       }
       map.addLayer({
         id: DEST_RING_LAYER,
@@ -345,13 +371,19 @@ export function TransitMap({
       };
       if (!tryFit()) {
         const observer = new ResizeObserver(() => {
-          if (tryFit()) observer.disconnect();
+          if (tryFit()) {
+            observer.disconnect();
+            resizeObserverRef.current = null;
+          }
         });
+        resizeObserverRef.current = observer;
         observer.observe(container);
       }
     });
 
     return () => {
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
       popups.forEach(({ popup, root }) => {
         root.unmount();
         popup.remove();
@@ -366,7 +398,7 @@ export function TransitMap({
   // Base line styling: dim to grey while a route is highlighted.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !loadedRef.current) return;
+    if (!map) return;
     const apply = () => {
       map.setPaintProperty(LINES_LAYER, "line-color", isRouting ? "#ccc" : LINE_COLOR_MATCH);
       map.setPaintProperty(LINES_LAYER, "line-width", isRouting ? 3 : 4);
@@ -376,16 +408,30 @@ export function TransitMap({
     else map.once("load", apply);
   }, [isRouting]);
 
-  // Highlighted route geometry.
+  // Highlighted route geometry. Needs the fetched line-geometry data (see
+  // lib/line-geometry.ts) only when there's an actual path to draw; an
+  // empty/cleared route never touches it.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const apply = () => {
-      const source = map.getSource<maplibregl.GeoJSONSource>(ROUTE_SOURCE);
-      source?.setData(path ? routeGeoJSON(path) : { type: "FeatureCollection", features: [] });
+    const applyWith = (segmentsByLine: LineSegments) => {
+      const apply = () => {
+        const source = map.getSource<maplibregl.GeoJSONSource>(ROUTE_SOURCE);
+        source?.setData(path ? routeGeoJSON(path, segmentsByLine) : { type: "FeatureCollection", features: [] });
+      };
+      if (loadedRef.current) apply();
+      else map.once("load", apply);
     };
-    if (loadedRef.current) apply();
-    else map.once("load", apply);
+    if (!path) {
+      applyWith({});
+    } else if (geometryRef.current) {
+      applyWith(geometryRef.current);
+    } else {
+      fetchLineGeometry().then((segmentsByLine) => {
+        if (mapRef.current !== map) return;
+        applyWith(segmentsByLine);
+      });
+    }
   }, [path]);
 
   // Station marker styling (start/destination/on-path/dimmed).
@@ -485,7 +531,7 @@ function openPopup(
   });
 
   const render = () => {
-    const color = station.lines[0] ? LINE_COLORS[station.lines[0].line] : "#666";
+    const color = stationLineColor(station);
     root.render(
       <div className="flex flex-col gap-2 py-0.5">
         <div className="flex items-center gap-2">

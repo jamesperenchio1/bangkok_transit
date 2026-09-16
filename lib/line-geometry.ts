@@ -1,8 +1,20 @@
-import lineGeometry from "@/data/line-geometry.json";
+export type LatLon = [number, number];
+export type LineSegments = Record<string, LatLon[][]>;
 
-type LatLon = [number, number];
+// Fetched as a plain static file (public/line-geometry.json, built by
+// scripts/build-line-geometry.ts) rather than a static TS import, so its
+// ~37KB gzip downloads in parallel with the map's own JS/style/tile
+// requests instead of being serialized into that chunk's own parse. Cached
+// at module scope so every caller (the map's initial line layer, and the
+// route-highlight effect on every path change) shares one request.
+let cachedPromise: Promise<LineSegments> | null = null;
 
-const segmentsByLine = lineGeometry as unknown as Record<string, LatLon[][]>;
+export function fetchLineGeometry(): Promise<LineSegments> {
+  if (!cachedPromise) {
+    cachedPromise = fetch("/line-geometry.json").then((res) => res.json() as Promise<LineSegments>);
+  }
+  return cachedPromise;
+}
 
 function haversineMeters(a: LatLon, b: LatLon): number {
   const R = 6371000;
@@ -33,10 +45,10 @@ const SNAP_THRESHOLD_METERS = 600;
 
 /**
  * The real curved track between two adjacent stops on one line, taken from
- * BMA's GIS track geometry (data/line-geometry.json) rather than a straight
- * line between the two station points - the actual track curves along roads
- * and rivers between stops, and drawing it as a straight chord cuts across
- * the map in a way that doesn't match anything on the ground.
+ * BMA's GIS track geometry (public/line-geometry.json) rather than a
+ * straight line between the two station points - the actual track curves
+ * along roads and rivers between stops, and drawing it as a straight chord
+ * cuts across the map in a way that doesn't match anything on the ground.
  *
  * Falls back to a straight line if the line has no geometry, or if the two
  * stations don't land close enough to the same source segment (the GIS data
@@ -44,6 +56,7 @@ const SNAP_THRESHOLD_METERS = 600;
  * everything a route needs is on one of them, but there's no guarantee).
  */
 export function trackBetween(
+  segmentsByLine: LineSegments,
   lineKey: string,
   from: { lat: number; lon: number },
   to: { lat: number; lon: number },
@@ -81,6 +94,6 @@ export function trackBetween(
   return [fromPoint, ...slice.slice(1, -1), toPoint];
 }
 
-export function fullLineSegments(lineKey: string): LatLon[][] {
+export function fullLineSegments(segmentsByLine: LineSegments, lineKey: string): LatLon[][] {
   return segmentsByLine[lineKey] ?? [];
 }

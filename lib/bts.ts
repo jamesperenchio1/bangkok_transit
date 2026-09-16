@@ -76,18 +76,41 @@ export function isFresh(timestampIso: string, now = Date.now()): boolean {
 }
 
 /**
+ * Past these, a field is malformed/hostile rather than merely unusual - a
+ * real BTS platform has a handful of trains, not hundreds, and station/
+ * destination names are short. Bounding sizes here, not just shapes, keeps
+ * a misbehaving upstream from inflating what gets cached in Redis and
+ * relayed to every polling client.
+ */
+const MAX_PLATFORMS = 10;
+const MAX_TRAINS_PER_PLATFORM = 20;
+const MAX_STRING_LENGTH = 200;
+
+function isBoundedString(v: unknown): v is string {
+  return typeof v === "string" && v.length <= MAX_STRING_LENGTH;
+}
+
+/**
  * The upstream is undocumented and, for stations outside its real coverage
  * (e.g. the northern Sukhumvit extension), can return HTTP 200 with a body
  * that's missing `platforms` entirely rather than an error status. Treat
- * that shape as a failure too, so it goes through the normal
- * stale-cache-or-502 path instead of being forwarded to the client as if it
- * were valid data.
+ * that shape (and anything exceeding the size bounds above) as a failure
+ * too, so it goes through the normal stale-cache-or-502 path instead of
+ * being forwarded to the client as if it were valid data.
  */
 export function isValidArrivals(data: unknown): data is Arrivals {
   if (!data || typeof data !== "object") return false;
   const d = data as Partial<Arrivals>;
-  return (
-    Array.isArray(d.platforms) && typeof d.station?.code === "string" && typeof d.timestamp === "string"
+  if (!Array.isArray(d.platforms) || d.platforms.length > MAX_PLATFORMS) return false;
+  if (!isBoundedString(d.station?.code) || !isBoundedString(d.timestamp)) return false;
+  return d.platforms.every(
+    (p) =>
+      p &&
+      typeof p === "object" &&
+      Array.isArray(p.trains) &&
+      p.trains.length <= MAX_TRAINS_PER_PLATFORM &&
+      isBoundedString(p.direction) &&
+      p.trains.every((t) => t && typeof t === "object" && isBoundedString(t.destination)),
   );
 }
 

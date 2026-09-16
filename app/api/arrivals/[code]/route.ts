@@ -1,11 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getArrivals } from "@/lib/arrivals-service";
 import { stationsByCode } from "@/data/stations";
+import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ code: string }> },
 ) {
+  const { allowed, retryAfterSeconds } = await checkRateLimit(clientIp(req));
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many requests." },
+      {
+        status: 429,
+        headers: { "Cache-Control": "no-store", "Retry-After": String(retryAfterSeconds) },
+      },
+    );
+  }
+
   const { code } = await params;
   const station = stationsByCode.get(code);
 
