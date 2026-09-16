@@ -48,3 +48,6 @@ next-env.d.ts
 /public/sw.js
 /public/sw.js.map
 /public/swe-worker*.js
+
+# copied by scripts/copy-maplibre-worker.mjs (postinstall)
+/public/maplibre/
