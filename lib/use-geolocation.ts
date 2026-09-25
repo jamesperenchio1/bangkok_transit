@@ -6,6 +6,9 @@ export interface GeoPosition {
   lat: number;
   lon: number;
   accuracy: number;
+  /** Compass bearing in degrees clockwise from true north, or null when the
+   * device isn't moving or doesn't report one. */
+  heading: number | null;
 }
 
 export type GeoError = "denied" | "unsupported" | "timeout" | null;
@@ -32,10 +35,14 @@ export function useGeolocation(): UseGeolocationResult {
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         setError(null);
+        // heading is null when stationary or unsupported, and some browsers
+        // report NaN instead of null in the same cases - normalize both.
+        const heading = pos.coords.heading;
         setPosition({
           lat: pos.coords.latitude,
           lon: pos.coords.longitude,
           accuracy: pos.coords.accuracy,
+          heading: typeof heading === "number" && !Number.isNaN(heading) ? heading : null,
         });
       },
       (err) => {
@@ -43,12 +50,18 @@ export function useGeolocation(): UseGeolocationResult {
         else if (err.code === err.TIMEOUT) setError("timeout");
         else setError("timeout");
       },
-      // maximumAge: 0 forces a fresh GPS fix on every update instead of ever
-      // handing back a cached one - with a cache allowed, the browser can
-      // keep reporting the same stale fix for its whole maximumAge window
-      // while the user is actually walking, which is the opposite of "real
-      // time" tracking.
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 },
+      // maximumAge: 0 looks like it would force the freshest possible fix,
+      // but for watchPosition it does the opposite: it tells the browser to
+      // discard the GPS chip's already-continuous stream and negotiate a
+      // brand new, independent fix on every single callback. That's slower
+      // than just reading the latest fix off the stream, and on mobile it
+      // regularly blows past the timeout while walking - the error callback
+      // fires, `position` is never updated, and the marker freezes at the
+      // last successful fix. A small maximumAge lets each callback reuse the
+      // most recent fix already sitting in the stream (still effectively
+      // real time - well under a second old) instead of stalling on a fresh
+      // acquisition every time.
+      { enableHighAccuracy: true, maximumAge: 1_000, timeout: 15_000 },
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
