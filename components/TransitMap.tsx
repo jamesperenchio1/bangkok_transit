@@ -151,12 +151,38 @@ function gpsGeoJSON(position: GeoPosition | null): GeoJSON.FeatureCollection<Geo
     features: [
       {
         type: "Feature",
-        properties: { radius: Math.max(position.accuracy / 4, 8) },
+        properties: { accuracy: position.accuracy },
         geometry: { type: "Point", coordinates: [position.lon, position.lat] },
       },
     ],
   };
 }
+
+// MapLibre's circle-radius is in screen pixels, but GPS accuracy is a
+// real-world meter figure - feeding it straight in (as this used to) makes
+// the circle a huge, zoom-invariant blob that doesn't actually represent the
+// accuracy radius on the ground. Convert using the standard Web Mercator
+// meters-per-pixel formula (resolution doubles each zoom level) so the ring
+// shrinks/grows correctly as the map is zoomed, like every other "GPS
+// accuracy circle" implementation. Bangkok's whole span is under a degree of
+// latitude, so a single reference latitude (the map's center) is accurate
+// enough without needing to update this per fix.
+const GPS_REFERENCE_LATITUDE = 13.75;
+const METERS_PER_PIXEL_AT_ZOOM_0 =
+  (156_543.03392 * Math.cos((GPS_REFERENCE_LATITUDE * Math.PI) / 180));
+const GPS_RING_RADIUS_EXPRESSION = [
+  "max",
+  8,
+  [
+    "interpolate",
+    ["exponential", 2],
+    ["zoom"],
+    0,
+    ["/", ["get", "accuracy"], METERS_PER_PIXEL_AT_ZOOM_0],
+    20,
+    ["*", ["/", ["get", "accuracy"], METERS_PER_PIXEL_AT_ZOOM_0], 2 ** 20],
+  ],
+] as unknown as maplibregl.ExpressionSpecification;
 
 export function TransitMap({
   onSelectStation,
@@ -324,7 +350,7 @@ export function TransitMap({
         type: "circle",
         source: GPS_SOURCE,
         paint: {
-          "circle-radius": ["get", "radius"],
+          "circle-radius": GPS_RING_RADIUS_EXPRESSION,
           "circle-color": "#2563eb",
           "circle-opacity": 0.15,
           "circle-stroke-color": "#2563eb",
