@@ -6,6 +6,9 @@ export interface GeoPosition {
   lat: number;
   lon: number;
   accuracy: number;
+  /** Compass bearing in degrees clockwise from true north, or null when the
+   * device isn't moving or doesn't report one. */
+  heading: number | null;
 }
 
 export type GeoError = "denied" | "unsupported" | "timeout" | null;
@@ -32,10 +35,14 @@ export function useGeolocation(): UseGeolocationResult {
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         setError(null);
+        // heading is null when stationary or unsupported, and some browsers
+        // report NaN instead of null in the same cases - normalize both.
+        const heading = pos.coords.heading;
         setPosition({
           lat: pos.coords.latitude,
           lon: pos.coords.longitude,
           accuracy: pos.coords.accuracy,
+          heading: typeof heading === "number" && !Number.isNaN(heading) ? heading : null,
         });
       },
       (err) => {

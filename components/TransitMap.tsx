@@ -56,6 +56,8 @@ const DEST_RING_LAYER = "destination-ring-layer";
 const GPS_SOURCE = "gps-position";
 const GPS_RING_LAYER = "gps-ring-layer";
 const GPS_DOT_LAYER = "gps-dot-layer";
+const HEADING_ICON = "gps-heading-icon";
+const HEADING_LAYER = "gps-heading-layer";
 
 const lineKeys = [...new Set(stations.flatMap((s) => s.lines.map((l) => l.line)))];
 
@@ -151,11 +153,28 @@ function gpsGeoJSON(position: GeoPosition | null): GeoJSON.FeatureCollection<Geo
     features: [
       {
         type: "Feature",
-        properties: { accuracy: position.accuracy },
+        properties: {
+          accuracy: position.accuracy,
+          // Omitted (not set to null) so the heading-arrow layer can filter
+          // on it with a plain ["has", "heading"], matching DEST_RING_LAYER's
+          // filter style.
+          ...(position.heading !== null ? { heading: position.heading } : {}),
+        },
         geometry: { type: "Point", coordinates: [position.lon, position.lat] },
       },
     ],
   };
+}
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+// Shortest-path interpolation between two compass bearings, so e.g. 350deg
+// -> 10deg sweeps 20deg through north instead of the long way around.
+function lerpAngle(a: number, b: number, t: number): number {
+  const delta = ((((b - a) % 360) + 540) % 360) - 180;
+  return (a + delta * t + 360) % 360;
 }
 
 // MapLibre's circle-radius is in screen pixels, but GPS accuracy is a
@@ -164,25 +183,29 @@ function gpsGeoJSON(position: GeoPosition | null): GeoJSON.FeatureCollection<Geo
 // accuracy radius on the ground. Convert using the standard Web Mercator
 // meters-per-pixel formula (resolution doubles each zoom level) so the ring
 // shrinks/grows correctly as the map is zoomed, like every other "GPS
-// accuracy circle" implementation. Bangkok's whole span is under a degree of
-// latitude, so a single reference latitude (the map's center) is accurate
-// enough without needing to update this per fix.
+// accuracy circle" implementation. metersPerPixelAtZoom0 depends on
+// latitude (Mercator stretches pixels further from the equator) - the GPS
+// position effect recomputes it from each fix's actual latitude and pushes
+// a fresh expression via setPaintProperty, since expressions have no trig
+// functions to do that conversion themselves.
 const GPS_REFERENCE_LATITUDE = 13.75;
 const METERS_PER_PIXEL_AT_ZOOM_0 =
   (156_543.03392 * Math.cos((GPS_REFERENCE_LATITUDE * Math.PI) / 180));
-const GPS_RING_RADIUS_EXPRESSION = [
-  "max",
-  8,
-  [
-    "interpolate",
-    ["exponential", 2],
-    ["zoom"],
-    0,
-    ["/", ["get", "accuracy"], METERS_PER_PIXEL_AT_ZOOM_0],
-    20,
-    ["*", ["/", ["get", "accuracy"], METERS_PER_PIXEL_AT_ZOOM_0], 2 ** 20],
-  ],
-] as unknown as maplibregl.ExpressionSpecification;
+function gpsRingRadiusExpression(metersPerPixelAtZoom0: number): maplibregl.ExpressionSpecification {
+  return [
+    "max",
+    8,
+    [
+      "interpolate",
+      ["exponential", 2],
+      ["zoom"],
+      0,
+      ["/", ["get", "accuracy"], metersPerPixelAtZoom0],
+      20,
+      ["*", ["/", ["get", "accuracy"], metersPerPixelAtZoom0], 2 ** 20],
+    ],
+  ] as unknown as maplibregl.ExpressionSpecification;
+}
 
 export function TransitMap({
   onSelectStation,
@@ -200,6 +223,10 @@ export function TransitMap({
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const geometryRef = useRef<LineSegments | null>(null);
   const popupsRef = useRef(new Map<string, { popup: maplibregl.Popup; root: Root; render: () => void }>());
+  const gpsAnimFrameRef = useRef<number | null>(null);
+  // The last GPS point actually drawn on the map - either settled at the
+  // latest fix, or mid-flight through the animation interpolating toward it.
+  const gpsRenderedPositionRef = useRef<GeoPosition | null>(null);
 
   const pathCodes = useMemo(
     () => new Set(path?.map((leg) => leg.station.code) ?? []),
@@ -350,7 +377,11 @@ export function TransitMap({
         type: "circle",
         source: GPS_SOURCE,
         paint: {
-          "circle-radius": GPS_RING_RADIUS_EXPRESSION,
+          // Bootstrap value using the fixed reference latitude - nothing is
+          // visible yet anyway since GPS_SOURCE starts empty. The GPS
+          // position effect replaces this with an exact-latitude expression
+          // on the first real fix.
+          "circle-radius": gpsRingRadiusExpression(METERS_PER_PIXEL_AT_ZOOM_0),
           "circle-color": "#2563eb",
           "circle-opacity": 0.15,
           "circle-stroke-color": "#2563eb",
@@ -366,6 +397,45 @@ export function TransitMap({
           "circle-color": "#2563eb",
           "circle-stroke-color": "#fff",
           "circle-stroke-width": 2,
+        },
+      });
+
+      // A small arrow drawn on top of the dot, pointing north on its own
+      // (icon-rotation-alignment: "map" then rotates it by heading), so it
+      // tracks true north regardless of how the map itself is rotated -
+      // shown only for fixes that report a heading (see gpsGeoJSON).
+      if (!map.hasImage(HEADING_ICON)) {
+        const size = 22;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.fillStyle = "#2563eb";
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(size / 2, 0);
+          ctx.lineTo(size * 0.78, size * 0.42);
+          ctx.lineTo(size / 2, size * 0.3);
+          ctx.lineTo(size * 0.22, size * 0.42);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          map.addImage(HEADING_ICON, ctx.getImageData(0, 0, size, size));
+        }
+      }
+      map.addLayer({
+        id: HEADING_LAYER,
+        type: "symbol",
+        source: GPS_SOURCE,
+        filter: ["has", "heading"],
+        layout: {
+          "icon-image": HEADING_ICON,
+          "icon-rotate": ["get", "heading"],
+          "icon-rotation-alignment": "map",
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
         },
       });
 
@@ -478,16 +548,70 @@ export function TransitMap({
     popupsRef.current.forEach(({ render }) => render());
   }, [startCode, destinationCode]);
 
-  // GPS position.
+  // GPS position. Animates smoothly from the last drawn point to the new
+  // fix instead of snapping, since fixes land roughly a second apart and an
+  // instant jump reads as jank (especially at high zoom).
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const apply = () => {
-      const source = map.getSource<maplibregl.GeoJSONSource>(GPS_SOURCE);
-      source?.setData(gpsGeoJSON(userPosition));
+
+    const setGpsData = (position: GeoPosition | null) => {
+      map.getSource<maplibregl.GeoJSONSource>(GPS_SOURCE)?.setData(gpsGeoJSON(position));
+      gpsRenderedPositionRef.current = position;
     };
-    if (loadedRef.current) apply();
-    else map.once("load", apply);
+
+    const run = () => {
+      if (gpsAnimFrameRef.current !== null) {
+        cancelAnimationFrame(gpsAnimFrameRef.current);
+        gpsAnimFrameRef.current = null;
+      }
+
+      // The circle-radius paint expression bakes in a meters-per-pixel
+      // constant derived from latitude (expressions have no trig functions,
+      // so this can't be computed inline) - rebuilt once per real fix, not
+      // once per animation frame below, since consecutive fixes are close
+      // enough that re-deriving it every frame would be pure waste.
+      if (userPosition) {
+        const metersPerPixelAtZoom0 = 156_543.03392 * Math.cos((userPosition.lat * Math.PI) / 180);
+        map.setPaintProperty(GPS_RING_LAYER, "circle-radius", gpsRingRadiusExpression(metersPerPixelAtZoom0));
+      }
+
+      const from = gpsRenderedPositionRef.current;
+      if (!userPosition || !from) {
+        // Nothing to animate from (first fix), or position cleared: snap.
+        setGpsData(userPosition);
+        return;
+      }
+
+      const to = userPosition;
+      const start = performance.now();
+      const DURATION_MS = 400;
+      const tick = (now: number) => {
+        const t = Math.min(1, (now - start) / DURATION_MS);
+        const eased = 1 - (1 - t) * (1 - t);
+        setGpsData({
+          lat: lerp(from.lat, to.lat, eased),
+          lon: lerp(from.lon, to.lon, eased),
+          accuracy: lerp(from.accuracy, to.accuracy, eased),
+          heading:
+            from.heading !== null && to.heading !== null
+              ? lerpAngle(from.heading, to.heading, eased)
+              : to.heading,
+        });
+        gpsAnimFrameRef.current = t < 1 ? requestAnimationFrame(tick) : null;
+      };
+      gpsAnimFrameRef.current = requestAnimationFrame(tick);
+    };
+
+    if (loadedRef.current) run();
+    else map.once("load", run);
+
+    return () => {
+      if (gpsAnimFrameRef.current !== null) {
+        cancelAnimationFrame(gpsAnimFrameRef.current);
+        gpsAnimFrameRef.current = null;
+      }
+    };
   }, [userPosition]);
 
   // Fly to a station on demand (e.g. a search result was picked).
