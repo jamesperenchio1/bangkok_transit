@@ -4,10 +4,9 @@ name: Keep arrivals cache warm
 # /arrivals/all, comma-separated codes, /arrivals/batch, and multi-segment
 # paths - all 400/404), so the server fans out over every station itself.
 #
-# /api/arrivals is the bulk endpoint: it returns immediately from memory/Redis
-# and refreshes anything missing or ageing in the background. So a single
-# request here warms the whole shared cache, which is why this job no longer
-# loops over 61 stations one at a time.
+# /api/arrivals serves one shared snapshot and, when it's old, starts the
+# single fleet-wide upstream poll in the background (lib/arrivals-service.ts).
+# So a single request here warms the snapshot for everybody.
 #
 # Timing note: GitHub throttles scheduled workflows on free/public repos far
 # beyond the requested interval - observed runs land 2-6 HOURS apart, not every

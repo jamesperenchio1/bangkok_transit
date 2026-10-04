@@ -97,26 +97,25 @@ expanded. See `docs/` or ask the user for further design history if needed.
   `next build --webpack`.
 - **Icons**: Use `lucide-react`.
 - **Live arrivals API**: `https://bts-api.topmile.com` — undocumented,
-  BTS Sukhumvit + Silom only (~61 codes), no CORS (must be proxied
-  server-side via `app/api/arrivals/[code]/route.ts`), `timestamp` in
-  responses is UTC despite looking naive. See `lib/bts.ts` for the response
-  shape and `lib/arrivals-cache.ts` for the Upstash Redis caching layer
-  (24h TTL, freshness judged from the payload's own timestamp — module
-  memory -> Redis -> upstream, single-flight de-dupe). Upstash bills per
-  command, so the bulk route is built to stay inside the free tier: a
-  complete snapshot is CDN-cached for 15s (`s-maxage`), only one instance
-  fleet-wide refreshes per window (`tryClaimRefresh` lock), and a refresh
-  writes all stations in one `MSET`. The client counts ETAs down against
-  its own clock between polls and stops polling in hidden tabs.
-- **Keep-warm job**: `.github/workflows/keep-arrivals-warm.yml` pings every
-  station's `/api/arrivals/[code]` every ~12 min (GitHub Actions free
-  minutes, unmetered on a public repo). This does NOT make data "always
-  fresh" - arrivals are only fresh for ~90s after fetch, so it just avoids
-  the worst-case cold start after long idle periods. A tighter interval
-  isn't affordable on Upstash's free tier (500K commands/month) and isn't
-  possible on Vercel Hobby's cron (once-per-day only, Pro-only for
-  anything more frequent) - see project memory / commit history for the
-  math if this ever needs revisiting.
+  BTS Sukhumvit + Silom only (~61 codes), no batch endpoint, no CORS, and
+  `timestamp` in responses is UTC despite looking naive (see `lib/bts.ts`).
+  It is polled **once, centrally, for everybody** — never per user:
+  `lib/arrivals-service.ts` polls all stations at most once per 30s
+  fleet-wide (a Redis `SET NX` lock in `lib/arrivals-cache.ts` picks the one
+  instance that polls), lazily, only when a request finds the shared
+  snapshot old - so with no visitors nothing polls. The result is one Redis
+  document (`bts:snapshot`). `app/api/arrivals/route.ts` is the only
+  arrivals endpoint; it just reads that snapshot and is CDN-cached
+  (`s-maxage` + `stale-while-revalidate`), so user traffic is answered by
+  the edge and server hits stay roughly constant whether there are ten
+  users or a million. There is deliberately no per-station endpoint and no
+  per-user fallback fetch. The client counts ETAs down against its own
+  clock between polls and stops polling in hidden tabs.
+- **Keep-warm job**: `.github/workflows/keep-arrivals-warm.yml` hits
+  `/api/arrivals` on a schedule so the first visitor after a long idle
+  period doesn't land on an empty snapshot. GitHub throttles scheduled runs
+  heavily, so it is only a backstop; real traffic keeps the snapshot warm
+  itself. Vercel Hobby's cron (once per day) can't do this job.
 
 ## Build & Test
 

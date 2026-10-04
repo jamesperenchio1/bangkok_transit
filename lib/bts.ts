@@ -2,7 +2,8 @@
  * Client for the undocumented bts-api.topmile.com live-arrivals API.
  *
  * Has no Access-Control-Allow-Origin header, so it can never be called from
- * the browser directly — all access goes through /api/arrivals/[code].
+ * the browser directly — all access goes through the shared snapshot behind
+ * /api/arrivals.
  *
  * Coverage is BTS Sukhumvit + Silom only; other codes (or Gold/Yellow/Pink)
  * return 400/"unavailable". `timestamp` in the payload is UTC despite
@@ -18,15 +19,12 @@ export const FRESH_FOR_MS = 90_000;
 /**
  * There is no batch endpoint on the upstream API - confirmed by probing
  * `/arrivals/all`, comma-separated codes, `/arrivals/batch`, and multi-segment
- * paths, all of which 400/404. The closest equivalent is our own server
- * fetching every station sequentially on a fixed interval (see
- * .github/workflows/keep-arrivals-warm.yml) and caching the results - so an
- * on-demand request almost never needs to hit upstream itself. This is the
- * ceiling on how old a Redis-cached read is allowed to be before a request
- * falls back to the slow upstream call. The warm job targets a 5-minute
- * interval, but GitHub's scheduler can delay runs by several minutes under
- * load, so this needs real headroom above that - it's meant to catch the
- * warm job actually being down, not fire on ordinary cron jitter.
+ * paths, all of which 400/404. The closest equivalent is our own single
+ * shared poll of every station (lib/arrivals-service.ts), published as one
+ * snapshot that every user reads. This is the ceiling on how old a station's
+ * entry in that snapshot may be before it's dropped rather than served - it
+ * covers a station whose upstream call keeps failing, or a long gap with no
+ * visitors to trigger a poll.
  */
 export const CACHE_SERVE_MS = 10 * 60_000;
 

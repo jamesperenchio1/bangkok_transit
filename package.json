@@ -10,7 +10,6 @@
     "postinstall": "node scripts/copy-maplibre-worker.mjs"
   },
   "dependencies": {
-    "@upstash/ratelimit": "^2.1.0",
     "@upstash/redis": "^1.38.2",
     "lucide-react": "^1.33.0",
     "maplibre-gl": "^6.9.1",

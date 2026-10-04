@@ -80,26 +80,6 @@ export const useArrivalsStore = create<ArrivalsStore>((set) => ({
     }),
 }));
 
-/** Single-station fallback used when the bulk payload hasn't reached a code yet. */
-const stationFetches = new Set<string>();
-
-export async function fetchStationArrivals(code: string): Promise<void> {
-  if (stationFetches.has(code)) return;
-  stationFetches.add(code);
-  try {
-    const res = await fetch(`/api/arrivals/${code}`, { cache: "no-store" });
-    if (!res.ok) return;
-    const json = (await res.json()) as Arrivals & { stale?: boolean };
-    if (!isValidArrivals(json)) return;
-    const entry: ArrivalsEntry = json.stale ? { ...json, stale: true } : json;
-    useArrivalsStore.getState().merge({ [code]: entry });
-  } catch {
-    // keep showing whatever we already have; the next poll will retry
-  } finally {
-    stationFetches.delete(code);
-  }
-}
-
 let started = false;
 
 /** Seed from localStorage, fetch everything once, then poll. Idempotent. */
@@ -134,6 +114,8 @@ export function startArrivalsPolling() {
     polling = true;
     let complete = true;
     try {
+      // `no-store` only skips the browser's own HTTP cache; the request is
+      // still answered by the shared CDN copy, never by a per-user poll.
       const res = await fetch("/api/arrivals", { cache: "no-store" });
       if (res.ok) {
         const json = (await res.json()) as {

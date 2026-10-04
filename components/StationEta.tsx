@@ -78,9 +78,9 @@ export function StationEta({ station }: { station: Station }) {
     return <p className="text-xs text-neutral-500 dark:text-neutral-400">No live data for this line</p>;
   }
   if (!data) {
-    // Only reachable on a true cold start, before the bulk snapshot or the
-    // single-station fallback lands (~2s). Reserve the space so the card does
-    // not jump when the times arrive.
+    // Only reachable on a true cold start, before the shared snapshot has
+    // this station (a few seconds). Reserve the space so the card does not
+    // jump when the times arrive.
     return <p className="text-xs text-neutral-500 dark:text-neutral-400">Checking times…</p>;
   }
 
