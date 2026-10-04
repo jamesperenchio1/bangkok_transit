@@ -16,7 +16,7 @@ export function fetchLineGeometry(): Promise<LineSegments> {
   return cachedPromise;
 }
 
-function haversineMeters(a: LatLon, b: LatLon): number {
+export function haversineMeters(a: LatLon, b: LatLon): number {
   const R = 6371000;
   const toRad = (d: number) => (d * Math.PI) / 180;
   const dLat = toRad(b[0] - a[0]);

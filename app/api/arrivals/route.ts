@@ -1,62 +1,64 @@
-import { NextRequest, NextResponse } from "next/server";
-import { refreshInBackground, snapshotMany } from "@/lib/arrivals-service";
+import { NextResponse } from "next/server";
+import { getSnapshot, pollInBackground, REFRESH_EVERY_MS } from "@/lib/arrivals-service";
 import { liveStations } from "@/data/stations";
-import { checkRateLimit, clientIp } from "@/lib/rate-limit";
+import { ageMs, CACHE_SERVE_MS, isFresh, isValidArrivals } from "@/lib/bts";
 
 /**
- * Bulk arrivals for every station that has a live API, so the client can
- * paint times instantly for any station without a per-station round trip.
- *
- * This route never waits on upstream: it returns whatever memory/Redis already
- * holds and refreshes the missing or ageing stations in the background. That
- * keeps the response fast for a visitor with an empty cache, not just for
- * revisits. Stations still being fetched are simply absent from `arrivals`;
- * the client retries quickly until `total` codes have arrived.
+ * Live arrivals for every BTS station, as one shared document. This is the
+ * only arrivals endpoint: every user reads the same response, almost always
+ * straight from the CDN, and user traffic never causes upstream calls of its
+ * own - see lib/arrivals-service.ts for the single shared poll behind it.
  *
  * Response shape: `{ arrivals: { [code]: Arrivals }, stale: { [code]: bool },
  * total: number }`.
  */
-export async function GET(req: NextRequest) {
-  const { allowed, retryAfterSeconds } = await checkRateLimit(clientIp(req));
-  if (!allowed) {
-    return NextResponse.json(
-      { error: "Too many requests." },
-      {
-        status: 429,
-        headers: { "Cache-Control": "no-store", "Retry-After": String(retryAfterSeconds) },
-      },
-    );
-  }
 
+/**
+ * CDN caching is what turns "one poll" into "one poll for everybody": with
+ * stale-while-revalidate the edge answers every user instantly and only
+ * re-asks this function about once per FRESH window per region, however many
+ * users there are. Arrivals stay fresh for ~90s (lib/bts.ts FRESH_FOR_MS) and
+ * the client counts each ETA down against its own clock, so this delay is
+ * invisible to riders. A partial snapshot (cold start, still filling) is
+ * cached only briefly so clients see stations land within a couple of
+ * seconds - but still from the CDN, not one request per user.
+ */
+const FRESH_SECONDS = 10;
+const PARTIAL_FRESH_SECONDS = 2;
+const STALE_WHILE_REVALIDATE_SECONDS = 60;
+
+export async function GET() {
   const codes = liveStations.map((s) => s.code);
 
-  // Same graceful-degradation posture as the single-station route: a
-  // transient Redis error should surface as a partial/stale snapshot to
-  // every polling client, not a hard 500 for all of them at once.
+  let snapshot = null;
   try {
-    const results = await snapshotMany(codes);
-
-    // Warm everything missing or ageing once this response has been sent.
-    refreshInBackground(codes);
-
-    const arrivals: Record<string, unknown> = {};
-    const stale: Record<string, boolean> = {};
-    for (const [code, result] of Object.entries(results)) {
-      arrivals[code] = result.data;
-      if (result.stale) stale[code] = true;
-    }
-
-    // Never cached: a partial snapshot must not be held at the edge, or
-    // clients would keep seeing the gap instead of the stations that have
-    // since landed.
-    return NextResponse.json(
-      { arrivals, stale, total: codes.length },
-      { headers: { "Cache-Control": "no-store" } },
-    );
+    snapshot = await getSnapshot();
   } catch {
-    return NextResponse.json(
-      { arrivals: {}, stale: {}, total: codes.length },
-      { headers: { "Cache-Control": "no-store" } },
-    );
+    // Redis hiccup: answer with an empty (briefly cached) snapshot below
+    // rather than failing every user at once.
   }
+
+  if (!snapshot || Date.now() - snapshot.fetchedAt > REFRESH_EVERY_MS) {
+    pollInBackground(codes);
+  }
+
+  const arrivals: Record<string, unknown> = {};
+  const stale: Record<string, boolean> = {};
+  for (const code of codes) {
+    const data = snapshot?.arrivals[code];
+    if (!data || !isValidArrivals(data) || ageMs(data.timestamp) >= CACHE_SERVE_MS) continue;
+    arrivals[code] = data;
+    if (!isFresh(data.timestamp)) stale[code] = true;
+  }
+
+  const complete = Object.keys(arrivals).length >= codes.length;
+  const fresh = complete ? FRESH_SECONDS : PARTIAL_FRESH_SECONDS;
+  return NextResponse.json(
+    { arrivals, stale, total: codes.length },
+    {
+      headers: {
+        "Cache-Control": `public, s-maxage=${fresh}, stale-while-revalidate=${STALE_WHILE_REVALIDATE_SECONDS}`,
+      },
+    },
+  );
 }

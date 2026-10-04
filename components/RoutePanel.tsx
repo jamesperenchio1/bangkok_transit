@@ -2,9 +2,10 @@
 
 import { X, MapPin, ArrowRight } from "lucide-react";
 import { useArrivals } from "@/lib/use-arrivals";
-import { arrivalClockTime, minutesLabel } from "@/lib/format-eta";
+import { arrivalClockTime, hasDeparted, minutesLabel, minutesUntil } from "@/lib/format-eta";
+import { useNow } from "@/lib/use-now";
 import type { Station } from "@/data/stations";
-import type { PathResult } from "@/lib/transit-graph";
+import { terminusInDirection, type PathResult } from "@/lib/transit-graph";
 import type { GeoPosition } from "@/lib/use-geolocation";
 import { LINE_COLORS } from "@/lib/line-colors";
 
@@ -64,6 +65,8 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
               <X size={20} />
             </button>
           </div>
+
+          {state.path && <RouteSummary path={state.path} />}
 
           <div className="mb-3">
             <GoogleMapsLink
@@ -131,7 +134,20 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
                         )}
                       </p>
                       {leg.station.hasLiveArrivals && (isLast || i === 0) && (
-                        <LiveEta station={leg.station} />
+                        <LiveEta
+                          station={leg.station}
+                          // The platform heading the way this route rides:
+                          // out of the start, or into the destination.
+                          directionKey={
+                            i === 0
+                              ? nextLeg?.line
+                                ? terminusInDirection(nextLeg.line, leg.station.code, nextLeg.station.code)
+                                : undefined
+                              : leg.line
+                                ? terminusInDirection(leg.line, state.path![i - 1].station.code, leg.station.code)
+                                : undefined
+                          }
+                        />
                       )}
                     </div>
                   </li>
@@ -145,8 +161,19 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
   );
 }
 
-function LiveEta({ station }: { station: Station }) {
+function RouteSummary({ path }: { path: PathResult }) {
+  const stops = path.length - 1;
+  const changes = path.filter((leg) => leg.isTransfer).length;
+  return (
+    <p className="-mt-2 mb-3 text-xs text-neutral-600 dark:text-neutral-300">
+      {stops} {stops === 1 ? "stop" : "stops"} · {changes === 0 ? "no changes" : `${changes} ${changes === 1 ? "change" : "changes"}`}
+    </p>
+  );
+}
+
+function LiveEta({ station, directionKey }: { station: Station; directionKey?: string }) {
   const { data } = useArrivals(station.code);
+  const now = useNow();
   if (!data) return null;
   if (!data.service_active) {
     // Upstream's next_service string already includes its own leading "~"
@@ -154,17 +181,23 @@ function LiveEta({ station }: { station: Station }) {
     const nextService = data.next_service?.replace(/^~\s*/, "") ?? "?";
     return <p className="text-xs text-neutral-500">Not running — next ~{nextService}</p>;
   }
-  const trains = data.platforms?.[0]?.trains ?? [];
+  // Falls back to the first platform when the direction can't be matched
+  // (e.g. a short-working train's platform reports a different terminus).
+  const platform =
+    data.platforms?.find((p) => directionKey && p.direction_key === directionKey) ?? data.platforms?.[0];
+  const trains = (platform?.trains ?? [])
+    .map((train) => ({ train, left: minutesUntil(data.timestamp, train, now) }))
+    .filter(({ left }) => !hasDeparted(left));
   const [next, ...upcoming] = trains;
   if (!next) return null;
-  const clockTime = arrivalClockTime(data.timestamp, next.eta_minutes);
+  const clockTime = arrivalClockTime(data.timestamp, next.train.eta_precise ?? next.train.eta_minutes);
   const laterMinutes = upcoming
     .slice(0, 2)
-    .map((t) => minutesLabel(t.eta_minutes))
+    .map(({ left }) => minutesLabel(left))
     .join(", ");
   return (
-    <p className="text-xs text-neutral-500">
-      Next arrival ~{minutesLabel(next.eta_minutes)}
+    <p className="text-xs text-neutral-600 dark:text-neutral-300">
+      Next arrival {next.left !== null && next.left <= 0 ? "" : "~"}{minutesLabel(next.left)}
       {clockTime ? ` · ${clockTime}` : ""}
       {laterMinutes ? ` (then ~${laterMinutes})` : ""}
     </p>

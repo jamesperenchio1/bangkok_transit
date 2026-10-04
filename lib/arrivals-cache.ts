@@ -4,10 +4,9 @@ import type { Arrivals } from "./bts";
 /**
  * Standalone Upstash account (not the Vercel Marketplace integration, to
  * keep billing off Vercel). If env vars are missing, caching is a no-op —
- * the app still works, just always pays the upstream cost.
+ * the app still works, with module memory as its only cache tier.
  */
-/** Exported so lib/rate-limit.ts can reuse this same Redis instance instead of opening a second connection. */
-export const redis =
+const redis =
   process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
     ? new Redis({
         url: process.env.UPSTASH_REDIS_REST_URL,
@@ -17,30 +16,46 @@ export const redis =
 
 export const cacheEnabled = redis !== null;
 
-const TTL_SECONDS = 24 * 60 * 60;
-
-function key(code: string) {
-  return `bts:arr:${code}`;
+/**
+ * Every live station's arrivals as one document, written by whichever single
+ * instance ran the latest upstream poll and read by everyone else. One key
+ * means one Redis command per read and per write, however many stations.
+ */
+export interface Snapshot {
+  arrivals: Record<string, Arrivals>;
+  /** When the poll that produced this snapshot started (epoch ms). */
+  fetchedAt: number;
 }
 
-export async function readCached(code: string): Promise<Arrivals | null> {
+const SNAPSHOT_KEY = "bts:snapshot";
+const SNAPSHOT_TTL_SECONDS = 24 * 60 * 60;
+
+export async function readSnapshot(): Promise<Snapshot | null> {
   if (!redis) return null;
-  return (await redis.get<Arrivals>(key(code))) ?? null;
+  const value = await redis.get<Snapshot>(SNAPSHOT_KEY);
+  return value && typeof value === "object" && value.arrivals && typeof value.fetchedAt === "number"
+    ? value
+    : null;
 }
 
-export async function writeCached(code: string, data: Arrivals): Promise<void> {
+export async function writeSnapshot(snapshot: Snapshot): Promise<void> {
   if (!redis) return;
-  await redis.set(key(code), data, { ex: TTL_SECONDS });
+  await redis.set(SNAPSHOT_KEY, snapshot, { ex: SNAPSHOT_TTL_SECONDS });
 }
 
-/** Bulk read for priming the client cache in one round trip instead of one request per station. */
-export async function readCachedMany(codes: string[]): Promise<Record<string, Arrivals>> {
-  if (!redis || codes.length === 0) return {};
-  const keys = codes.map(key);
-  const values = await redis.mget<(Arrivals | null)[]>(...keys);
-  const out: Record<string, Arrivals> = {};
-  values.forEach((v, i) => {
-    if (v) out[codes[i]] = v;
-  });
-  return out;
+const REFRESH_LOCK_KEY = "bts:refresh-lock";
+
+/**
+ * Claims the right to poll upstream for the next `seconds`, across every
+ * serverless instance - this lock is what makes "one poll for everybody"
+ * true fleet-wide rather than per instance. Always succeeds when Redis
+ * isn't configured (a single dev process has nobody to coordinate with).
+ */
+export async function tryClaimRefresh(seconds: number): Promise<boolean> {
+  if (!redis) return true;
+  try {
+    return (await redis.set(REFRESH_LOCK_KEY, Date.now(), { nx: true, ex: seconds })) === "OK";
+  } catch {
+    return true;
+  }
 }

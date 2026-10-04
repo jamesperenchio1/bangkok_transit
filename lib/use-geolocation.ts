@@ -1,6 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { haversineMeters } from "@/lib/line-geometry";
+
+/**
+ * Fixes closer than this to the last one (with similar accuracy) are GPS
+ * jitter, not movement. Skipping them avoids re-rendering the whole page -
+ * map sources, route sheet, nearest-station lookup - several times a second
+ * while the user is standing still.
+ */
+const MIN_MOVE_METERS = 5;
 
 export interface GeoPosition {
   lat: number;
@@ -32,11 +41,18 @@ export function useGeolocation(): UseGeolocationResult {
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         setError(null);
-        setPosition({
+        const next = {
           lat: pos.coords.latitude,
           lon: pos.coords.longitude,
           accuracy: pos.coords.accuracy,
-        });
+        };
+        setPosition((prev) =>
+          prev &&
+          haversineMeters([prev.lat, prev.lon], [next.lat, next.lon]) < MIN_MOVE_METERS &&
+          Math.abs(prev.accuracy - next.accuracy) < MIN_MOVE_METERS
+            ? prev
+            : next,
+        );
       },
       (err) => {
         if (err.code === err.PERMISSION_DENIED) setError("denied");
