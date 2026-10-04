@@ -1,16 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { preconnect, preload } from "react-dom";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// Must match TransitMap's STYLE_URL exactly, or this preload is wasted.
+// (Not imported from there: that module pulls in all of MapLibre.)
+const MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 
 export const metadata: Metadata = {
   title: "Bangkok Transit",
@@ -29,11 +23,17 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  // The map can't start until its JS chunk, its style JSON, and the line
+  // geometry have all arrived. Hinting the latter two here lets them
+  // download while the page is still hydrating instead of one after another
+  // once the map component mounts. crossOrigin matches how MapLibre and
+  // fetch() request them, so the preloaded responses are actually reused.
+  preconnect("https://tiles.openfreemap.org", { crossOrigin: "anonymous" });
+  preload(MAP_STYLE_URL, { as: "fetch", crossOrigin: "anonymous" });
+  preload("/line-geometry.json", { as: "fetch", crossOrigin: "anonymous" });
+
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="en" className="h-full antialiased">
       <body className="h-full flex flex-col overflow-hidden overscroll-none">{children}</body>
     </html>
   );

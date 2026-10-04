@@ -114,8 +114,24 @@ export function startArrivalsPolling() {
 
   let expected = 0;
   let fastPolls = 0;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let polling = false;
+
+  // Nobody can see a hidden tab's times, so stop polling there (battery,
+  // data, and server load) and fetch straight away on return - the moment
+  // someone switches back is exactly when they want fresh times.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      if (timer !== null) clearTimeout(timer);
+      timer = null;
+    } else if (timer === null && !polling) {
+      void poll();
+    }
+  });
 
   async function poll() {
+    timer = null;
+    polling = true;
     let complete = true;
     try {
       const res = await fetch("/api/arrivals", { cache: "no-store" });
@@ -142,15 +158,18 @@ export function startArrivalsPolling() {
     const held = Object.keys(useArrivalsStore.getState().map).length;
     complete = expected > 0 && held >= expected;
 
+    // The fast burst is a one-off for a cold first load. It is deliberately
+    // never reset: if one station stays missing (say its upstream call keeps
+    // failing), resetting would restart a 15-request burst every minute,
+    // forever, for every open tab.
     let delay = POLL_MS;
     if (!complete && fastPolls < MAX_FAST_POLLS) {
       fastPolls += 1;
       delay = FAST_POLL_MS;
-    } else {
-      fastPolls = 0;
     }
-    setTimeout(poll, delay);
+    polling = false;
+    if (!document.hidden) timer = setTimeout(poll, delay);
   }
 
-  poll();
+  void poll();
 }

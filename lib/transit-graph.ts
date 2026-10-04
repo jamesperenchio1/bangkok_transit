@@ -54,7 +54,7 @@ const TRUNK_TERMINUS_OVERRIDES: Partial<Record<LineKey, string>> = {
  * Blue's loop-closure edge specially, since its two "ends" are far apart in
  * the sequence array despite being physically adjacent.
  */
-function terminusInDirection(line: LineKey, fromCode: string, towardCode: string): string | undefined {
+export function terminusInDirection(line: LineKey, fromCode: string, towardCode: string): string | undefined {
   const seq = sequences[line];
   if (!seq) return undefined;
 

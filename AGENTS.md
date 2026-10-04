@@ -102,7 +102,12 @@ expanded. See `docs/` or ask the user for further design history if needed.
   responses is UTC despite looking naive. See `lib/bts.ts` for the response
   shape and `lib/arrivals-cache.ts` for the Upstash Redis caching layer
   (24h TTL, freshness judged from the payload's own timestamp — module
-  memory -> Redis -> upstream, single-flight de-dupe).
+  memory -> Redis -> upstream, single-flight de-dupe). Upstash bills per
+  command, so the bulk route is built to stay inside the free tier: a
+  complete snapshot is CDN-cached for 15s (`s-maxage`), only one instance
+  fleet-wide refreshes per window (`tryClaimRefresh` lock), and a refresh
+  writes all stations in one `MSET`. The client counts ETAs down against
+  its own clock between polls and stops polling in hidden tabs.
 - **Keep-warm job**: `.github/workflows/keep-arrivals-warm.yml` pings every
   station's `/api/arrivals/[code]` every ~12 min (GitHub Actions free
   minutes, unmetered on a public repo). This does NOT make data "always

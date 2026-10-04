@@ -19,7 +19,22 @@ const STATION_BOUNDS: [[number, number], [number, number]] = [
   [Math.max(...stations.map((s) => s.lon)), Math.max(...stations.map((s) => s.lat))],
 ];
 
+// Also preloaded from app/layout.tsx (MAP_STYLE_URL) so the style JSON
+// downloads while the page hydrates - keep the two URLs identical.
 const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
+
+// Basemap layers this app has no use for. `poi_transit` is the basemap's own
+// station icons/names, which would duplicate (and fight for space with) our
+// labelled station markers; 3D buildings and the dense low-rank POI layers
+// only cost GPU/decode time on phones without helping anyone find a station.
+const DROPPED_STYLE_LAYERS = new Set(["poi_transit", "building-3d", "poi_r20", "poi_r7"]);
+
+function transformStyle(
+  _previous: maplibregl.StyleSpecification | undefined,
+  next: maplibregl.StyleSpecification,
+): maplibregl.StyleSpecification {
+  return { ...next, layers: next.layers.filter((layer) => !DROPPED_STYLE_LAYERS.has(layer.id)) };
+}
 
 // Start/destination marker accent color, shared by the station GeoJSON
 // builder, the destination dashed-ring icon, and the popup content.
@@ -51,6 +66,7 @@ const ROUTE_LAYER = "highlighted-route-layer";
 const STATIONS_SOURCE = "stations";
 const STATIONS_HIT_LAYER = "stations-hit-layer";
 const STATIONS_LAYER = "stations-layer";
+const STATIONS_LABEL_LAYER = "stations-label-layer";
 const DEST_RING_ICON = "destination-ring-icon";
 const DEST_RING_LAYER = "destination-ring-layer";
 const GPS_SOURCE = "gps-position";
@@ -125,10 +141,16 @@ function stationsGeoJSON(
       const isDestination = s.code === destinationCode;
       const isEndpoint = isStart || isDestination;
       const dimmed = isRouting && !onPath;
+      // Lower sorts first and so wins label collisions: route ends, then the
+      // rest of the route, then interchanges, then everything else.
+      const sortKey = isEndpoint ? 0 : onPath ? 1 : s.lines.length > 1 ? 2 : 3;
       return {
         type: "Feature",
         properties: {
           code: s.code,
+          name: s.nameEn,
+          sortKey,
+          labelOpacity: dimmed ? 0.45 : 1,
           radius: isEndpoint ? 8 : s.lines.length > 1 ? 6 : 4,
           // Green fill = start, white fill/green outline = destination, so
           // the two ends of the route are distinguishable at a glance.
@@ -205,12 +227,17 @@ export function TransitMap({
     const popups = popupsRef.current;
     const map = new maplibregl.Map({
       container: containerRef.current,
-      center: [100.55, 13.75],
-      zoom: 11,
-      style: STYLE_URL,
+      // Start on the station bounds directly rather than a fixed
+      // center/zoom that fitBounds then replaces: otherwise the first round
+      // of tiles is fetched for a view that's thrown away immediately.
+      bounds: STATION_BOUNDS,
+      fitBoundsOptions: { padding: 24 },
       clickTolerance: 15,
       attributionControl: { compact: true },
     });
+    // transformStyle is only accepted by setStyle, not the constructor - the
+    // style is fetched once, here.
+    map.setStyle(STYLE_URL, { transformStyle });
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
 
@@ -313,6 +340,40 @@ export function TransitMap({
         source: STATIONS_SOURCE,
         filter: ["==", ["get", "isDestination"], true],
         layout: { "icon-image": DEST_RING_ICON, "icon-allow-overlap": true },
+      });
+      // Station names next to each marker. MapLibre's own collision
+      // detection hides whichever labels would overlap, with sortKey
+      // deciding who wins, so the zoomed-out view thins out on its own and
+      // every name appears as you zoom in. Codes join the name once there's
+      // room for a second line.
+      map.addLayer({
+        id: STATIONS_LABEL_LAYER,
+        type: "symbol",
+        source: STATIONS_SOURCE,
+        minzoom: 11,
+        layout: {
+          "text-field": [
+            "step",
+            ["zoom"],
+            ["get", "name"],
+            14,
+            ["format", ["get", "name"], {}, "\n", {}, ["get", "code"], { "font-scale": 0.8 }],
+          ],
+          "text-font": ["Noto Sans Bold"],
+          "text-size": ["interpolate", ["linear"], ["zoom"], 11, 10, 14, 12, 16, 14],
+          "text-variable-anchor": ["left", "right", "top", "bottom"],
+          "text-radial-offset": 0.8,
+          "text-justify": "auto",
+          "text-max-width": 8,
+          "text-padding": 2,
+          "symbol-sort-key": ["get", "sortKey"],
+        },
+        paint: {
+          "text-color": "#1f2937",
+          "text-halo-color": "#ffffff",
+          "text-halo-width": 1.6,
+          "text-opacity": ["get", "labelOpacity"],
+        },
       });
 
       map.addSource(GPS_SOURCE, {
@@ -464,15 +525,21 @@ export function TransitMap({
     else map.once("load", apply);
   }, [userPosition]);
 
-  // Fly to a station on demand (e.g. a search result was picked).
+  // Fly to a station on demand (a search result or "nearest station") and
+  // open its card, same as tapping it.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !focusStation) return;
-    map.flyTo({
-      center: [focusStation.lon, focusStation.lat],
-      zoom: Math.max(map.getZoom(), 13),
-      duration: 600,
-    });
+    const apply = () => {
+      map.flyTo({
+        center: [focusStation.lon, focusStation.lat],
+        zoom: Math.max(map.getZoom(), 14),
+        duration: 600,
+      });
+      openPopup(map, popupsRef, focusStation, latest);
+    };
+    if (loadedRef.current) apply();
+    else map.once("load", apply);
   }, [focusStation]);
 
   return (
@@ -512,22 +579,25 @@ function openPopup(
     destinationCode: string | null;
   }>,
 ) {
-  const existing = popupsRef.current.get(station.code);
-  if (existing) {
-    existing.popup.remove();
-    popupsRef.current.delete(station.code);
-  }
+  // One card at a time: a popup opened programmatically (search, nearest
+  // station) isn't dismissed by MapLibre's own close-on-map-click.
+  popupsRef.current.forEach(({ popup }) => popup.remove());
 
   const container = document.createElement("div");
   const root = createRoot(container);
-  const popup = new maplibregl.Popup({ offset: 12, maxWidth: "240px", closeButton: true })
+  const popup = new maplibregl.Popup({ offset: 12, maxWidth: "300px", closeButton: true })
     .setLngLat([station.lon, station.lat])
     .setDOMContent(container)
     .addTo(map);
 
   popup.on("close", () => {
-    root.unmount();
-    popupsRef.current.delete(station.code);
+    // Deferred: a close can now be triggered from inside a React effect (the
+    // focus effect replacing this card), where a synchronous unmount of
+    // another root is unsafe.
+    queueMicrotask(() => root.unmount());
+    if (popupsRef.current.get(station.code)?.popup === popup) {
+      popupsRef.current.delete(station.code);
+    }
   });
 
   const render = () => {

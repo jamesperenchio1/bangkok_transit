@@ -1,6 +1,13 @@
 import { after } from "next/server";
 import { ageMs, CACHE_SERVE_MS, fetchUpstream, isFresh, isValidArrivals, type Arrivals } from "./bts";
-import { readCached, readCachedMany, writeCached } from "./arrivals-cache";
+import {
+  cacheEnabled,
+  readCached,
+  readCachedMany,
+  tryClaimRefresh,
+  writeCached,
+  writeCachedMany,
+} from "./arrivals-cache";
 
 /**
  * Shared read path for live arrivals, used by both the single-station route
@@ -14,8 +21,9 @@ import { readCached, readCachedMany, writeCached } from "./arrivals-cache";
  *    or Redis already holds and lets the caller kick off `refreshMany` in the
  *    background. That is what makes the bulk response fast for every visitor
  *    instead of only for revisits - the request never waits on 61 upstream
- *    calls, and each station is written to Redis the moment it lands, so a
- *    client that retries quickly sees stations appear progressively.
+ *    calls. Each station lands in the refreshing instance's memory the
+ *    moment it arrives (so a client that retries quickly sees stations
+ *    appear progressively), and in Redis as one batch when the refresh ends.
  *
  * Tiered read: module memory (~0ms) -> Redis (~30ms, within CACHE_SERVE_MS) ->
  * upstream (slow, background only). A single-flight map collapses concurrent
@@ -41,14 +49,32 @@ function remember(code: string, data: Arrivals) {
   hotCache.set(code, { data, at: Date.now() });
 }
 
-/** Single-flight upstream fetch that also warms memory and Redis. */
-function refreshOne(code: string): Promise<Arrivals> {
+/**
+ * A memory entry normally only short-circuits Redis for HOT_MS. Without
+ * Redis (local dev) memory is the only cache tier, so it has to stand in
+ * for Redis's CACHE_SERVE_MS window too - otherwise every station drops out
+ * of the bulk snapshot between HOT_MS and the next background refresh.
+ */
+function usableHot(code: string) {
+  const hot = hotCache.get(code);
+  if (!hot) return null;
+  const withinWindow = cacheEnabled
+    ? Date.now() - hot.at < HOT_MS
+    : ageMs(hot.data.timestamp) < CACHE_SERVE_MS;
+  return withinWindow ? hot : null;
+}
+
+/**
+ * Single-flight upstream fetch that also warms memory, and Redis unless
+ * `persist` is false (the bulk refresh batches its own Redis write).
+ */
+function refreshOne(code: string, persist = true): Promise<Arrivals> {
   let pending = inFlight.get(code);
   if (!pending) {
     pending = (async () => {
       const fresh = await fetchUpstream(code);
       remember(code, fresh);
-      await writeCached(code, fresh);
+      if (persist) await writeCached(code, fresh);
       return fresh;
     })().finally(() => inFlight.delete(code));
     inFlight.set(code, pending);
@@ -61,8 +87,8 @@ function refreshOne(code: string): Promise<Arrivals> {
  * has anything usable. Serves Redis up to CACHE_SERVE_MS old.
  */
 export async function getArrivals(code: string): Promise<ArrivalsResult> {
-  const hot = hotCache.get(code);
-  if (hot && Date.now() - hot.at < HOT_MS) {
+  const hot = usableHot(code);
+  if (hot) {
     return { data: hot.data, stale: !isFresh(hot.data.timestamp) };
   }
 
@@ -94,8 +120,8 @@ export async function snapshotMany(codes: string[]): Promise<Record<string, Arri
   const missing: string[] = [];
 
   for (const code of codes) {
-    const hot = hotCache.get(code);
-    if (hot && Date.now() - hot.at < HOT_MS) {
+    const hot = usableHot(code);
+    if (hot) {
       out[code] = { data: hot.data, stale: !isFresh(hot.data.timestamp) };
     } else {
       missing.push(code);
@@ -131,12 +157,13 @@ export async function refreshMany(codes: string[]): Promise<void> {
     }
   }
 
+  const fetched: Record<string, Arrivals> = {};
   let cursor = 0;
   async function worker() {
     while (cursor < needs.length) {
       const code = needs[cursor++];
       try {
-        await refreshOne(code);
+        fetched[code] = await refreshOne(code, false);
       } catch {
         // skip this station for now; the next refresh will retry it
       }
@@ -146,6 +173,10 @@ export async function refreshMany(codes: string[]): Promise<void> {
   await Promise.all(
     Array.from({ length: Math.min(REFRESH_CONCURRENCY, needs.length) }, () => worker()),
   );
+  // One Redis command for the whole batch (see writeCachedMany). Memory was
+  // already updated station-by-station, so this instance's own responses
+  // still fill in progressively during a cold start.
+  await writeCachedMany(fetched);
 }
 
 /**
@@ -158,8 +189,17 @@ export async function refreshMany(codes: string[]): Promise<void> {
  * production. Both are safe to run together - `refreshMany` skips stations
  * that are already fresh and `refreshOne` collapses concurrent fetches for the
  * same station into a single upstream call, so nothing is fetched twice.
+ *
+ * Fleet-wide, only one instance per REFRESH_AFTER_MS window gets to refresh
+ * at all (see tryClaimRefresh) - the others just serve what's in Redis.
  */
 export function refreshInBackground(codes: string[]): void {
-  void refreshMany(codes);
-  after(() => refreshMany(codes));
+  // The lock is claimed once per call and shared by both runs below, so the
+  // after() run isn't refused by the lock its own sibling just took.
+  const claimed = tryClaimRefresh(Math.round(REFRESH_AFTER_MS / 1000));
+  const run = async () => {
+    if (await claimed) await refreshMany(codes);
+  };
+  void run();
+  after(run);
 }

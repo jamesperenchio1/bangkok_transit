@@ -10,10 +10,12 @@ import { redis } from "./arrivals-cache";
  * Reuses the same Redis instance already configured for arrivals caching
  * (see lib/arrivals-cache.ts), so this needs no new infra.
  *
- * The window is generous enough to comfortably cover one legitimate
- * visitor's own fast-poll burst (~15 requests in the first 30s, see
- * lib/arrivals-store.ts's FAST_POLL_MS/MAX_FAST_POLLS) while still bounding
- * a script hammering the endpoint.
+ * The window is generous enough to cover several legitimate visitors'
+ * fast-poll bursts (~15 requests each in the first 30s, see
+ * lib/arrivals-store.ts's FAST_POLL_MS/MAX_FAST_POLLS) from one IP - Thai
+ * mobile carriers put many riders behind one shared (CGNAT) address - while
+ * still bounding a script hammering the endpoint. Most polls never get here
+ * anyway: complete bulk snapshots are served from the CDN cache.
  *
  * Fails open when Redis isn't configured (dev has no env vars), matching
  * this app's existing fail-safe posture around optional caching.
@@ -21,7 +23,7 @@ import { redis } from "./arrivals-cache";
 const ratelimit = redis
   ? new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(40, "60 s"),
+      limiter: Ratelimit.slidingWindow(120, "60 s"),
       analytics: false,
       prefix: "bts:ratelimit",
     })

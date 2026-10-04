@@ -16,6 +16,13 @@ import { checkRateLimit, clientIp } from "@/lib/rate-limit";
  * Response shape: `{ arrivals: { [code]: Arrivals }, stale: { [code]: bool },
  * total: number }`.
  */
+/**
+ * Arrivals are only fresh for ~90s (lib/bts.ts FRESH_FOR_MS), and the client
+ * also counts each ETA down against its own clock, so 15s of edge caching is
+ * invisible to riders.
+ */
+const EDGE_CACHE_SECONDS = 15;
+
 export async function GET(req: NextRequest) {
   const { allowed, retryAfterSeconds } = await checkRateLimit(clientIp(req));
   if (!allowed) {
@@ -46,12 +53,22 @@ export async function GET(req: NextRequest) {
       if (result.stale) stale[code] = true;
     }
 
-    // Never cached: a partial snapshot must not be held at the edge, or
-    // clients would keep seeing the gap instead of the stations that have
-    // since landed.
+    // A complete snapshot is cached briefly at the CDN: every visitor polls
+    // this same URL, so with s-maxage the edge answers nearly all of them
+    // and only a handful of requests a minute reach this function, Redis,
+    // or the rate limiter. A partial snapshot is never cached, or clients
+    // would keep seeing the gap instead of the stations that have since
+    // landed.
+    const complete = Object.keys(arrivals).length >= codes.length;
     return NextResponse.json(
       { arrivals, stale, total: codes.length },
-      { headers: { "Cache-Control": "no-store" } },
+      {
+        headers: {
+          "Cache-Control": complete
+            ? `public, s-maxage=${EDGE_CACHE_SECONDS}, stale-while-revalidate=${EDGE_CACHE_SECONDS * 2}`
+            : "no-store",
+        },
+      },
     );
   } catch {
     return NextResponse.json(
