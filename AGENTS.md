@@ -117,8 +117,13 @@ expanded. See `docs/` or ask the user for further design history if needed.
   Cloudflare's CDN cache (`s-maxage=10`, or 2 while still filling). Clients
   fetch `ARRIVALS_URL` (`lib/arrivals-url.ts`) - users only ever hit the CDN,
   so nothing grows with traffic. A cron (`* * * * *`) on the same Worker is a
-  watchdog that re-arms the alarm chain if it ever stops. The bucket's CORS
-  must expose `Date, Age` (the client learns server time from them).
+  watchdog that re-arms the alarm chain if it ever stops. CORS on
+  `live.` comes from a zone Transform Rule (response headers
+  `Access-Control-Allow-Origin: *`, `Access-Control-Expose-Headers: Date, Age`)
+  rather than only the bucket's CORS policy: the edge caches one copy for
+  every visitor, and R2 adds CORS headers only when the request that filled
+  the cache carried an `Origin`. The client learns server time from
+  `Date`/`Age`, so they must stay exposed.
   **Last-known times beat an empty card**: if updates stall, each station's
   latest reading keeps showing (counted down against the clock, departed
   trains dropped) with its age flagged in amber once it's older than
