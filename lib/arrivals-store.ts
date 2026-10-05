@@ -215,8 +215,8 @@ export function startArrivalsPolling() {
         const correctedNow = serverNow();
 
         // Merge, keeping the newer reading per station, rather than
-        // replacing: an empty or partial answer (a Redis error, a cold-start
-        // snapshot still filling) must not wipe last-known times this tab
+        // replacing: an empty or partial answer (a poll that failed upstream,
+        // a cold-start snapshot still filling) must not wipe last-known times this tab
         // already holds. Anything past MAX_SHOW_AGE_MS is dropped here.
         const next: ArrivalsMap = {};
         const held = useArrivalsStore.getState().map;
