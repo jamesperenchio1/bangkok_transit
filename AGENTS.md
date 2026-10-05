@@ -119,11 +119,13 @@ expanded. See `docs/` or ask the user for further design history if needed.
   so nothing grows with traffic. A cron (`* * * * *`) on the same Worker is a
   watchdog that re-arms the alarm chain if it ever stops. CORS on
   `live.` comes from a zone Transform Rule (response headers
-  `Access-Control-Allow-Origin: *`, `Access-Control-Expose-Headers: Date, Age`)
-  rather than only the bucket's CORS policy: the edge caches one copy for
-  every visitor, and R2 adds CORS headers only when the request that filled
-  the cache carried an `Origin`. The client learns server time from
-  `Date`/`Age`, so they must stay exposed.
+  `Access-Control-Allow-Origin: *`, `Access-Control-Expose-Headers: Date, Age`),
+  and the bucket must have **no** CORS policy of its own. The edge caches
+  one copy for every visitor and R2 adds CORS headers only when a request
+  carries an `Origin`, so the rule is the reliable source - and with both,
+  responses carry two `Access-Control-Allow-Origin` headers, which browsers
+  reject outright. The client learns server time from `Date`/`Age`, so they
+  must stay exposed.
   **Last-known times beat an empty card**: if updates stall, each station's
   latest reading keeps showing (counted down against the clock, departed
   trains dropped) with its age flagged in amber once it's older than
