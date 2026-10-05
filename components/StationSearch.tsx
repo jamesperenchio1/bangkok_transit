@@ -37,7 +37,11 @@ function SearchResultEta({ station }: { station: Station }) {
   if (!data.service_active) {
     return <span className="shrink-0 text-[11px] text-neutral-400">Closed</span>;
   }
-  const next = upcomingTrains(data.platforms?.[0]?.trains ?? [], data.timestamp, now)[0];
+  // First upcoming train that has an ETA: an untimed one ahead of it would
+  // show "—" while a real time is available.
+  const next = upcomingTrains(data.platforms?.[0]?.trains ?? [], data.timestamp, now).find(
+    ({ left }) => left !== null,
+  );
   if (!next) return null;
   // Last-known (not live) times show in amber with a "~", like elsewhere.
   return (
