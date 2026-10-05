@@ -6,6 +6,9 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "bangkok-transit",
   "compatibility_date": "2026-09-01",
+  // Wrangler builds the site itself before every deploy/dev, so a deploy
+  // never depends on the dashboard's "Build command" field being filled in.
+  "build": { "command": "npm run build" },
   "assets": {
     "directory": "./out",
     "not_found_handling": "404-page"

@@ -137,7 +137,7 @@ expanded. See `docs/` or ask the user for further design history if needed.
 npm install
 npm run dev       # dev server (Turbopack, Serwist disabled)
 npm run build     # production build with webpack + Serwist
-npx wrangler dev  # serve out/ the way production does (after npm run build)
+npx wrangler dev  # build, then serve out/ the way production does
 cd cloudflare/poller && npm run dev   # poller locally; trigger with /__scheduled
 ```
 
