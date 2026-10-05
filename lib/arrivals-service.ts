@@ -1,5 +1,5 @@
 import { after } from "next/server";
-import { fetchUpstream, isFresh, type Arrivals } from "./bts";
+import { fetchUpstream, isShowable, type Arrivals } from "./bts";
 import { cacheEnabled, readSnapshot, tryClaimRefresh, writeSnapshot, type Snapshot } from "./arrivals-cache";
 
 /**
@@ -59,14 +59,15 @@ export async function getSnapshot(): Promise<Snapshot | null> {
 
 /**
  * Poll every station once and publish the result. A station whose call fails
- * (or is cut off by the deadline) keeps its entry from the previous snapshot
- * only while that entry is still fresh, so one dropped call doesn't blank a
- * station - but nothing old is ever carried forward. The starting station
+ * (or is cut off by the deadline) keeps its entry from the previous snapshot,
+ * so a dropped call - or an upstream that keeps failing for one station -
+ * shows its last-known times (with their age) instead of blanking it, until
+ * that entry passes MAX_SHOW_AGE_MS. The starting station
  * rotates every poll, so when upstream is slow the deadline doesn't always
  * cut off the same tail of the list.
  *
  * Normally that is one Redis write at the end. During a cold start - nothing
- * fresh anywhere, so every instance is serving an empty snapshot - partial
+ * to show anywhere, so every instance is serving an empty snapshot - partial
  * results are also published every couple of seconds (marked `partial`) so
  * users everywhere see stations as they land.
  */
@@ -74,12 +75,12 @@ async function pollUpstream(codes: string[], coldStart: boolean): Promise<void> 
   const fetchedAt = Date.now();
   const deadline = AbortSignal.timeout(POLL_DEADLINE_MS);
 
-  // The previous shared snapshot, to carry still-fresh entries over from.
+  // The previous shared snapshot, to carry recent entries over from.
   // Normally the request that triggered this poll just read it into memory.
   // If memory isn't current and Redis can't be read either, this poll can't
   // see what everyone is being served, so it must not publish over it: a
   // station that fails this time would vanish for everybody even though the
-  // shared snapshot still had a fresh reading. It then only updates this
+  // shared snapshot still had a reading for it. It then only updates this
   // instance's own memory.
   let previous: Snapshot | null = null;
   let canPublish = true;
@@ -96,7 +97,7 @@ async function pollUpstream(codes: string[], coldStart: boolean): Promise<void> 
 
   const arrivals: Record<string, Arrivals> = {};
   for (const [code, data] of Object.entries(previous?.arrivals ?? {})) {
-    if (isFresh(data.timestamp)) arrivals[code] = data;
+    if (isShowable(data.timestamp)) arrivals[code] = data;
   }
 
   const start = Math.floor(Math.random() * codes.length);
@@ -113,7 +114,7 @@ async function pollUpstream(codes: string[], coldStart: boolean): Promise<void> 
       try {
         arrivals[code] = await fetchUpstream(code, deadline);
       } catch {
-        continue; // keeps a still-fresh previous entry, if any; next poll retries
+        continue; // keeps the previous entry, if any; next poll retries
       }
       if (coldStart && canPublish) {
         const partial: Snapshot = { arrivals: { ...arrivals }, fetchedAt, partial: true };

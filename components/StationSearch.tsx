@@ -5,7 +5,7 @@ import { Search, X } from "lucide-react";
 import { stations, type Station } from "@/data/stations";
 import { LINE_COLORS } from "@/lib/line-colors";
 import { useArrivals } from "@/lib/use-arrivals";
-import { minutesLabel, trainCountdown } from "@/lib/format-eta";
+import { minutesLabel, upcomingTrains } from "@/lib/format-eta";
 
 export interface StationSearchProps {
   onSelectStation: (station: Station) => void;
@@ -13,8 +13,23 @@ export interface StationSearchProps {
 
 const MAX_RESULTS = 8;
 
+/**
+ * Lowercase and drop spaces, dots and hyphens, so "แยกคปอ" finds
+ * "แยก คปอ.", "n 15" finds "N15", and "phayathai" finds "Phaya Thai".
+ * (toLowerCase leaves Thai untouched.)
+ */
+function normalize(text: string): string {
+  return text.toLowerCase().replace(/[\s.\-]+/g, "");
+}
+
+// Normalized once: the station list is static.
+const searchIndex = stations.map((s) => ({
+  station: s,
+  keys: [normalize(s.nameEn), normalize(s.nameTh), normalize(s.code)],
+}));
+
 function SearchResultEta({ station }: { station: Station }) {
-  const { data, now } = useArrivals(station.hasLiveArrivals ? station.code : null);
+  const { data, live, now } = useArrivals(station.hasLiveArrivals ? station.code : null);
   if (!station.hasLiveArrivals) {
     return <span className="shrink-0 text-[11px] text-neutral-400">No live data</span>;
   }
@@ -22,11 +37,24 @@ function SearchResultEta({ station }: { station: Station }) {
   if (!data.service_active) {
     return <span className="shrink-0 text-[11px] text-neutral-400">Closed</span>;
   }
-  const next = (data.platforms?.[0]?.trains ?? [])
-    .map((train) => trainCountdown(data.timestamp, train, now))
-    .find((countdown) => countdown !== null && !countdown.departed)?.minutes;
-  if (next === undefined) return null;
-  return <span className="shrink-0 text-[11px] text-neutral-600 dark:text-neutral-300">{minutesLabel(next)}</span>;
+  // First upcoming train that has an ETA: an untimed one ahead of it would
+  // show "—" while a real time is available.
+  const next = upcomingTrains(data.platforms?.[0]?.trains ?? [], data.timestamp, now).find(
+    ({ left }) => left !== null,
+  );
+  if (!next) return null;
+  // Last-known (not live) times show in amber with a "~", like elsewhere.
+  return (
+    <span
+      className={`shrink-0 text-[11px] ${
+        live ? "text-neutral-600 dark:text-neutral-300" : "text-amber-600 dark:text-amber-400"
+      }`}
+      title={live ? undefined : "Last known time - live updates are delayed"}
+    >
+      {live ? "" : "~"}
+      {minutesLabel(next.left)}
+    </span>
+  );
 }
 
 export function StationSearch({ onSelectStation }: StationSearchProps) {
@@ -34,16 +62,11 @@ export function StationSearch({ onSelectStation }: StationSearchProps) {
   const [query, setQuery] = useState("");
 
   const results = useMemo(() => {
-    const trimmed = query.trim();
-    if (!trimmed) return [];
-    const q = trimmed.toLowerCase();
-    return stations
-      .filter(
-        (s) =>
-          s.nameEn.toLowerCase().includes(q) ||
-          s.nameTh.includes(trimmed) ||
-          s.code.toLowerCase().includes(q),
-      )
+    const q = normalize(query);
+    if (!q) return [];
+    return searchIndex
+      .filter(({ keys }) => keys.some((key) => key.includes(q)))
+      .map(({ station }) => station)
       .slice(0, MAX_RESULTS);
   }, [query]);
 

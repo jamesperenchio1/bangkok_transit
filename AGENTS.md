@@ -111,16 +111,17 @@ expanded. See `docs/` or ask the user for further design history if needed.
   the edge and server hits stay roughly constant whether there are ten
   users or a million. There is deliberately no per-station endpoint and no
   per-user fallback fetch.
-  **Old data is never shown**: `FRESH_FOR_MS` (90s, `lib/bts.ts`) is
-  enforced on the server, in the client store, and on every render against
-  a live clock (`lib/use-arrivals.ts`), so if updates stop for any reason
-  the card says times are unavailable instead of showing old ones. Ages
-  are measured on the server's clock (offset learned from each response's
-  `Date`/`Age` headers), so a phone with a wrong clock still works. The
-  client polls every 15s for as long as the page is open (paused in hidden
-  tabs; immediate re-poll on return, `online`, and bfcache restore; plus a
-  watchdog that restarts a dead poll chain) and counts ETAs down against
-  its own clock between polls.
+  **Last-known times beat an empty card**: if updates stall, each station's
+  latest reading keeps showing (counted down against the clock, departed
+  trains dropped) with its age flagged in amber once it's older than
+  `FRESH_FOR_MS` (90s). Only entries past `MAX_SHOW_AGE_MS` (30 min,
+  `lib/bts.ts`) are dropped - on the server, in the client store, and on
+  render (`lib/use-arrivals.ts`). Ages are measured on the server's clock
+  (offset learned from each response's `Date`/`Age` headers), so a phone
+  with a wrong clock still counts down correctly. The client polls every
+  15s for as long as the page is open (paused in hidden tabs; immediate
+  re-poll on return, `online`, and bfcache restore; plus a watchdog that
+  restarts a dead poll chain).
 - **Keep-warm job**: `.github/workflows/keep-arrivals-warm.yml` hits
   `/api/arrivals` on a schedule so the first visitor after a long idle
   period doesn't land on an empty snapshot. GitHub throttles scheduled runs
