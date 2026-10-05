@@ -113,6 +113,8 @@ const GPS_ACCURACY_SOURCE = "gps-accuracy";
 const GPS_RING_LAYER = "gps-ring-layer";
 const GPS_RING_OUTLINE_LAYER = "gps-ring-outline-layer";
 const GPS_DOT_LAYER = "gps-dot-layer";
+const HEADING_ICON = "gps-heading-icon";
+const HEADING_LAYER = "gps-heading-layer";
 
 const lineKeys = [...new Set(stations.flatMap((s) => s.lines.map((l) => l.line)))];
 
@@ -215,11 +217,25 @@ function gpsGeoJSON(position: GeoPosition | null): GeoJSON.FeatureCollection<Geo
     features: [
       {
         type: "Feature",
-        properties: {},
+        // heading omitted (not set to null) rather than included as null, so
+        // the heading-arrow layer can filter on it with a plain
+        // ["has", "heading"], matching DEST_RING_LAYER's filter style.
+        properties: position.heading !== null ? { heading: position.heading } : {},
         geometry: { type: "Point", coordinates: [position.lon, position.lat] },
       },
     ],
   };
+}
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+// Shortest-path interpolation between two compass bearings, so e.g. 350deg
+// -> 10deg sweeps 20deg through north instead of the long way around.
+function lerpAngle(a: number, b: number, t: number): number {
+  const delta = ((((b - a) % 360) + 540) % 360) - 180;
+  return (a + delta * t + 360) % 360;
 }
 
 /**
@@ -264,6 +280,10 @@ export function TransitMap({
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const geometryRef = useRef<LineSegments | null>(null);
   const popupsRef = useRef(new Map<string, { popup: maplibregl.Popup; root: Root; render: () => void }>());
+  const gpsAnimFrameRef = useRef<number | null>(null);
+  // The last GPS point actually drawn on the map - either settled at the
+  // latest fix, or mid-flight through the animation interpolating toward it.
+  const gpsRenderedPositionRef = useRef<GeoPosition | null>(null);
 
   const pathCodes = useMemo(
     () => new Set(path?.map((leg) => leg.station.code) ?? []),
@@ -447,8 +467,10 @@ export function TransitMap({
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       });
-      // Under the stations, so a wide (poor-fix) circle tints the map
-      // without washing out the markers on top of it.
+      // Under the transit lines/route too (not just stations), so a wide
+      // (poor-fix) circle tints the map without reducing the contrast of
+      // whatever's drawn on top of it - inserted before LINES_LAYER, the
+      // very first layer added, puts it at the bottom of the whole stack.
       map.addLayer(
         {
           id: GPS_RING_LAYER,
@@ -456,7 +478,7 @@ export function TransitMap({
           source: GPS_ACCURACY_SOURCE,
           paint: { "fill-color": "#2563eb", "fill-opacity": 0.12 },
         },
-        STATIONS_HIT_LAYER,
+        LINES_LAYER,
       );
       map.addLayer(
         {
@@ -465,7 +487,7 @@ export function TransitMap({
           source: GPS_ACCURACY_SOURCE,
           paint: { "line-color": "#2563eb", "line-opacity": 0.35, "line-width": 1 },
         },
-        STATIONS_HIT_LAYER,
+        LINES_LAYER,
       );
       map.addLayer({
         id: GPS_DOT_LAYER,
@@ -476,6 +498,45 @@ export function TransitMap({
           "circle-color": "#2563eb",
           "circle-stroke-color": "#fff",
           "circle-stroke-width": 2,
+        },
+      });
+
+      // A small arrow on top of the dot, pointing north on its own
+      // (icon-rotation-alignment: "map" then rotates it by heading), so it
+      // tracks true north regardless of how the map itself is rotated -
+      // shown only for fixes that report a heading (see gpsGeoJSON).
+      if (!map.hasImage(HEADING_ICON)) {
+        const size = 22;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.fillStyle = "#2563eb";
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(size / 2, 0);
+          ctx.lineTo(size * 0.78, size * 0.42);
+          ctx.lineTo(size / 2, size * 0.3);
+          ctx.lineTo(size * 0.22, size * 0.42);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          map.addImage(HEADING_ICON, ctx.getImageData(0, 0, size, size));
+        }
+      }
+      map.addLayer({
+        id: HEADING_LAYER,
+        type: "symbol",
+        source: GPS_SOURCE,
+        filter: ["has", "heading"],
+        layout: {
+          "icon-image": HEADING_ICON,
+          "icon-rotate": ["get", "heading"],
+          "icon-rotation-alignment": "map",
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
         },
       });
 
@@ -588,16 +649,62 @@ export function TransitMap({
     popupsRef.current.forEach(({ render }) => render());
   }, [startCode, destinationCode]);
 
-  // GPS position.
+  // GPS position. Animates smoothly from the last drawn point to the new
+  // fix instead of snapping, since fixes land roughly a second apart (or
+  // further, once the jitter filter in useGeolocation skips a few) and an
+  // instant jump reads as jank, especially at high zoom.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const apply = () => {
-      map.getSource<maplibregl.GeoJSONSource>(GPS_SOURCE)?.setData(gpsGeoJSON(userPosition));
-      map.getSource<maplibregl.GeoJSONSource>(GPS_ACCURACY_SOURCE)?.setData(gpsAccuracyGeoJSON(userPosition));
+
+    const setGpsData = (position: GeoPosition | null) => {
+      map.getSource<maplibregl.GeoJSONSource>(GPS_SOURCE)?.setData(gpsGeoJSON(position));
+      map.getSource<maplibregl.GeoJSONSource>(GPS_ACCURACY_SOURCE)?.setData(gpsAccuracyGeoJSON(position));
+      gpsRenderedPositionRef.current = position;
     };
-    if (loadedRef.current) apply();
-    else map.once("load", apply);
+
+    const run = () => {
+      if (gpsAnimFrameRef.current !== null) {
+        cancelAnimationFrame(gpsAnimFrameRef.current);
+        gpsAnimFrameRef.current = null;
+      }
+
+      const from = gpsRenderedPositionRef.current;
+      if (!userPosition || !from) {
+        // Nothing to animate from (first fix), or position cleared: snap.
+        setGpsData(userPosition);
+        return;
+      }
+
+      const to = userPosition;
+      const start = performance.now();
+      const DURATION_MS = 400;
+      const tick = (now: number) => {
+        const t = Math.min(1, (now - start) / DURATION_MS);
+        const eased = 1 - (1 - t) * (1 - t);
+        setGpsData({
+          lat: lerp(from.lat, to.lat, eased),
+          lon: lerp(from.lon, to.lon, eased),
+          accuracy: lerp(from.accuracy, to.accuracy, eased),
+          heading:
+            from.heading !== null && to.heading !== null
+              ? lerpAngle(from.heading, to.heading, eased)
+              : to.heading,
+        });
+        gpsAnimFrameRef.current = t < 1 ? requestAnimationFrame(tick) : null;
+      };
+      gpsAnimFrameRef.current = requestAnimationFrame(tick);
+    };
+
+    if (loadedRef.current) run();
+    else map.once("load", run);
+
+    return () => {
+      if (gpsAnimFrameRef.current !== null) {
+        cancelAnimationFrame(gpsAnimFrameRef.current);
+        gpsAnimFrameRef.current = null;
+      }
+    };
   }, [userPosition]);
 
   // Station and basemap labels follow the EN/TH toggle. (The initial
