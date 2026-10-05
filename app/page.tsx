@@ -10,6 +10,7 @@ import { findPath } from "@/lib/transit-graph";
 import { useGeolocation } from "@/lib/use-geolocation";
 import { startArrivalsPolling } from "@/lib/arrivals-store";
 import { haversineMeters } from "@/lib/line-geometry";
+import { restoreLang, stationName, useLangStore, useT } from "@/lib/i18n";
 
 // Kicked off as soon as this module evaluates (not when <TransitMap> first
 // renders), so the MapLibre chunk - by far the largest download - starts in
@@ -34,6 +35,34 @@ function nearestStation(lat: number, lon: number): { station: Station; meters: n
   return { station: best, meters: bestMeters };
 }
 
+/** Small EN/TH segmented switch for the header. */
+function LangToggle() {
+  const lang = useLangStore((s) => s.lang);
+  const setLang = useLangStore((s) => s.setLang);
+  return (
+    <div
+      role="group"
+      aria-label="Language / ภาษา"
+      className="flex rounded-full border border-neutral-300 p-0.5 text-[11px] font-semibold dark:border-neutral-700"
+    >
+      {(["en", "th"] as const).map((l) => (
+        <button
+          key={l}
+          onClick={() => setLang(l)}
+          aria-pressed={lang === l}
+          className={`rounded-full px-2 py-1 ${
+            lang === l
+              ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
+              : "text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
+          }`}
+        >
+          {l.toUpperCase()}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function distanceLabel(meters: number): string {
   return meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toFixed(1)} km`;
 }
@@ -44,9 +73,11 @@ export default function Home() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [focusStation, setFocusStation] = useState<Station | null>(null);
   const { position, error: geoError } = useGeolocation();
+  const { lang, t } = useT();
 
   useEffect(() => {
     startArrivalsPolling();
+    restoreLang();
   }, []);
 
   // The route lives in the URL (?from=N15&to=CEN) so a reload, a PWA
@@ -135,48 +166,48 @@ export default function Home() {
   const hasRoute = start !== null && destination !== null;
 
   const subtitle = !start && !destination
-    ? "Tap a station, then choose Start or Destination"
+    ? t.hintIdle
     : start && !destination
-      ? "Start set — now pick a destination"
+      ? t.hintStartSet
       : !start && destination
-        ? "Destination set — now pick a start"
-        : "Route highlighted below";
+        ? t.hintDestSet
+        : t.hintRoute;
 
   return (
     <main className="flex flex-1 flex-col">
       <header className="flex items-center justify-between gap-2 border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
         <div className="min-w-0">
-          <h1 className="text-base font-semibold">Bangkok Transit</h1>
+          <h1 className="text-base font-semibold">{t.appTitle}</h1>
           <p className="truncate text-xs text-neutral-500">{subtitle}</p>
           {(start || destination) && (
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               <span className="inline-flex max-w-[40vw] items-center gap-1 rounded-full bg-green-600 px-2 py-0.5 text-[11px] font-medium text-white">
-                <span className="shrink-0 opacity-80">Start:</span>
-                <span className="truncate">{start ? start.nameEn : "—"}</span>
+                <span className="shrink-0 opacity-80">{t.start}:</span>
+                <span className="truncate">{start ? stationName(start, lang) : "—"}</span>
                 {start && (
-                  <button onClick={() => setStart(null)} aria-label="Clear start" className="shrink-0">
+                  <button onClick={() => setStart(null)} aria-label={t.clearStart} className="shrink-0">
                     <X size={11} />
                   </button>
                 )}
               </span>
               <button
                 onClick={swapRoute}
-                aria-label="Swap start and destination"
-                title="Swap start and destination"
+                aria-label={t.swap}
+                title={t.swap}
                 className="rounded-full p-0.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
               >
                 <ArrowLeftRight size={13} />
               </button>
               <span className="inline-flex max-w-[40vw] items-center gap-1 rounded-full border border-green-600 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:text-green-400">
-                <span className="shrink-0 opacity-80">Destination:</span>
-                <span className="truncate">{destination ? destination.nameEn : "—"}</span>
+                <span className="shrink-0 opacity-80">{t.destination}:</span>
+                <span className="truncate">{destination ? stationName(destination, lang) : "—"}</span>
                 {destination && (
                   <button
                     onClick={() => {
                       setDestination(null);
                       setSheetOpen(false);
                     }}
-                    aria-label="Clear destination"
+                    aria-label={t.clearDestination}
                     className="shrink-0"
                   >
                     <X size={11} />
@@ -192,9 +223,10 @@ export default function Home() {
               onClick={clearRoute}
               className="rounded-full border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
             >
-              Clear
+              {t.clear}
             </button>
           )}
+          <LangToggle />
           <StationSearch onSelectStation={handleSearchSelect} />
         </div>
       </header>
@@ -202,7 +234,7 @@ export default function Home() {
       {geoError === "denied" && (
         <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
           <AlertTriangle size={14} className="shrink-0" />
-          Location access denied — enable it in your browser settings to see your position on the map.
+          {t.locationDenied}
         </div>
       )}
 
@@ -225,7 +257,7 @@ export default function Home() {
           >
             <Navigation size={14} className="shrink-0 text-blue-600" />
             <span className="truncate">
-              Nearest: {nearest.station.nameEn}
+              {t.nearest}: {stationName(nearest.station, lang)}
             </span>
             <span className="shrink-0 text-xs text-neutral-500 dark:text-neutral-400">
               {distanceLabel(nearest.meters)}
@@ -238,7 +270,7 @@ export default function Home() {
             onClick={() => setSheetOpen(true)}
             className="absolute inset-x-0 bottom-10 z-[1000] mx-auto flex w-fit items-center gap-1.5 rounded-full bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-lg hover:bg-green-700"
           >
-            View route <ArrowRight size={15} />
+            {t.viewRoute} <ArrowRight size={15} />
           </button>
         )}
       </div>

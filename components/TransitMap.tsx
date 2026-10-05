@@ -11,6 +11,7 @@ import type { GeoPosition } from "@/lib/use-geolocation";
 import type { PathResult } from "@/lib/transit-graph";
 import { StationActions } from "@/components/StationActions";
 import { LINE_COLORS, readableTextColor } from "@/lib/line-colors";
+import { stationName, useLangStore, useT, type Lang } from "@/lib/i18n";
 
 // MapLibre uses [lon, lat] everywhere, the opposite of Leaflet's [lat, lon] -
 // every coordinate pair in this file is in that order.
@@ -29,11 +30,49 @@ const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 // only cost GPU/decode time on phones without helping anyone find a station.
 const DROPPED_STYLE_LAYERS = new Set(["poi_transit", "building-3d", "poi_r20", "poi_r7"]);
 
+// The basemap labels places in both scripts at once ("Phetchaburi
+// เพชรบุรี"); every layer that does so references `name:latin`. Those get
+// swapped for a single-language field matching the EN/TH toggle; their ids
+// are recorded so the toggle can find them again after the swap.
+const basemapLabelLayers = new Set<string>();
+
+function isBilingualLabel(layer: maplibregl.LayerSpecification): boolean {
+  return layer.type === "symbol" && JSON.stringify(layer.layout?.["text-field"] ?? "").includes("name:latin");
+}
+
+function basemapLabelField(lang: Lang): maplibregl.ExpressionSpecification {
+  return lang === "th"
+    ? ["coalesce", ["get", "name:th"], ["get", "name:nonlatin"], ["get", "name"]]
+    : ["coalesce", ["get", "name:latin"], ["get", "name_en"], ["get", "name"]];
+}
+
 function transformStyle(
   _previous: maplibregl.StyleSpecification | undefined,
   next: maplibregl.StyleSpecification,
 ): maplibregl.StyleSpecification {
-  return { ...next, layers: next.layers.filter((layer) => !DROPPED_STYLE_LAYERS.has(layer.id)) };
+  const lang = useLangStore.getState().lang;
+  return {
+    ...next,
+    layers: next.layers
+      .filter((layer) => !DROPPED_STYLE_LAYERS.has(layer.id))
+      .map((layer) => {
+        if (!isBilingualLabel(layer) || layer.type !== "symbol") return layer;
+        basemapLabelLayers.add(layer.id);
+        return { ...layer, layout: { ...layer.layout, "text-field": basemapLabelField(lang) } };
+      }),
+  };
+}
+
+/** Our own station labels: the name in the chosen language, plus the code once zoomed in. */
+function stationLabelField(lang: Lang): maplibregl.ExpressionSpecification {
+  const name = ["get", lang === "th" ? "nameTh" : "nameEn"] as maplibregl.ExpressionSpecification;
+  return [
+    "step",
+    ["zoom"],
+    name,
+    14,
+    ["format", name, {}, "\n", {}, ["get", "code"], { "font-scale": 0.8 }],
+  ];
 }
 
 // Start/destination marker accent color, shared by the station GeoJSON
@@ -70,7 +109,9 @@ const STATIONS_LABEL_LAYER = "stations-label-layer";
 const DEST_RING_ICON = "destination-ring-icon";
 const DEST_RING_LAYER = "destination-ring-layer";
 const GPS_SOURCE = "gps-position";
+const GPS_ACCURACY_SOURCE = "gps-accuracy";
 const GPS_RING_LAYER = "gps-ring-layer";
+const GPS_RING_OUTLINE_LAYER = "gps-ring-outline-layer";
 const GPS_DOT_LAYER = "gps-dot-layer";
 
 const lineKeys = [...new Set(stations.flatMap((s) => s.lines.map((l) => l.line)))];
@@ -148,7 +189,8 @@ function stationsGeoJSON(
         type: "Feature",
         properties: {
           code: s.code,
-          name: s.nameEn,
+          nameEn: s.nameEn,
+          nameTh: s.nameTh || s.nameEn,
           sortKey,
           labelOpacity: dimmed ? 0.45 : 1,
           radius: isEndpoint ? 8 : s.lines.length > 1 ? 6 : 4,
@@ -173,10 +215,36 @@ function gpsGeoJSON(position: GeoPosition | null): GeoJSON.FeatureCollection<Geo
     features: [
       {
         type: "Feature",
-        properties: { radius: Math.max(position.accuracy / 4, 8) },
+        properties: {},
         geometry: { type: "Point", coordinates: [position.lon, position.lat] },
       },
     ],
+  };
+}
+
+/**
+ * The accuracy estimate as a real circle on the ground (radius = the
+ * browser's reported accuracy in meters), like Google Maps: it grows and
+ * shrinks with the map as you zoom, so you can see how big the uncertainty
+ * actually is relative to streets and stations. A screen-pixel circle can't
+ * do that. A flat-earth offset is plenty accurate at these radii.
+ */
+function gpsAccuracyGeoJSON(position: GeoPosition | null): GeoJSON.FeatureCollection<GeoJSON.Polygon> {
+  if (!position || !(position.accuracy > 0)) return { type: "FeatureCollection", features: [] };
+  const STEPS = 64;
+  const metersPerDegLat = 111_320;
+  const metersPerDegLon = metersPerDegLat * Math.cos((position.lat * Math.PI) / 180);
+  const ring: [number, number][] = [];
+  for (let i = 0; i <= STEPS; i++) {
+    const angle = (i / STEPS) * 2 * Math.PI;
+    ring.push([
+      position.lon + (position.accuracy * Math.cos(angle)) / metersPerDegLon,
+      position.lat + (position.accuracy * Math.sin(angle)) / metersPerDegLat,
+    ]);
+  }
+  return {
+    type: "FeatureCollection",
+    features: [{ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [ring] } }],
   };
 }
 
@@ -202,6 +270,7 @@ export function TransitMap({
     [path],
   );
   const isRouting = path !== null;
+  const { lang, t } = useT();
 
   // Keep the latest callbacks/state in refs so the map's own click handler
   // (registered once, at style-load time) always sees current values without
@@ -352,13 +421,7 @@ export function TransitMap({
         source: STATIONS_SOURCE,
         minzoom: 11,
         layout: {
-          "text-field": [
-            "step",
-            ["zoom"],
-            ["get", "name"],
-            14,
-            ["format", ["get", "name"], {}, "\n", {}, ["get", "code"], { "font-scale": 0.8 }],
-          ],
+          "text-field": stationLabelField(useLangStore.getState().lang),
           "text-font": ["Noto Sans Bold"],
           "text-size": ["interpolate", ["linear"], ["zoom"], 11, 10, 14, 12, 16, 14],
           "text-variable-anchor": ["left", "right", "top", "bottom"],
@@ -380,18 +443,30 @@ export function TransitMap({
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       });
-      map.addLayer({
-        id: GPS_RING_LAYER,
-        type: "circle",
-        source: GPS_SOURCE,
-        paint: {
-          "circle-radius": ["get", "radius"],
-          "circle-color": "#2563eb",
-          "circle-opacity": 0.15,
-          "circle-stroke-color": "#2563eb",
-          "circle-stroke-width": 1,
-        },
+      map.addSource(GPS_ACCURACY_SOURCE, {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
       });
+      // Under the stations, so a wide (poor-fix) circle tints the map
+      // without washing out the markers on top of it.
+      map.addLayer(
+        {
+          id: GPS_RING_LAYER,
+          type: "fill",
+          source: GPS_ACCURACY_SOURCE,
+          paint: { "fill-color": "#2563eb", "fill-opacity": 0.12 },
+        },
+        STATIONS_HIT_LAYER,
+      );
+      map.addLayer(
+        {
+          id: GPS_RING_OUTLINE_LAYER,
+          type: "line",
+          source: GPS_ACCURACY_SOURCE,
+          paint: { "line-color": "#2563eb", "line-opacity": 0.35, "line-width": 1 },
+        },
+        STATIONS_HIT_LAYER,
+      );
       map.addLayer({
         id: GPS_DOT_LAYER,
         type: "circle",
@@ -518,12 +593,27 @@ export function TransitMap({
     const map = mapRef.current;
     if (!map) return;
     const apply = () => {
-      const source = map.getSource<maplibregl.GeoJSONSource>(GPS_SOURCE);
-      source?.setData(gpsGeoJSON(userPosition));
+      map.getSource<maplibregl.GeoJSONSource>(GPS_SOURCE)?.setData(gpsGeoJSON(userPosition));
+      map.getSource<maplibregl.GeoJSONSource>(GPS_ACCURACY_SOURCE)?.setData(gpsAccuracyGeoJSON(userPosition));
     };
     if (loadedRef.current) apply();
     else map.once("load", apply);
   }, [userPosition]);
+
+  // Station and basemap labels follow the EN/TH toggle. (The initial
+  // language is applied at style load, in transformStyle/addLayer.)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      map.setLayoutProperty(STATIONS_LABEL_LAYER, "text-field", stationLabelField(lang));
+      for (const id of basemapLabelLayers) {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "text-field", basemapLabelField(lang));
+      }
+    };
+    if (loadedRef.current) apply();
+    else map.once("load", apply);
+  }, [lang]);
 
   // Fly to a station on demand (a search result or "nearest station") and
   // open its card, same as tapping it.
@@ -558,13 +648,24 @@ export function TransitMap({
           }
         }}
         disabled={!userPosition}
-        aria-label="Center on my location"
-        title={userPosition ? "Center on my location" : "Waiting for your location…"}
+        aria-label={t.centerOnMe}
+        title={userPosition ? t.centerOnMe : t.waitingLocation}
         className="absolute top-3 right-3 z-[1000] rounded-full border border-neutral-300 bg-white p-2.5 text-neutral-700 shadow-md hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
       >
         <LocateFixed size={18} />
       </button>
     </div>
+  );
+}
+
+// Its own component so the name re-renders when the language changes - the
+// popup is a separate React root that only re-renders on demand otherwise.
+function PopupStationName({ station }: { station: Station }) {
+  const { lang } = useT();
+  return (
+    <span className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+      {stationName(station, lang)}
+    </span>
   );
 }
 
@@ -611,9 +712,7 @@ function openPopup(
           >
             {station.code}
           </span>
-          <span className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-            {station.nameEn}
-          </span>
+          <PopupStationName station={station} />
         </div>
         <StationActions
           station={station}

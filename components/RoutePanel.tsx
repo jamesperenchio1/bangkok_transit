@@ -7,6 +7,7 @@ import type { Station } from "@/data/stations";
 import { terminusInDirection, type PathResult } from "@/lib/transit-graph";
 import type { GeoPosition } from "@/lib/use-geolocation";
 import { LINE_COLORS } from "@/lib/line-colors";
+import { stationName, useT } from "@/lib/i18n";
 
 function directionsUrl(
   origin: { lat: number; lon: number },
@@ -16,6 +17,7 @@ function directionsUrl(
 }
 
 function GoogleMapsLink({ href }: { href: string }) {
+  const { t } = useT();
   return (
     <a
       href={href}
@@ -24,7 +26,7 @@ function GoogleMapsLink({ href }: { href: string }) {
       className="flex w-fit items-center gap-1.5 rounded-full border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
     >
       <MapPin size={14} />
-      Get directions in Google Maps
+      {t.googleMaps}
     </a>
   );
 }
@@ -39,6 +41,7 @@ export interface RoutePanelProps {
 
 export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
   const open = state !== null;
+  const { lang, t } = useT();
 
   return (
     <div
@@ -52,14 +55,14 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
         <div className="flex max-h-[70vh] flex-col overflow-y-auto p-4">
           <div className="mb-3 flex items-start justify-between gap-2">
             <div className="flex items-center gap-2 text-sm font-semibold">
-              <span>{state.start.nameEn}</span>
+              <span>{stationName(state.start, lang)}</span>
               <ArrowRight size={14} className="shrink-0 text-neutral-400" />
-              <span>{state.destination.nameEn}</span>
+              <span>{stationName(state.destination, lang)}</span>
             </div>
             <button
               onClick={onClose}
               className="rounded-full p-1.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-              aria-label="Close"
+              aria-label={t.close}
             >
               <X size={20} />
             </button>
@@ -75,7 +78,7 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
 
           {!state.path && (
             <p className="py-4 text-center text-sm text-neutral-500">
-              No route found between these stations yet - try Google Maps above.
+              {t.noRoute}
             </p>
           )}
 
@@ -110,14 +113,14 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
                     </div>
                     <div className="flex-1 py-1.5">
                       <p className="flex items-center text-sm font-medium">
-                        {leg.station.nameEn}
+                        {stationName(leg.station, lang)}
                         {leg.isTransfer && (
                           <span
                             className="ml-1.5 inline-flex items-center gap-1"
                             title={
                               leg.towardStation
-                                ? `Change line, toward ${leg.towardStation.nameEn}`
-                                : "Change line"
+                                ? t.changeLineToward(stationName(leg.towardStation, lang))
+                                : t.changeLine
                             }
                           >
                             <span
@@ -168,19 +171,21 @@ function RouteSummary({ path }: { path: PathResult }) {
     (leg, i) => i > 0 && leg.line !== null && path[i - 1].station.lines.some((l) => l.line === leg.line),
   ).length;
   const changes = path.filter((leg) => leg.isTransfer).length;
+  const { t } = useT();
   return (
     <p className="-mt-2 mb-3 text-xs text-neutral-600 dark:text-neutral-300">
-      {stops} {stops === 1 ? "stop" : "stops"} · {changes === 0 ? "no changes" : `${changes} ${changes === 1 ? "change" : "changes"}`}
+      {t.stops(stops)} · {t.changes(changes)}
     </p>
   );
 }
 
 function LiveEta({ station, directionKey }: { station: Station; directionKey?: string }) {
   const { data, live, now } = useArrivals(station.code);
+  const { lang, t } = useT();
   if (!data) return null;
   // Last-known (not live) data is still shown, with its age, in amber.
   const age = live ? null : (
-    <span className="text-amber-600 dark:text-amber-400"> · last known, {updatedAgoLabel(data.timestamp, now)}</span>
+    <span className="text-amber-600 dark:text-amber-400"> · {t.lastKnown}, {updatedAgoLabel(data.timestamp, now, t)}</span>
   );
   if (!data.service_active) {
     // Upstream's next_service string already includes its own leading "~"
@@ -188,7 +193,7 @@ function LiveEta({ station, directionKey }: { station: Station; directionKey?: s
     const nextService = data.next_service?.replace(/^~\s*/, "") ?? "?";
     return (
       <p className="text-xs text-neutral-500">
-        Not running — next ~{nextService}
+        {t.notRunning(nextService)}
         {age}
       </p>
     );
@@ -200,16 +205,16 @@ function LiveEta({ station, directionKey }: { station: Station; directionKey?: s
   const trains = upcomingTrains(platform?.trains ?? [], data.timestamp, now);
   const [next, ...upcoming] = trains;
   if (!next) return null;
-  const clockTime = arrivalClockTime(data.timestamp, next.train.eta_precise ?? next.train.eta_minutes);
+  const clockTime = arrivalClockTime(data.timestamp, next.train.eta_precise ?? next.train.eta_minutes, lang);
   const laterMinutes = upcoming
     .slice(0, 2)
-    .map(({ left }) => minutesLabel(left))
+    .map(({ left }) => minutesLabel(left, t))
     .join(", ");
   return (
     <p className="text-xs text-neutral-600 dark:text-neutral-300">
-      Next arrival {next.left !== null && next.left <= 0 ? "" : "~"}{minutesLabel(next.left)}
+      {t.nextArrival} {next.left !== null && next.left <= 0 ? "" : "~"}{minutesLabel(next.left, t)}
       {clockTime ? ` · ${clockTime}` : ""}
-      {laterMinutes ? ` (then ~${laterMinutes})` : ""}
+      {laterMinutes ? ` (${t.then} ~${laterMinutes})` : ""}
       {age}
     </p>
   );

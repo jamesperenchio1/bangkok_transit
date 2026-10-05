@@ -9,11 +9,14 @@ import {
 } from "@/lib/format-eta";
 import type { ArrivalPlatform } from "@/lib/bts";
 import type { Station } from "@/data/stations";
+import { useT, type Lang } from "@/lib/i18n";
 
-function directionLabel(direction: string): string {
-  // Upstream joins both languages: "เคหะฯ  | Kheha" - keep the English half.
+function directionLabel(direction: string, lang: Lang): string {
+  // Upstream joins both languages: "เคหะฯ  | Kheha" - keep the half matching
+  // the UI language.
   const parts = direction.split("|");
-  return (parts.length > 1 ? parts[parts.length - 1] : direction).trim();
+  if (parts.length < 2) return direction.trim();
+  return (lang === "th" ? parts[0] : parts[parts.length - 1]).trim();
 }
 
 type UpcomingTrain = { train: ArrivalPlatform["trains"][number]; left: number | null };
@@ -27,14 +30,15 @@ function PlatformTimes({
   trains: UpcomingTrain[];
   timestamp: string;
 }) {
+  const { lang, t } = useT();
   return (
     <div className="min-w-0">
       <p className="truncate text-xs font-medium text-neutral-600 dark:text-neutral-300">
-        → {directionLabel(platform.direction)}
+        → {directionLabel(platform.direction, lang)}
       </p>
       <ul className="mt-0.5 flex flex-col">
         {trains.map(({ train, left }, i) => {
-          const clockTime = arrivalClockTime(timestamp, train.eta_precise ?? train.eta_minutes);
+          const clockTime = arrivalClockTime(timestamp, train.eta_precise ?? train.eta_minutes, lang);
           const soon = left !== null && left <= 1;
           return (
             <li key={`${train.train_no}-${i}`} className="flex items-baseline gap-1.5 leading-snug">
@@ -43,7 +47,7 @@ function PlatformTimes({
                   soon ? "text-green-600 dark:text-green-400" : "text-neutral-900 dark:text-white"
                 }`}
               >
-                {minutesLabel(left)}
+                {minutesLabel(left, t)}
               </span>
               {clockTime ? (
                 <span className="text-xs tabular-nums text-neutral-600 dark:text-neutral-300">
@@ -67,9 +71,10 @@ function PlatformTimes({
  */
 export function StationEta({ station }: { station: Station }) {
   const { data, live, settled, now } = useArrivals(station.hasLiveArrivals ? station.code : null);
+  const { t } = useT();
 
   if (!station.hasLiveArrivals) {
-    return <p className="text-xs text-neutral-500 dark:text-neutral-400">No live data for this line</p>;
+    return <p className="text-xs text-neutral-500 dark:text-neutral-400">{t.noLiveDataLine}</p>;
   }
   if (!data) {
     // Before the first response: still loading. After it: nothing recent
@@ -77,7 +82,7 @@ export function StationEta({ station }: { station: Station }) {
     // or upstream/device offline for longer than MAX_SHOW_AGE_MS).
     return (
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-        {settled ? "Live times unavailable right now — retrying…" : "Checking times…"}
+        {settled ? t.timesUnavailable : t.checkingTimes}
       </p>
     );
   }
@@ -91,8 +96,8 @@ export function StationEta({ station }: { station: Station }) {
         live ? "text-neutral-500 dark:text-neutral-400" : "text-amber-600 dark:text-amber-400"
       }`}
     >
-      Updated {updatedAgoLabel(data.timestamp, now)}
-      {live ? "" : " · last known"}
+      {t.updated(updatedAgoLabel(data.timestamp, now, t))}
+      {live ? "" : ` · ${t.lastKnown}`}
     </p>
   );
 
@@ -102,7 +107,7 @@ export function StationEta({ station }: { station: Station }) {
     const nextService = data.next_service?.replace(/^~\s*/, "") ?? "?";
     return (
       <div className="flex flex-col gap-1">
-        <p className="text-xs text-neutral-500 dark:text-neutral-400">Not running — next ~{nextService}</p>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">{t.notRunning(nextService)}</p>
         {updated}
       </div>
     );
@@ -118,7 +123,7 @@ export function StationEta({ station }: { station: Station }) {
     return (
       <div className="flex flex-col gap-1">
         <p className="text-xs text-neutral-500 dark:text-neutral-400">
-          {live ? "No live arrivals right now" : "Waiting for new times…"}
+          {live ? t.noArrivals : t.waitingTimes}
         </p>
         {updated}
       </div>

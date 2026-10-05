@@ -1,25 +1,26 @@
-export function minutesLabel(minutes?: number | null): string {
+import type { Lang, Strings } from "./i18n";
+
+export function minutesLabel(minutes: number | null | undefined, t: Strings): string {
   if (minutes === undefined || minutes === null) return "—";
-  if (minutes <= 0) return "Arriving";
-  return `${minutes} min`;
+  if (minutes <= 0) return t.arriving;
+  return t.min(minutes);
 }
 
-const bangkokClock = new Intl.DateTimeFormat("en-US", {
-  hour: "numeric",
-  minute: "2-digit",
-  timeZone: "Asia/Bangkok",
-});
+const bangkokClocks: Record<Lang, Intl.DateTimeFormat> = {
+  en: new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Bangkok" }),
+  th: new Intl.DateTimeFormat("th-TH", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" }),
+};
 
 /**
  * Wall-clock arrival time in Bangkok, computed from the payload's own
  * fetch timestamp plus the reported ETA - not from the client's clock,
  * so a cached read still shows the time that data actually implied.
  */
-export function arrivalClockTime(fromIso: string, etaMinutes?: number): string | null {
+export function arrivalClockTime(fromIso: string, etaMinutes: number | undefined, lang: Lang): string | null {
   if (etaMinutes === undefined || etaMinutes === null) return null;
   const from = parseUtc(fromIso);
   if (Number.isNaN(from)) return null;
-  return bangkokClock.format(new Date(from + etaMinutes * 60_000));
+  return bangkokClocks[lang].format(new Date(from + etaMinutes * 60_000));
 }
 
 function parseUtc(iso: string): number {
@@ -56,13 +57,13 @@ export function trainCountdown(
 }
 
 /** "just now" / "40s ago" / "3 min ago" for the payload's own fetch time. */
-export function updatedAgoLabel(fromIso: string, now: number): string {
+export function updatedAgoLabel(fromIso: string, now: number, t: Strings): string {
   const from = parseUtc(fromIso);
   if (Number.isNaN(from)) return "";
   const seconds = Math.max(0, Math.round((now - from) / 1000));
-  if (seconds < 10) return "just now";
-  if (seconds < 60) return `${seconds}s ago`;
-  return `${Math.floor(seconds / 60)} min ago`;
+  if (seconds < 10) return t.justNow;
+  if (seconds < 60) return t.secondsAgo(seconds);
+  return t.minutesAgo(Math.floor(seconds / 60));
 }
 
 /**
