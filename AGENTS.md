@@ -95,22 +95,42 @@ expanded. See `docs/` or ask the user for further design history if needed.
   Turbopack (the Next 16 dev default) even when `disable: true` is set.
   Production build therefore uses webpack: `npm run build` runs
   `next build --webpack`.
+- **Hosting (Cloudflare, free plan)**: the site is a fully static export
+  (`output: "export"` -> `out/`) served as Workers static assets on
+  `bangkok-transit.com` (root `wrangler.jsonc`, assets-only - no script runs,
+  so requests are free and unlimited). There is no server code and no API
+  route. Response headers live in `public/_headers` (`headers()` doesn't work
+  for a static export).
 - **Icons**: Use `lucide-react`.
 - **Live arrivals API**: `https://bts-api.topmile.com` — undocumented,
   BTS Sukhumvit + Silom only (~61 codes), no batch endpoint, no CORS, and
   `timestamp` in responses is UTC despite looking naive (see `lib/bts.ts`).
-  It is polled **once, centrally, for everybody** — never per user:
-  `lib/arrivals-service.ts` polls all stations at most once per 20s
-  fleet-wide (a Redis `SET NX` lock in `lib/arrivals-cache.ts` picks the one
-  instance that polls; each poll has a hard 15s deadline, shorter than the
-  lock, so polls never overlap), lazily, only when a request finds the
-  shared snapshot old - so with no visitors nothing polls. The result is one
-  Redis document (`bts:snapshot`). `app/api/arrivals/route.ts` is the only
-  arrivals endpoint; it just reads that snapshot and is CDN-cached
-  (`s-maxage` + `stale-while-revalidate`), so user traffic is answered by
-  the edge and server hits stay roughly constant whether there are ten
-  users or a million. There is deliberately no per-station endpoint and no
-  per-user fallback fetch.
+  It is polled **once, centrally, for everybody** — never per user — by
+  `cloudflare/poller`: a single Durable Object (`ArrivalsPoller`, one
+  instance worldwide, so no lock is needed) whose own alarm fires every 10s
+  during service hours (every 5 min overnight). The free plan allows 50
+  outside fetches per invocation, so each alarm polls the ~half of the 61
+  stations whose readings are oldest (6 at a time, within a ~9s budget), so
+  every station refreshes about every 20s and one whose call failed is
+  retried first. Upstream rate-limits (HTTP 429, seen at ~180 calls/min):
+  after the first 429 an alarm starts no more calls. The document's `poll`
+  field reports the latest poll's failures (status/"timeout"/"skipped") -
+  read it with curl to diagnose.
+  Each alarm merges into the previous readings and writes one document,
+  `arrivals.json` (`lib/arrivals-document.ts`: `{ arrivals, total, complete }`),
+  to the R2 bucket `bts-live`, served at `live.bangkok-transit.com` through
+  Cloudflare's CDN cache (`s-maxage=10`, or 2 while still filling). Clients
+  fetch `ARRIVALS_URL` (`lib/arrivals-url.ts`) - users only ever hit the CDN,
+  so nothing grows with traffic. A cron (`* * * * *`) on the same Worker is a
+  watchdog that re-arms the alarm chain if it ever stops. CORS on
+  `live.` comes from a zone Transform Rule (response headers
+  `Access-Control-Allow-Origin: *`, `Access-Control-Expose-Headers: Date, Age`),
+  and the bucket must have **no** CORS policy of its own. The edge caches
+  one copy for every visitor and R2 adds CORS headers only when a request
+  carries an `Origin`, so the rule is the reliable source - and with both,
+  responses carry two `Access-Control-Allow-Origin` headers, which browsers
+  reject outright. The client learns server time from `Date`/`Age`, so they
+  must stay exposed.
   **Last-known times beat an empty card**: if updates stall, each station's
   latest reading keeps showing (counted down against the clock, departed
   trains dropped) with its age flagged in amber once it's older than
@@ -122,11 +142,6 @@ expanded. See `docs/` or ask the user for further design history if needed.
   15s for as long as the page is open (paused in hidden tabs; immediate
   re-poll on return, `online`, and bfcache restore; plus a watchdog that
   restarts a dead poll chain).
-- **Keep-warm job**: `.github/workflows/keep-arrivals-warm.yml` hits
-  `/api/arrivals` on a schedule so the first visitor after a long idle
-  period doesn't land on an empty snapshot. GitHub throttles scheduled runs
-  heavily, so it is only a backstop; real traffic keeps the snapshot warm
-  itself. Vercel Hobby's cron (once per day) can't do this job.
 
 ## Build & Test
 
@@ -134,8 +149,12 @@ expanded. See `docs/` or ask the user for further design history if needed.
 npm install
 npm run dev       # dev server (Turbopack, Serwist disabled)
 npm run build     # production build with webpack + Serwist
-npm start         # serve production build
+npx wrangler dev  # build, then serve out/ the way production does
+cd cloudflare/poller && npm run dev   # poller locally; trigger with /__scheduled
 ```
+
+Deploys: Cloudflare Workers Builds, one build per Worker (repo root for the
+site, `cloudflare/poller` for the poller), on every push to `main`.
 
 ## Adding Data
 
@@ -155,7 +174,7 @@ npm start         # serve production build
 
 ## Notes
 
-- Keep everything free-tier friendly (Vercel hobby, Upstash free tier,
-  GitHub Actions free minutes, OpenStreetMap's free tile server, BMA's free
-  GIS API hit only rarely via the one-time fetch script above).
+- Keep everything free-tier friendly (Cloudflare Workers/Durable Objects/R2
+  free plan; OpenFreeMap's free tiles; BMA's free GIS API hit only rarely via
+  the one-time fetch script above).
 - Avoid AI assistant features.

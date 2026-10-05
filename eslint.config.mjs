@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "public/sw.js",
     "public/maplibre/**",
+    "cloudflare/**/node_modules/**",
+    "cloudflare/**/.wrangler/**",
+    "cloudflare/**/worker-configuration.d.ts",
   ]),
 ]);
 

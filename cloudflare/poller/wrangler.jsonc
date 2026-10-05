@@ -1,0 +1,20 @@
+{
+  // The single shared poller behind live.<domain>/arrivals.json. See src/index.ts.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "bangkok-transit-poller",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  // Nothing public: the only entry points are the cron and the alarm.
+  "workers_dev": false,
+  "preview_urls": false,
+  "triggers": {
+    // Watchdog only - the Durable Object's own alarm does the 10s cadence.
+    "crons": ["* * * * *"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "POLLER", "class_name": "ArrivalsPoller" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ArrivalsPoller"] }],
+  "r2_buckets": [{ "binding": "LIVE", "bucket_name": "bts-live" }],
+  "observability": { "enabled": true }
+}
