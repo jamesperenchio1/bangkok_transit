@@ -20,10 +20,11 @@ import { cacheEnabled, readSnapshot, tryClaimRefresh, writeSnapshot, type Snapsh
 /** How often the shared snapshot is re-polled from upstream, at most. */
 export const REFRESH_EVERY_MS = 20_000;
 /**
- * A poll is cut off at this point, whatever is still in flight. It must stay
- * below the lock's lifetime (REFRESH_EVERY_MS): while Redis is healthy that
- * guarantees two polls never overlap, so an older poll can never finish
- * last and overwrite a newer snapshot.
+ * A poll is cut off at this point, whatever is still in flight. It stays
+ * below the lock's lifetime (REFRESH_EVERY_MS) so polls normally don't
+ * overlap; if they ever do (a slow Redis write, a Redis blip that fails the
+ * lock open), writeSnapshot's version check still stops an older poll from
+ * overwriting a newer snapshot.
  */
 const POLL_DEADLINE_MS = 15_000;
 /** How long an instance trusts its own memory before re-reading Redis. */
@@ -81,6 +82,9 @@ async function pollUpstream(codes: string[], coldStart: boolean): Promise<void> 
   const start = Math.floor(Math.random() * codes.length);
   const order = [...codes.slice(start), ...codes.slice(0, start)];
   let lastPublish = 0;
+  // Orders this poll's own writes (see writeSnapshot): ~8 progressive writes
+  // at most within the deadline, then the final one.
+  let seq = 0;
 
   let cursor = 0;
   async function worker() {
@@ -96,7 +100,7 @@ async function pollUpstream(codes: string[], coldStart: boolean): Promise<void> 
         remember(partial);
         if (Date.now() - lastPublish >= COLD_START_PUBLISH_MS) {
           lastPublish = Date.now();
-          await writeSnapshot(partial).catch(() => {});
+          await writeSnapshot(partial, ++seq).catch(() => {});
         }
       }
     }
@@ -105,7 +109,7 @@ async function pollUpstream(codes: string[], coldStart: boolean): Promise<void> 
 
   const snapshot: Snapshot = { arrivals, fetchedAt };
   remember(snapshot);
-  await writeSnapshot(snapshot);
+  await writeSnapshot(snapshot, 99);
 }
 
 /**

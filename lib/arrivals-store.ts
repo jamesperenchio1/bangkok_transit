@@ -158,6 +158,7 @@ export function startArrivalsPolling() {
     inFlight = true;
     lastPollStart = Date.now();
     let complete = false;
+    let answered = false;
     try {
       // `no-store` only skips the browser's own HTTP cache; the request is
       // still answered by the shared CDN copy, never by a per-user poll.
@@ -167,6 +168,7 @@ export function startArrivalsPolling() {
       });
       if (res.ok) {
         const json = (await res.json()) as { arrivals?: Record<string, unknown>; complete?: boolean };
+        answered = true;
 
         const serverNow = serverNowFrom(res);
         if (serverNow !== null) {
@@ -209,8 +211,11 @@ export function startArrivalsPolling() {
     // cycle for every open tab. Outages retry at the normal POLL_MS cadence.
     if (complete) fastPolls = MAX_FAST_POLLS;
     // (resume() hands back a few of these for a cold snapshot after a return.)
+    // Only a server that answered with a still-filling snapshot earns a quick
+    // retry; a failed request (offline, timeout, error) waits the normal
+    // POLL_MS, so an outage never burns through quick retries.
     let delay = POLL_MS;
-    if (!complete && fastPolls < MAX_FAST_POLLS) {
+    if (answered && !complete && fastPolls < MAX_FAST_POLLS) {
       fastPolls += 1;
       delay = FAST_POLL_MS;
     }
