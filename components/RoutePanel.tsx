@@ -2,7 +2,7 @@
 
 import { X, MapPin, ArrowRight } from "lucide-react";
 import { useArrivals } from "@/lib/use-arrivals";
-import { arrivalClockTime, minutesLabel, trainCountdown } from "@/lib/format-eta";
+import { arrivalClockTime, minutesLabel, upcomingTrains, updatedAgoLabel } from "@/lib/format-eta";
 import type { Station } from "@/data/stations";
 import { terminusInDirection, type PathResult } from "@/lib/transit-graph";
 import type { GeoPosition } from "@/lib/use-geolocation";
@@ -176,22 +176,28 @@ function RouteSummary({ path }: { path: PathResult }) {
 }
 
 function LiveEta({ station, directionKey }: { station: Station; directionKey?: string }) {
-  const { data, now } = useArrivals(station.code);
+  const { data, live, now } = useArrivals(station.code);
   if (!data) return null;
+  // Last-known (not live) data is still shown, with its age, in amber.
+  const age = live ? null : (
+    <span className="text-amber-600 dark:text-amber-400"> · last known, {updatedAgoLabel(data.timestamp, now)}</span>
+  );
   if (!data.service_active) {
     // Upstream's next_service string already includes its own leading "~"
     // (e.g. "~05:30") - strip it before adding ours, or it doubles up.
     const nextService = data.next_service?.replace(/^~\s*/, "") ?? "?";
-    return <p className="text-xs text-neutral-500">Not running — next ~{nextService}</p>;
+    return (
+      <p className="text-xs text-neutral-500">
+        Not running — next ~{nextService}
+        {age}
+      </p>
+    );
   }
   // Falls back to the first platform when the direction can't be matched
   // (e.g. a short-working train's platform reports a different terminus).
   const platform =
     data.platforms?.find((p) => directionKey && p.direction_key === directionKey) ?? data.platforms?.[0];
-  const trains = (platform?.trains ?? [])
-    .map((train) => ({ train, countdown: trainCountdown(data.timestamp, train, now) }))
-    .filter(({ countdown }) => !countdown?.departed)
-    .map(({ train, countdown }) => ({ train, left: countdown?.minutes ?? null }));
+  const trains = upcomingTrains(platform?.trains ?? [], data.timestamp, now);
   const [next, ...upcoming] = trains;
   if (!next) return null;
   const clockTime = arrivalClockTime(data.timestamp, next.train.eta_precise ?? next.train.eta_minutes);
@@ -204,6 +210,7 @@ function LiveEta({ station, directionKey }: { station: Station; directionKey?: s
       Next arrival {next.left !== null && next.left <= 0 ? "" : "~"}{minutesLabel(next.left)}
       {clockTime ? ` · ${clockTime}` : ""}
       {laterMinutes ? ` (then ~${laterMinutes})` : ""}
+      {age}
     </p>
   );
 }

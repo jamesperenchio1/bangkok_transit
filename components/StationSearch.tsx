@@ -5,7 +5,7 @@ import { Search, X } from "lucide-react";
 import { stations, type Station } from "@/data/stations";
 import { LINE_COLORS } from "@/lib/line-colors";
 import { useArrivals } from "@/lib/use-arrivals";
-import { minutesLabel, trainCountdown } from "@/lib/format-eta";
+import { minutesLabel, upcomingTrains } from "@/lib/format-eta";
 
 export interface StationSearchProps {
   onSelectStation: (station: Station) => void;
@@ -29,7 +29,7 @@ const searchIndex = stations.map((s) => ({
 }));
 
 function SearchResultEta({ station }: { station: Station }) {
-  const { data, now } = useArrivals(station.hasLiveArrivals ? station.code : null);
+  const { data, live, now } = useArrivals(station.hasLiveArrivals ? station.code : null);
   if (!station.hasLiveArrivals) {
     return <span className="shrink-0 text-[11px] text-neutral-400">No live data</span>;
   }
@@ -37,11 +37,20 @@ function SearchResultEta({ station }: { station: Station }) {
   if (!data.service_active) {
     return <span className="shrink-0 text-[11px] text-neutral-400">Closed</span>;
   }
-  const next = (data.platforms?.[0]?.trains ?? [])
-    .map((train) => trainCountdown(data.timestamp, train, now))
-    .find((countdown) => countdown !== null && !countdown.departed)?.minutes;
-  if (next === undefined) return null;
-  return <span className="shrink-0 text-[11px] text-neutral-600 dark:text-neutral-300">{minutesLabel(next)}</span>;
+  const next = upcomingTrains(data.platforms?.[0]?.trains ?? [], data.timestamp, now)[0];
+  if (!next) return null;
+  // Last-known (not live) times show in amber with a "~", like elsewhere.
+  return (
+    <span
+      className={`shrink-0 text-[11px] ${
+        live ? "text-neutral-600 dark:text-neutral-300" : "text-amber-600 dark:text-amber-400"
+      }`}
+      title={live ? undefined : "Last known time - live updates are delayed"}
+    >
+      {live ? "" : "~"}
+      {minutesLabel(next.left)}
+    </span>
+  );
 }
 
 export function StationSearch({ onSelectStation }: StationSearchProps) {

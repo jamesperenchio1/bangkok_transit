@@ -14,7 +14,8 @@ name: Keep arrivals cache warm
 # refreshes in the background on every real page load, so visitors keep the
 # cache warm themselves. This job is just a backstop for long quiet periods.
 #
-# See lib/bts.ts CACHE_SERVE_MS - a Redis entry is trusted up to 10 minutes old.
+# See lib/bts.ts: entries are "live" under FRESH_FOR_MS (90s) and still
+# shown, flagged last-known, until MAX_SHOW_AGE_MS (30 min).
 
 on:
   schedule:
@@ -42,13 +43,15 @@ jobs:
           echo "waiting for the background refresh to finish..."
           sleep 20
 
-          # jq instead of `grep | wc`: under `set -o pipefail` a grep with no
-          # match exits 1 and fails the whole job, so an empty snapshot crashed
-          # the run instead of producing the warning below.
+          # Counts only *live* stations (timestamp under 90s old): the route
+          # also serves last-known entries up to 30 min old, which would make
+          # a refresh that fetched nothing look healthy. jq rather than
+          # `grep | wc`, since under `set -o pipefail` a grep with no match
+          # fails the whole job instead of producing the warning below.
           body=$(curl -s --max-time 30 "$BASE_URL/api/arrivals")
-          count=$(printf '%s' "$body" | jq '.arrivals | length' 2>/dev/null || echo 0)
-          echo "warm: $count/61 stations cached"
+          count=$(printf '%s' "$body" | jq '[.arrivals[]? | .timestamp | sub("\\.[0-9]+$"; "") | (. + "Z") | fromdateiso8601 | select(now - . < 90)] | length' 2>/dev/null || echo 0)
+          echo "warm: $count/61 stations live"
 
           if [ "$count" -lt 55 ]; then
-            echo "::warning::only $count/61 stations cached after refresh"
+            echo "::warning::only $count/61 stations live after refresh"
           fi

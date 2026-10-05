@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { isShowable, isValidArrivals, type Arrivals } from "./bts";
+import { ageMs, isShowable, isValidArrivals, type Arrivals } from "./bts";
 
 /**
  * One shared arrivals store for the whole app, fed by the one shared
@@ -50,9 +50,9 @@ interface ArrivalsStore {
   map: ArrivalsMap;
   /**
    * Server clock minus this device's clock, in ms, from the latest response.
-   * Freshness and countdowns are measured on the server's clock (see
-   * serverNow), so a phone whose clock is minutes off neither hides every
-   * time nor shows old ones as current.
+   * Ages and countdowns are measured on the server's clock (see serverNow),
+   * so on a phone whose clock is minutes off the countdowns are still right
+   * and data is still flagged live or last-known correctly.
    */
   clockOffsetMs: number;
   /** True once this tab has heard back from (or failed to reach) the server at least once. */
@@ -94,8 +94,8 @@ let anchor: { serverMs: number; perfMs: number } | null = null;
  * the last server response. Taking the later of two independent estimates
  * is deliberately conservative - a device clock jump or a monotonic clock
  * that paused while the phone slept can each only make data look *older*
- * (hidden a little early), never newer. Old times could show only if both
- * failed in the same direction at once.
+ * (flagged as last-known, or dropped past MAX_SHOW_AGE_MS, a little early),
+ * never newer than it is.
  */
 export function serverNow(): number {
   const wall = Date.now() + useArrivalsStore.getState().clockOffsetMs;
@@ -213,13 +213,22 @@ export function startArrivalsPolling() {
         }
         const correctedNow = serverNow();
 
+        // Merge, keeping the newer reading per station, rather than
+        // replacing: an empty or partial answer (a Redis error, a cold-start
+        // snapshot still filling) must not wipe last-known times this tab
+        // already holds. Anything past MAX_SHOW_AGE_MS is dropped here.
         const next: ArrivalsMap = {};
-        for (const [code, data] of Object.entries(json.arrivals ?? {})) {
-          if (isValidArrivals(data) && isShowable(data.timestamp, correctedNow)) next[code] = data;
+        const held = useArrivalsStore.getState().map;
+        for (const [code, data] of Object.entries(held)) {
+          if (isShowable(data.timestamp, correctedNow)) next[code] = data;
         }
-        // Replace, don't merge: the shared snapshot already keeps each
-        // station's last reading until MAX_SHOW_AGE_MS, so a station missing
-        // from it has nothing worth showing.
+        for (const [code, data] of Object.entries(json.arrivals ?? {})) {
+          if (!isValidArrivals(data) || !isShowable(data.timestamp, correctedNow)) continue;
+          const current = next[code];
+          if (!current || ageMs(data.timestamp, correctedNow) <= ageMs(current.timestamp, correctedNow)) {
+            next[code] = data;
+          }
+        }
         useArrivalsStore.getState().setMap(next);
         writeSnapshot(next);
         // "Complete" comes from the server: the latest shared poll finished.

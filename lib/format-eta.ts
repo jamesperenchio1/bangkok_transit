@@ -64,3 +64,19 @@ export function updatedAgoLabel(fromIso: string, now: number): string {
   if (seconds < 60) return `${seconds}s ago`;
   return `${Math.floor(seconds / 60)} min ago`;
 }
+
+/**
+ * A platform's trains that haven't left yet per the live countdown, in order,
+ * with minutes to go (null when upstream gave no ETA). The one rule for
+ * "still coming" - the station card, route sheet and search all use it.
+ */
+export function upcomingTrains<T extends { eta_minutes?: number; eta_precise?: number }>(
+  trains: T[],
+  fromIso: string,
+  now: number,
+): { train: T; left: number | null }[] {
+  return trains
+    .map((train) => ({ train, countdown: trainCountdown(fromIso, train, now) }))
+    .filter(({ countdown }) => !countdown?.departed)
+    .map(({ train, countdown }) => ({ train, left: countdown?.minutes ?? null }));
+}

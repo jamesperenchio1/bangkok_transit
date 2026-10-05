@@ -4,7 +4,7 @@ import { useArrivals } from "@/lib/use-arrivals";
 import {
   arrivalClockTime,
   minutesLabel,
-  trainCountdown,
+  upcomingTrains,
   updatedAgoLabel,
 } from "@/lib/format-eta";
 import type { ArrivalPlatform } from "@/lib/bts";
@@ -17,15 +17,6 @@ function directionLabel(direction: string): string {
 }
 
 type UpcomingTrain = { train: ArrivalPlatform["trains"][number]; left: number | null };
-
-/** Up to three trains per platform that haven't left yet, per the live countdown. */
-function upcomingTrains(platform: ArrivalPlatform, timestamp: string, now: number): UpcomingTrain[] {
-  return platform.trains
-    .map((train) => ({ train, countdown: trainCountdown(timestamp, train, now) }))
-    .filter(({ countdown }) => !countdown?.departed)
-    .map(({ train, countdown }) => ({ train, left: countdown?.minutes ?? null }))
-    .slice(0, 3);
-}
 
 function PlatformTimes({
   platform,
@@ -71,7 +62,7 @@ function PlatformTimes({
  * Live arrivals for the station card: up to three trains per direction, the
  * two directions side by side so the card stays short. Minutes count down
  * against the live clock between polls; if updates stall, the last-known
- * times stay up with their age flagged. Renders from the shared store, so
+ * data stays up with its age flagged. Renders from the shared store, so
  * there is never a spinner or a late pop-in.
  */
 export function StationEta({ station }: { station: Station }) {
@@ -91,19 +82,9 @@ export function StationEta({ station }: { station: Station }) {
     );
   }
 
-  if (!data.service_active) {
-    // Upstream's next_service string already includes its own leading "~"
-    // (e.g. "~05:30") - strip it before adding ours, or it doubles up.
-    const nextService = data.next_service?.replace(/^~\s*/, "") ?? "?";
-    return <p className="text-xs text-neutral-500 dark:text-neutral-400">Not running — next ~{nextService}</p>;
-  }
-
-  const platforms = (data.platforms ?? [])
-    .map((platform) => ({ platform, trains: upcomingTrains(platform, data.timestamp, now) }))
-    .filter(({ trains }) => trains.length > 0);
-
-  // Last-known times stay up (counted down) when updates stall; the line
-  // below says how old they are rather than hiding them.
+  // Last-known data stays up (times counted down) when updates stall; this
+  // line says how old it is rather than hiding it. "Last known" rather than
+  // anything about reconnecting: the stall can be upstream, not this phone.
   const updated = (
     <p
       className={`text-[11px] ${
@@ -111,9 +92,25 @@ export function StationEta({ station }: { station: Station }) {
       }`}
     >
       Updated {updatedAgoLabel(data.timestamp, now)}
-      {live ? "" : " · reconnecting…"}
+      {live ? "" : " · last known"}
     </p>
   );
+
+  if (!data.service_active) {
+    // Upstream's next_service string already includes its own leading "~"
+    // (e.g. "~05:30") - strip it before adding ours, or it doubles up.
+    const nextService = data.next_service?.replace(/^~\s*/, "") ?? "?";
+    return (
+      <div className="flex flex-col gap-1">
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">Not running — next ~{nextService}</p>
+        {updated}
+      </div>
+    );
+  }
+
+  const platforms = (data.platforms ?? [])
+    .map((platform) => ({ platform, trains: upcomingTrains(platform.trains, data.timestamp, now).slice(0, 3) }))
+    .filter(({ trains }) => trains.length > 0);
 
   if (platforms.length === 0) {
     // Every listed train has already left by the countdown (or none were
