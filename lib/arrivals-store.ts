@@ -1,58 +1,125 @@
 "use client";
 
 import { create } from "zustand";
-import { isValidArrivals, type Arrivals } from "./bts";
+import { isFresh, isValidArrivals, type Arrivals } from "./bts";
 
 /**
- * One shared arrivals store for the whole app. Seeded from localStorage on
- * mount so times are on screen the instant a station card opens, then
- * refreshed in bulk and polled. Background refreshes swap data in silently -
- * no loading flags, no "updating…" copy.
+ * One shared arrivals store for the whole app, fed by the one shared
+ * snapshot (/api/arrivals). Seeded from localStorage on mount so times are on
+ * screen the instant a station card opens, then polled for as long as the
+ * page is open - minutes or days.
+ *
+ * Old data is never kept: each poll replaces the map wholesale, the seed only
+ * accepts entries that are still fresh, and every render re-checks freshness
+ * against the live clock (lib/format-eta.ts isFreshNow) - so if updates stop
+ * for any reason, times disappear rather than linger.
  */
 
-const POLL_MS = 60_000;
+/** Steady-state poll. Served by the CDN, so this costs the server nothing per user. */
+const POLL_MS = 15_000;
 /**
- * The bulk endpoint returns immediately and fills in from the server's
- * background refresh, so a first-time visitor (empty localStorage) starts with
- * a partial payload. Poll fast until every live station has arrived, then fall
- * back to the slow interval.
+ * A first-time visitor can arrive while the shared snapshot is still filling
+ * in after a cold start. Poll fast until every live station has arrived.
  */
 const FAST_POLL_MS = 2_000;
 const MAX_FAST_POLLS = 15;
+/**
+ * Coming back (tab shown again, back online, restored from the back/forward
+ * cache) after a while can find the shared snapshot cold too - if nobody else
+ * was using the app, the server just started a fresh poll. Allow a few quick
+ * retries then, so the times appear in seconds rather than after a full
+ * POLL_MS. Only these user-return events grant them, so it can't loop.
+ */
+const RESUME_FAST_POLLS = 5;
+/**
+ * Backstop for a poll chain that silently died (a timer dropped while the
+ * phone slept, say): if no poll has started for this long while the page is
+ * visible, start one.
+ */
+const WATCHDOG_MS = 2 * POLL_MS;
 
 const SNAPSHOT_KEY = "bts:arrivals:v1";
-// Past this age a persisted entry is from an earlier visit rather than merely
-// a minute behind; don't present it as current data.
-const SNAPSHOT_STALE_CUTOFF_MS = 10 * 60_000;
+const CLOCK_OFFSET_KEY = "bts:clock-offset:v1";
+/** Abandon a request that hasn't answered by now, so a hung connection can't stall polling. */
+const REQUEST_TIMEOUT_MS = 10_000;
 
-export type ArrivalsEntry = Arrivals & { stale?: boolean };
+export type ArrivalsEntry = Arrivals;
 export type ArrivalsMap = Record<string, ArrivalsEntry>;
 
 interface ArrivalsStore {
   map: ArrivalsMap;
+  /**
+   * Server clock minus this device's clock, in ms, from the latest response.
+   * Freshness and countdowns are measured on the server's clock (see
+   * serverNow), so a phone whose clock is minutes off neither hides every
+   * time nor shows old ones as current.
+   */
+  clockOffsetMs: number;
+  /** True once this tab has heard back from (or failed to reach) the server at least once. */
+  settled: boolean;
   setMap: (map: ArrivalsMap) => void;
-  merge: (incoming: ArrivalsMap) => void;
 }
 
-function dataAgeMs(data: Arrivals): number {
-  const iso = data.timestamp.endsWith("Z") ? data.timestamp : data.timestamp + "Z";
-  return Date.now() - Date.parse(iso);
+function readClockOffset(): number {
+  try {
+    const value = Number(window.localStorage.getItem(CLOCK_OFFSET_KEY));
+    return Number.isFinite(value) ? value : 0;
+  } catch {
+    return 0;
+  }
 }
 
-function readSnapshot(): ArrivalsMap {
+/**
+ * The server's current time per this response: its `Date` header, plus the
+ * `Age` header when the CDN answered from a copy it has held for a while.
+ * Null when the header is missing or unparseable.
+ */
+function serverNowFrom(res: Response): number | null {
+  const date = Date.parse(res.headers.get("date") ?? "");
+  if (Number.isNaN(date)) return null;
+  const age = Number(res.headers.get("age") ?? 0);
+  return date + (Number.isFinite(age) ? age * 1000 : 0);
+}
+
+/**
+ * The latest server time seen, pinned to the monotonic clock. Unlike the
+ * wall-clock offset, it can't be thrown off by the phone's clock changing
+ * mid-session (an NTP sync, a timezone or manual change).
+ */
+let anchor: { serverMs: number; perfMs: number } | null = null;
+
+/**
+ * Best estimate of the server's current time: the later of the wall clock
+ * corrected by the measured offset, and the monotonic clock run forward from
+ * the last server response. Taking the later of two independent estimates
+ * is deliberately conservative - a device clock jump or a monotonic clock
+ * that paused while the phone slept can each only make data look *older*
+ * (hidden a little early), never newer. Old times could show only if both
+ * failed in the same direction at once.
+ */
+export function serverNow(): number {
+  const wall = Date.now() + useArrivalsStore.getState().clockOffsetMs;
+  const mono = anchor ? anchor.serverMs + (performance.now() - anchor.perfMs) : -Infinity;
+  return Math.max(wall, mono);
+}
+
+function readSnapshot(clockOffsetMs: number): ArrivalsMap {
   if (typeof window === "undefined") return {};
   try {
     const raw = window.localStorage.getItem(SNAPSHOT_KEY);
     if (!raw) return {};
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return {};
+    // A saved offset may be out of date (the phone's clock could have been
+    // changed since), so it may only make the check stricter: an entry must
+    // be fresh by the device clock *and* by the saved offset. Worst case the
+    // seed is dropped and times appear with the first poll instead.
+    const now = Math.max(Date.now(), Date.now() + clockOffsetMs);
     const out: ArrivalsMap = {};
     for (const [code, value] of Object.entries(parsed as Record<string, unknown>)) {
       // A persisted entry can predate a schema change or just be corrupted -
       // validating before trusting its shape is what keeps the page alive.
-      if (isValidArrivals(value) && dataAgeMs(value) <= SNAPSHOT_STALE_CUTOFF_MS) {
-        out[code] = value as ArrivalsEntry;
-      }
+      if (isValidArrivals(value) && isFresh(value.timestamp, now)) out[code] = value;
     }
     return out;
   } catch {
@@ -71,13 +138,9 @@ function writeSnapshot(map: ArrivalsMap) {
 
 export const useArrivalsStore = create<ArrivalsStore>((set) => ({
   map: {},
+  clockOffsetMs: 0,
+  settled: false,
   setMap: (map) => set({ map }),
-  merge: (incoming) =>
-    set((s) => {
-      const next = { ...s.map, ...incoming };
-      writeSnapshot(next);
-      return { map: next };
-    }),
 }));
 
 let started = false;
@@ -87,71 +150,121 @@ export function startArrivalsPolling() {
   if (started || typeof window === "undefined") return;
   started = true;
 
-  const seeded = readSnapshot();
+  // The saved offset only screens the seed (see readSnapshot). Until this
+  // session's first response measures it afresh, render-time checks use the
+  // stricter of the device clock and the saved offset too.
+  const savedOffset = readClockOffset();
+  const seeded = readSnapshot(savedOffset);
+  useArrivalsStore.setState({ clockOffsetMs: Math.max(0, savedOffset) });
   if (Object.keys(seeded).length > 0) {
     useArrivalsStore.getState().setMap(seeded);
   }
 
-  let expected = 0;
   let fastPolls = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
-  let polling = false;
+  let inFlight = false;
+  let lastPollStart = 0;
 
-  // Nobody can see a hidden tab's times, so stop polling there (battery,
-  // data, and server load) and fetch straight away on return - the moment
-  // someone switches back is exactly when they want fresh times.
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) {
-      if (timer !== null) clearTimeout(timer);
-      timer = null;
-    } else if (timer === null && !polling) {
-      void poll();
-    }
-  });
+  function stop() {
+    if (timer !== null) clearTimeout(timer);
+    timer = null;
+  }
+
+  /** Poll right now (unless one is already running), resetting the schedule. */
+  function pollNow() {
+    if (inFlight || document.hidden) return;
+    stop();
+    void poll();
+  }
+
+  /** The user is back: poll now, with a few quick retries if the snapshot is still filling. */
+  function resume() {
+    fastPolls = Math.min(fastPolls, MAX_FAST_POLLS - RESUME_FAST_POLLS);
+    pollNow();
+  }
 
   async function poll() {
     timer = null;
-    polling = true;
-    let complete = true;
+    inFlight = true;
+    lastPollStart = Date.now();
+    let complete = false;
+    let answered = false;
     try {
       // `no-store` only skips the browser's own HTTP cache; the request is
       // still answered by the shared CDN copy, never by a per-user poll.
-      const res = await fetch("/api/arrivals", { cache: "no-store" });
+      const res = await fetch("/api/arrivals", {
+        cache: "no-store",
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
       if (res.ok) {
-        const json = (await res.json()) as {
-          arrivals?: Record<string, Arrivals>;
-          stale?: Record<string, boolean>;
-          total?: number;
-        };
-        if (json.arrivals) {
-          const incoming: ArrivalsMap = {};
-          for (const [code, data] of Object.entries(json.arrivals)) {
-            if (!isValidArrivals(data)) continue;
-            incoming[code] = json.stale?.[code] ? { ...data, stale: true } : data;
+        const json = (await res.json()) as { arrivals?: Record<string, unknown>; complete?: boolean };
+        answered = true;
+
+        const measured = serverNowFrom(res);
+        if (measured !== null) {
+          anchor = { serverMs: measured, perfMs: performance.now() };
+          const clockOffsetMs = measured - Date.now();
+          useArrivalsStore.setState({ clockOffsetMs });
+          try {
+            window.localStorage.setItem(CLOCK_OFFSET_KEY, String(clockOffsetMs));
+          } catch {
+            // non-fatal
           }
-          useArrivalsStore.getState().merge(incoming);
         }
-        if (typeof json.total === "number") expected = json.total;
+        const correctedNow = serverNow();
+
+        const next: ArrivalsMap = {};
+        for (const [code, data] of Object.entries(json.arrivals ?? {})) {
+          if (isValidArrivals(data) && isFresh(data.timestamp, correctedNow)) next[code] = data;
+        }
+        // Replace, don't merge: a station missing from the shared snapshot
+        // has nothing fresh, so whatever this tab held for it must go too.
+        useArrivalsStore.getState().setMap(next);
+        writeSnapshot(next);
+        // "Complete" comes from the server: the latest shared poll finished.
+        // Not a count of stations, so a station upstream never answers for
+        // can't keep every tab in fast-poll mode.
+        complete = json.complete === true;
       }
     } catch {
-      // network hiccup - keep showing what we have and retry next tick
+      // Network hiccup or timeout: nothing to replace the map with. What's
+      // held stays only while still fresh - renders re-check its age on a
+      // live clock.
+    } finally {
+      inFlight = false;
+      if (!useArrivalsStore.getState().settled) useArrivalsStore.setState({ settled: true });
     }
 
-    const held = Object.keys(useArrivalsStore.getState().map).length;
-    complete = expected > 0 && held >= expected;
-
-    // The fast burst is a one-off for a cold first load. It is deliberately
-    // never reset: if one station stays missing (say its upstream call keeps
-    // failing), resetting would restart a 15-request burst every minute,
-    // forever, for every open tab.
+    // The fast burst is a one-off for a cold first load, and ends for good
+    // the first time the snapshot comes back complete. It is never reset:
+    // otherwise one station that stays missing (its upstream call keeps
+    // failing), or a long network outage, would burn a 2s-poll burst on every
+    // cycle for every open tab. Outages retry at the normal POLL_MS cadence.
+    if (complete) fastPolls = MAX_FAST_POLLS;
+    // (resume() hands back a few of these for a cold snapshot after a return.)
+    // Only a server that answered with a still-filling snapshot earns a quick
+    // retry; a failed request (offline, timeout, error) waits the normal
+    // POLL_MS, so an outage never burns through quick retries.
     let delay = POLL_MS;
-    if (!complete && fastPolls < MAX_FAST_POLLS) {
+    if (answered && !complete && fastPolls < MAX_FAST_POLLS) {
       fastPolls += 1;
       delay = FAST_POLL_MS;
     }
-    polling = false;
     if (!document.hidden) timer = setTimeout(poll, delay);
   }
+
+  // Nobody can see a hidden tab's times, so stop polling there (battery,
+  // data) and fetch straight away on return - the moment someone switches
+  // back is exactly when they want fresh times. The same goes for coming
+  // back online and for a page restored from the back/forward cache.
+  document.addEventListener("visibilitychange", () => (document.hidden ? stop() : resume()));
+  window.addEventListener("online", resume);
+  window.addEventListener("pageshow", (e) => {
+    if (e.persisted) resume();
+  });
+  setInterval(() => {
+    if (!document.hidden && !inFlight && Date.now() - lastPollStart > WATCHDOG_MS) pollNow();
+  }, POLL_MS);
 
   void poll();
 }

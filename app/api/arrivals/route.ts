@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSnapshot, pollInBackground, REFRESH_EVERY_MS } from "@/lib/arrivals-service";
 import { liveStations } from "@/data/stations";
-import { ageMs, CACHE_SERVE_MS, isFresh, isValidArrivals } from "@/lib/bts";
+import { ageMs, FRESH_FOR_MS, isFresh, isValidArrivals } from "@/lib/bts";
 
 /**
  * Live arrivals for every BTS station, as one shared document. This is the
@@ -9,56 +9,75 @@ import { ageMs, CACHE_SERVE_MS, isFresh, isValidArrivals } from "@/lib/bts";
  * straight from the CDN, and user traffic never causes upstream calls of its
  * own - see lib/arrivals-service.ts for the single shared poll behind it.
  *
- * Response shape: `{ arrivals: { [code]: Arrivals }, stale: { [code]: bool },
- * total: number }`.
+ * Only fresh data is ever returned (lib/bts.ts FRESH_FOR_MS): a station with
+ * nothing fresh is simply absent, and the client shows "unavailable" for it
+ * rather than old times.
+ *
+ * Response shape: `{ arrivals: { [code]: Arrivals }, total: number,
+ * complete: boolean }` - `complete` means the latest shared poll has
+ * finished (not that every station answered; one that upstream never
+ * answers for must not keep every client fast-polling).
  */
 
 /**
- * CDN caching is what turns "one poll" into "one poll for everybody": with
- * stale-while-revalidate the edge answers every user instantly and only
- * re-asks this function about once per FRESH window per region, however many
- * users there are. Arrivals stay fresh for ~90s (lib/bts.ts FRESH_FOR_MS) and
- * the client counts each ETA down against its own clock, so this delay is
- * invisible to riders. A partial snapshot (cold start, still filling) is
- * cached only briefly so clients see stations land within a couple of
- * seconds - but still from the CDN, not one request per user.
+ * CDN caching is what turns "one poll" into "one poll for everybody": the
+ * edge answers every user and only re-asks this function about once per
+ * FRESH window per region, however many users there are. The client counts
+ * each ETA down against its own clock, so this delay is invisible to riders.
+ * The cache lifetime is also capped by how long the oldest entry stays
+ * within FRESH_FOR_MS, so the edge never holds data past the point clients
+ * would reject it. A snapshot that is still filling (cold start) or empty is
+ * cached only for a moment and never served stale.
  */
 const FRESH_SECONDS = 10;
-const PARTIAL_FRESH_SECONDS = 2;
-const STALE_WHILE_REVALIDATE_SECONDS = 60;
+const STALE_WHILE_REVALIDATE_SECONDS = 10;
+const FILLING_FRESH_SECONDS = 2;
 
 export async function GET() {
   const codes = liveStations.map((s) => s.code);
 
   let snapshot = null;
+  let readFailed = false;
   try {
     snapshot = await getSnapshot();
   } catch {
     // Redis hiccup: answer with an empty (briefly cached) snapshot below
     // rather than failing every user at once.
+    readFailed = true;
   }
 
-  if (!snapshot || Date.now() - snapshot.fetchedAt > REFRESH_EVERY_MS) {
-    pollInBackground(codes);
-  }
-
+  const now = Date.now();
   const arrivals: Record<string, unknown> = {};
-  const stale: Record<string, boolean> = {};
+  let oldestAgeMs = 0;
   for (const code of codes) {
     const data = snapshot?.arrivals[code];
-    if (!data || !isValidArrivals(data) || ageMs(data.timestamp) >= CACHE_SERVE_MS) continue;
-    arrivals[code] = data;
-    if (!isFresh(data.timestamp)) stale[code] = true;
+    if (data && isValidArrivals(data) && isFresh(data.timestamp, now)) {
+      arrivals[code] = data;
+      oldestAgeMs = Math.max(oldestAgeMs, ageMs(data.timestamp, now));
+    }
+  }
+  const held = Object.keys(arrivals).length;
+
+  if (!snapshot || now - snapshot.fetchedAt > REFRESH_EVERY_MS) {
+    // "Cold" = we positively know there is nothing fresh to serve: a
+    // first-ever start, or a snapshot left over from a quiet night. Then
+    // every user sees empty times until this poll lands, so it publishes
+    // progressively. A failed Redis read is not proof of that, so it never
+    // counts as cold (and never publishes partial snapshots).
+    pollInBackground(codes, !readFailed && held === 0);
   }
 
-  const complete = Object.keys(arrivals).length >= codes.length;
-  const fresh = complete ? FRESH_SECONDS : PARTIAL_FRESH_SECONDS;
+  const complete = held > 0 && !snapshot?.partial;
+  let cacheControl = `public, s-maxage=${FILLING_FRESH_SECONDS}`;
+  if (complete) {
+    const secondsLeft = Math.floor((FRESH_FOR_MS - oldestAgeMs) / 1000);
+    const fresh = Math.max(1, Math.min(FRESH_SECONDS, secondsLeft));
+    const swr = Math.max(0, Math.min(STALE_WHILE_REVALIDATE_SECONDS, secondsLeft - fresh));
+    cacheControl = `public, s-maxage=${fresh}` + (swr > 0 ? `, stale-while-revalidate=${swr}` : "");
+  }
+
   return NextResponse.json(
-    { arrivals, stale, total: codes.length },
-    {
-      headers: {
-        "Cache-Control": `public, s-maxage=${fresh}, stale-while-revalidate=${STALE_WHILE_REVALIDATE_SECONDS}`,
-      },
-    },
+    { arrivals, total: codes.length, complete },
+    { headers: { "Cache-Control": cacheControl } },
   );
 }

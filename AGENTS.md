@@ -100,17 +100,27 @@ expanded. See `docs/` or ask the user for further design history if needed.
   BTS Sukhumvit + Silom only (~61 codes), no batch endpoint, no CORS, and
   `timestamp` in responses is UTC despite looking naive (see `lib/bts.ts`).
   It is polled **once, centrally, for everybody** — never per user:
-  `lib/arrivals-service.ts` polls all stations at most once per 30s
+  `lib/arrivals-service.ts` polls all stations at most once per 20s
   fleet-wide (a Redis `SET NX` lock in `lib/arrivals-cache.ts` picks the one
-  instance that polls), lazily, only when a request finds the shared
-  snapshot old - so with no visitors nothing polls. The result is one Redis
-  document (`bts:snapshot`). `app/api/arrivals/route.ts` is the only
+  instance that polls; each poll has a hard 15s deadline, shorter than the
+  lock, so polls never overlap), lazily, only when a request finds the
+  shared snapshot old - so with no visitors nothing polls. The result is one
+  Redis document (`bts:snapshot`). `app/api/arrivals/route.ts` is the only
   arrivals endpoint; it just reads that snapshot and is CDN-cached
   (`s-maxage` + `stale-while-revalidate`), so user traffic is answered by
   the edge and server hits stay roughly constant whether there are ten
   users or a million. There is deliberately no per-station endpoint and no
-  per-user fallback fetch. The client counts ETAs down against its own
-  clock between polls and stops polling in hidden tabs.
+  per-user fallback fetch.
+  **Old data is never shown**: `FRESH_FOR_MS` (90s, `lib/bts.ts`) is
+  enforced on the server, in the client store, and on every render against
+  a live clock (`lib/use-arrivals.ts`), so if updates stop for any reason
+  the card says times are unavailable instead of showing old ones. Ages
+  are measured on the server's clock (offset learned from each response's
+  `Date`/`Age` headers), so a phone with a wrong clock still works. The
+  client polls every 15s for as long as the page is open (paused in hidden
+  tabs; immediate re-poll on return, `online`, and bfcache restore; plus a
+  watchdog that restarts a dead poll chain) and counts ETAs down against
+  its own clock between polls.
 - **Keep-warm job**: `.github/workflows/keep-arrivals-warm.yml` hits
   `/api/arrivals` on a schedule so the first visitor after a long idle
   period doesn't land on an empty snapshot. GitHub throttles scheduled runs

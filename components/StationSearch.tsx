@@ -5,8 +5,7 @@ import { Search, X } from "lucide-react";
 import { stations, type Station } from "@/data/stations";
 import { LINE_COLORS } from "@/lib/line-colors";
 import { useArrivals } from "@/lib/use-arrivals";
-import { hasDeparted, minutesLabel, minutesUntil } from "@/lib/format-eta";
-import { useNow } from "@/lib/use-now";
+import { minutesLabel, trainCountdown } from "@/lib/format-eta";
 
 export interface StationSearchProps {
   onSelectStation: (station: Station) => void;
@@ -15,8 +14,7 @@ export interface StationSearchProps {
 const MAX_RESULTS = 8;
 
 function SearchResultEta({ station }: { station: Station }) {
-  const { data } = useArrivals(station.hasLiveArrivals ? station.code : null);
-  const now = useNow();
+  const { data, now } = useArrivals(station.hasLiveArrivals ? station.code : null);
   if (!station.hasLiveArrivals) {
     return <span className="shrink-0 text-[11px] text-neutral-400">No live data</span>;
   }
@@ -25,8 +23,8 @@ function SearchResultEta({ station }: { station: Station }) {
     return <span className="shrink-0 text-[11px] text-neutral-400">Closed</span>;
   }
   const next = (data.platforms?.[0]?.trains ?? [])
-    .map((train) => minutesUntil(data.timestamp, train, now))
-    .find((left) => left !== null && !hasDeparted(left));
+    .map((train) => trainCountdown(data.timestamp, train, now))
+    .find((countdown) => countdown !== null && !countdown.departed)?.minutes;
   if (next === undefined) return null;
   return <span className="shrink-0 text-[11px] text-neutral-600 dark:text-neutral-300">{minutesLabel(next)}</span>;
 }

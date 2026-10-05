@@ -35,14 +35,18 @@ jobs:
           curl -s -o /dev/null -w "bulk: %{http_code} in %{time_total}s\n" \
             --max-time 30 "$BASE_URL/api/arrivals"
 
-          # The first call only returns what Redis already had; the refresh it
-          # kicked off runs after the response. Give it time to land, then ask
-          # again and count how many of the 61 live stations are now present.
+          # The first call only returns what the shared snapshot already had;
+          # the poll it kicked off runs after the response. Give it time to
+          # land, then ask again and count how many of the 61 live stations
+          # are now present.
           echo "waiting for the background refresh to finish..."
           sleep 20
 
+          # jq instead of `grep | wc`: under `set -o pipefail` a grep with no
+          # match exits 1 and fails the whole job, so an empty snapshot crashed
+          # the run instead of producing the warning below.
           body=$(curl -s --max-time 30 "$BASE_URL/api/arrivals")
-          count=$(printf '%s' "$body" | grep -o '"code"' | wc -l | tr -d ' ')
+          count=$(printf '%s' "$body" | jq '.arrivals | length' 2>/dev/null || echo 0)
           echo "warm: $count/61 stations cached"
 
           if [ "$count" -lt 55 ]; then
