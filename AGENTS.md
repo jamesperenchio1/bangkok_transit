@@ -114,7 +114,9 @@ expanded. See `docs/` or ask the user for further design history if needed.
   **Old data is never shown**: `FRESH_FOR_MS` (90s, `lib/bts.ts`) is
   enforced on the server, in the client store, and on every render against
   a live clock (`lib/use-arrivals.ts`), so if updates stop for any reason
-  the card says times are unavailable instead of showing old ones. The
+  the card says times are unavailable instead of showing old ones. Ages
+  are measured on the server's clock (offset learned from each response's
+  `Date`/`Age` headers), so a phone with a wrong clock still works. The
   client polls every 15s for as long as the page is open (paused in hidden
   tabs; immediate re-poll on return, `online`, and bfcache restore; plus a
   watchdog that restarts a dead poll chain) and counts ETAs down against

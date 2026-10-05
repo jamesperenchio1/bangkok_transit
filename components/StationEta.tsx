@@ -3,9 +3,8 @@
 import { useArrivals } from "@/lib/use-arrivals";
 import {
   arrivalClockTime,
-  hasDeparted,
   minutesLabel,
-  minutesUntil,
+  trainCountdown,
   updatedAgoLabel,
 } from "@/lib/format-eta";
 import type { ArrivalPlatform } from "@/lib/bts";
@@ -27,8 +26,9 @@ function PlatformTimes({
   now: number;
 }) {
   const trains = platform.trains
-    .map((train) => ({ train, left: minutesUntil(timestamp, train, now) }))
-    .filter(({ left }) => !hasDeparted(left))
+    .map((train) => ({ train, countdown: trainCountdown(timestamp, train, now) }))
+    .filter(({ countdown }) => !countdown?.departed)
+    .map(({ train, countdown }) => ({ train, left: countdown?.minutes ?? null }))
     .slice(0, 3);
   if (trains.length === 0) return null;
 

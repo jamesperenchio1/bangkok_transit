@@ -12,7 +12,7 @@ export interface UseArrivalsResult {
    * "still loading" apart from "no live times right now".
    */
   settled: boolean;
-  /** The live clock this result was checked against; reuse it for countdowns. */
+  /** The live (server-corrected) clock this result was checked against; reuse it for countdowns. */
   now: number;
 }
 
@@ -28,7 +28,9 @@ export interface UseArrivalsResult {
 export function useArrivals(code: string | null): UseArrivalsResult {
   const entry = useArrivalsStore((s) => (code ? (s.map[code] ?? null) : null));
   const settled = useArrivalsStore((s) => s.settled);
-  const now = useNow();
+  const clockOffsetMs = useArrivalsStore((s) => s.clockOffsetMs);
+  // Measured on the server's clock, not the device's (see clockOffsetMs).
+  const now = useNow() + clockOffsetMs;
   const data = entry && isFresh(entry.timestamp, now) ? entry : null;
   return { data, settled, now };
 }

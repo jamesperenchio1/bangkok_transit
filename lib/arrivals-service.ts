@@ -1,5 +1,5 @@
 import { after } from "next/server";
-import { fetchUpstream, type Arrivals } from "./bts";
+import { fetchUpstream, isFresh, type Arrivals } from "./bts";
 import { cacheEnabled, readSnapshot, tryClaimRefresh, writeSnapshot, type Snapshot } from "./arrivals-cache";
 
 /**
@@ -21,9 +21,9 @@ import { cacheEnabled, readSnapshot, tryClaimRefresh, writeSnapshot, type Snapsh
 export const REFRESH_EVERY_MS = 20_000;
 /**
  * A poll is cut off at this point, whatever is still in flight. It must stay
- * below the lock's lifetime (REFRESH_EVERY_MS): that is what guarantees two
- * polls never overlap, so an older poll can never finish last and overwrite
- * a newer snapshot.
+ * below the lock's lifetime (REFRESH_EVERY_MS): while Redis is healthy that
+ * guarantees two polls never overlap, so an older poll can never finish
+ * last and overwrite a newer snapshot.
  */
 const POLL_DEADLINE_MS = 15_000;
 /** How long an instance trusts its own memory before re-reading Redis. */
@@ -57,38 +57,51 @@ export async function getSnapshot(): Promise<Snapshot | null> {
 }
 
 /**
- * Poll every station once and publish the result as a fresh snapshot. Nothing
- * is carried over from the previous poll: a station whose call fails this
- * time is simply absent (readers never show old times anyway). Normally that
- * is one Redis write at the end; during a cold start - no snapshot yet, so
- * every other instance is serving an empty one - partial results are also
- * published every couple of seconds so users everywhere see stations as
- * they land, not only those routed to this instance.
+ * Poll every station once and publish the result. A station whose call fails
+ * (or is cut off by the deadline) keeps its entry from the previous snapshot
+ * only while that entry is still fresh, so one dropped call doesn't blank a
+ * station - but nothing old is ever carried forward. The starting station
+ * rotates every poll, so when upstream is slow the deadline doesn't always
+ * cut off the same tail of the list.
+ *
+ * Normally that is one Redis write at the end. During a cold start - nothing
+ * fresh anywhere, so every instance is serving an empty snapshot - partial
+ * results are also published every couple of seconds (marked `partial`) so
+ * users everywhere see stations as they land.
  */
 async function pollUpstream(codes: string[], coldStart: boolean): Promise<void> {
   const fetchedAt = Date.now();
   const deadline = AbortSignal.timeout(POLL_DEADLINE_MS);
+
   const arrivals: Record<string, Arrivals> = {};
+  for (const [code, data] of Object.entries(memory?.snapshot.arrivals ?? {})) {
+    if (isFresh(data.timestamp)) arrivals[code] = data;
+  }
+
+  const start = Math.floor(Math.random() * codes.length);
+  const order = [...codes.slice(start), ...codes.slice(0, start)];
   let lastPublish = 0;
 
   let cursor = 0;
   async function worker() {
-    while (cursor < codes.length && !deadline.aborted) {
-      const code = codes[cursor++];
+    while (cursor < order.length && !deadline.aborted) {
+      const code = order[cursor++];
       try {
         arrivals[code] = await fetchUpstream(code, deadline);
       } catch {
-        continue; // left out of this snapshot; the next poll retries it
+        continue; // keeps a still-fresh previous entry, if any; next poll retries
       }
-      const partial: Snapshot = { arrivals: { ...arrivals }, fetchedAt };
-      remember(partial);
-      if (coldStart && Date.now() - lastPublish >= COLD_START_PUBLISH_MS) {
-        lastPublish = Date.now();
-        await writeSnapshot(partial).catch(() => {});
+      if (coldStart) {
+        const partial: Snapshot = { arrivals: { ...arrivals }, fetchedAt, partial: true };
+        remember(partial);
+        if (Date.now() - lastPublish >= COLD_START_PUBLISH_MS) {
+          lastPublish = Date.now();
+          await writeSnapshot(partial).catch(() => {});
+        }
       }
     }
   }
-  await Promise.all(Array.from({ length: Math.min(POLL_CONCURRENCY, codes.length) }, () => worker()));
+  await Promise.all(Array.from({ length: Math.min(POLL_CONCURRENCY, order.length) }, () => worker()));
 
   const snapshot: Snapshot = { arrivals, fetchedAt };
   remember(snapshot);

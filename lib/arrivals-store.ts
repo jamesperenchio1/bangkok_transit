@@ -39,18 +39,49 @@ const RESUME_FAST_POLLS = 5;
 const WATCHDOG_MS = 2 * POLL_MS;
 
 const SNAPSHOT_KEY = "bts:arrivals:v1";
+const CLOCK_OFFSET_KEY = "bts:clock-offset:v1";
+/** Abandon a request that hasn't answered by now, so a hung connection can't stall polling. */
+const REQUEST_TIMEOUT_MS = 10_000;
 
 export type ArrivalsEntry = Arrivals;
 export type ArrivalsMap = Record<string, ArrivalsEntry>;
 
 interface ArrivalsStore {
   map: ArrivalsMap;
+  /**
+   * Server clock minus this device's clock, in ms. Freshness and countdowns
+   * are measured on the server's clock (Date.now() + clockOffsetMs), so a
+   * phone whose clock is minutes off neither hides every time nor shows old
+   * ones as current.
+   */
+  clockOffsetMs: number;
   /** True once this tab has heard back from (or failed to reach) the server at least once. */
   settled: boolean;
   setMap: (map: ArrivalsMap) => void;
 }
 
-function readSnapshot(): ArrivalsMap {
+function readClockOffset(): number {
+  try {
+    const value = Number(window.localStorage.getItem(CLOCK_OFFSET_KEY));
+    return Number.isFinite(value) ? value : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * The server's current time per this response: its `Date` header, plus the
+ * `Age` header when the CDN answered from a copy it has held for a while.
+ * Null when the header is missing or unparseable.
+ */
+function serverNowFrom(res: Response): number | null {
+  const date = Date.parse(res.headers.get("date") ?? "");
+  if (Number.isNaN(date)) return null;
+  const age = Number(res.headers.get("age") ?? 0);
+  return date + (Number.isFinite(age) ? age * 1000 : 0);
+}
+
+function readSnapshot(clockOffsetMs: number): ArrivalsMap {
   if (typeof window === "undefined") return {};
   try {
     const raw = window.localStorage.getItem(SNAPSHOT_KEY);
@@ -61,7 +92,7 @@ function readSnapshot(): ArrivalsMap {
     for (const [code, value] of Object.entries(parsed as Record<string, unknown>)) {
       // A persisted entry can predate a schema change or just be corrupted -
       // validating before trusting its shape is what keeps the page alive.
-      if (isValidArrivals(value) && isFresh(value.timestamp)) out[code] = value;
+      if (isValidArrivals(value) && isFresh(value.timestamp, Date.now() + clockOffsetMs)) out[code] = value;
     }
     return out;
   } catch {
@@ -80,6 +111,7 @@ function writeSnapshot(map: ArrivalsMap) {
 
 export const useArrivalsStore = create<ArrivalsStore>((set) => ({
   map: {},
+  clockOffsetMs: 0,
   settled: false,
   setMap: (map) => set({ map }),
 }));
@@ -91,7 +123,9 @@ export function startArrivalsPolling() {
   if (started || typeof window === "undefined") return;
   started = true;
 
-  const seeded = readSnapshot();
+  const savedOffset = readClockOffset();
+  const seeded = readSnapshot(savedOffset);
+  useArrivalsStore.setState({ clockOffsetMs: savedOffset });
   if (Object.keys(seeded).length > 0) {
     useArrivalsStore.getState().setMap(seeded);
   }
@@ -127,22 +161,42 @@ export function startArrivalsPolling() {
     try {
       // `no-store` only skips the browser's own HTTP cache; the request is
       // still answered by the shared CDN copy, never by a per-user poll.
-      const res = await fetch("/api/arrivals", { cache: "no-store" });
+      const res = await fetch("/api/arrivals", {
+        cache: "no-store",
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
       if (res.ok) {
-        const json = (await res.json()) as { arrivals?: Record<string, unknown>; total?: number };
+        const json = (await res.json()) as { arrivals?: Record<string, unknown>; complete?: boolean };
+
+        const serverNow = serverNowFrom(res);
+        if (serverNow !== null) {
+          const clockOffsetMs = serverNow - Date.now();
+          useArrivalsStore.setState({ clockOffsetMs });
+          try {
+            window.localStorage.setItem(CLOCK_OFFSET_KEY, String(clockOffsetMs));
+          } catch {
+            // non-fatal
+          }
+        }
+        const correctedNow = Date.now() + useArrivalsStore.getState().clockOffsetMs;
+
         const next: ArrivalsMap = {};
         for (const [code, data] of Object.entries(json.arrivals ?? {})) {
-          if (isValidArrivals(data) && isFresh(data.timestamp)) next[code] = data;
+          if (isValidArrivals(data) && isFresh(data.timestamp, correctedNow)) next[code] = data;
         }
         // Replace, don't merge: a station missing from the shared snapshot
         // has nothing fresh, so whatever this tab held for it must go too.
         useArrivalsStore.getState().setMap(next);
         writeSnapshot(next);
-        complete = typeof json.total === "number" && Object.keys(next).length >= json.total;
+        // "Complete" comes from the server: the latest shared poll finished.
+        // Not a count of stations, so a station upstream never answers for
+        // can't keep every tab in fast-poll mode.
+        complete = json.complete === true;
       }
     } catch {
-      // Network hiccup: nothing to replace the map with. What's held stays
-      // only while still fresh - renders re-check its age on a live clock.
+      // Network hiccup or timeout: nothing to replace the map with. What's
+      // held stays only while still fresh - renders re-check its age on a
+      // live clock.
     } finally {
       inFlight = false;
       if (!useArrivalsStore.getState().settled) useArrivalsStore.setState({ settled: true });

@@ -27,30 +27,32 @@ function parseUtc(iso: string): number {
 }
 
 /**
- * Minutes until a train arrives, counted down against the current clock
- * rather than frozen at the moment the payload was fetched - between polls a
- * fixed "2 min" drifts up to a minute and a half out of date. Uses
- * `eta_precise` (fractional minutes) when present. Returns null when the
- * time can't be computed, and a negative number once the train has gone.
+ * How long past its predicted arrival a train keeps showing as "Arriving"
+ * before it's treated as gone. Covers the time it sits at the platform, and
+ * the fact that data is normally 20-45s old by the time it reaches a phone -
+ * a train reported "0 min" is usually still at the platform then.
  */
-export function minutesUntil(
+const PLATFORM_GRACE_MS = 60_000;
+
+/**
+ * A train's live countdown against the current clock, rather than frozen at
+ * the moment the payload was fetched - between polls a fixed "2 min" drifts
+ * out of date. Uses `eta_precise` (fractional minutes) when present.
+ * `minutes` never goes below 0 ("Arriving"); `departed` turns true once the
+ * train is past PLATFORM_GRACE_MS beyond its predicted arrival. Null when
+ * the time can't be computed.
+ */
+export function trainCountdown(
   fromIso: string,
   train: { eta_minutes?: number; eta_precise?: number },
   now: number,
-): number | null {
+): { minutes: number; departed: boolean } | null {
   const eta = train.eta_precise ?? train.eta_minutes;
   if (eta === undefined || eta === null) return null;
   const from = parseUtc(fromIso);
   if (Number.isNaN(from)) return null;
-  return Math.floor((from + eta * 60_000 - now) / 60_000);
-}
-
-/**
- * A train whose arrival time has passed according to the live countdown.
- * (minutesUntil floors, so anything past the arrival moment is negative.)
- */
-export function hasDeparted(minutesLeft: number | null): boolean {
-  return minutesLeft !== null && minutesLeft < 0;
+  const msLeft = from + eta * 60_000 - now;
+  return { minutes: Math.max(0, Math.floor(msLeft / 60_000)), departed: msLeft < -PLATFORM_GRACE_MS };
 }
 
 /** "just now" / "40s ago" / "3 min ago" for the payload's own fetch time. */

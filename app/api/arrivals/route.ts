@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSnapshot, pollInBackground, REFRESH_EVERY_MS } from "@/lib/arrivals-service";
 import { liveStations } from "@/data/stations";
-import { isFresh, isValidArrivals } from "@/lib/bts";
+import { ageMs, FRESH_FOR_MS, isFresh, isValidArrivals } from "@/lib/bts";
 
 /**
  * Live arrivals for every BTS station, as one shared document. This is the
@@ -13,7 +13,10 @@ import { isFresh, isValidArrivals } from "@/lib/bts";
  * nothing fresh is simply absent, and the client shows "unavailable" for it
  * rather than old times.
  *
- * Response shape: `{ arrivals: { [code]: Arrivals }, total: number }`.
+ * Response shape: `{ arrivals: { [code]: Arrivals }, total: number,
+ * complete: boolean }` - `complete` means the latest shared poll has
+ * finished (not that every station answered; one that upstream never
+ * answers for must not keep every client fast-polling).
  */
 
 /**
@@ -21,47 +24,60 @@ import { isFresh, isValidArrivals } from "@/lib/bts";
  * edge answers every user and only re-asks this function about once per
  * FRESH window per region, however many users there are. The client counts
  * each ETA down against its own clock, so this delay is invisible to riders.
- * A partial snapshot (cold start, still filling) is cached only for a moment
- * and never served stale, so clients see stations land within seconds.
+ * The cache lifetime is also capped by how long the oldest entry stays
+ * within FRESH_FOR_MS, so the edge never holds data past the point clients
+ * would reject it. A snapshot that is still filling (cold start) or empty is
+ * cached only for a moment and never served stale.
  */
 const FRESH_SECONDS = 10;
 const STALE_WHILE_REVALIDATE_SECONDS = 10;
-const PARTIAL_FRESH_SECONDS = 2;
+const FILLING_FRESH_SECONDS = 2;
 
 export async function GET() {
   const codes = liveStations.map((s) => s.code);
 
   let snapshot = null;
+  let readFailed = false;
   try {
     snapshot = await getSnapshot();
   } catch {
     // Redis hiccup: answer with an empty (briefly cached) snapshot below
     // rather than failing every user at once.
+    readFailed = true;
   }
 
+  const now = Date.now();
   const arrivals: Record<string, unknown> = {};
+  let oldestAgeMs = 0;
   for (const code of codes) {
     const data = snapshot?.arrivals[code];
-    if (data && isValidArrivals(data) && isFresh(data.timestamp)) arrivals[code] = data;
+    if (data && isValidArrivals(data) && isFresh(data.timestamp, now)) {
+      arrivals[code] = data;
+      oldestAgeMs = Math.max(oldestAgeMs, ageMs(data.timestamp, now));
+    }
   }
   const held = Object.keys(arrivals).length;
 
-  if (!snapshot || Date.now() - snapshot.fetchedAt > REFRESH_EVERY_MS) {
-    // "Cold" = nothing fresh to serve: a first-ever start, or a snapshot left
-    // over from a quiet night. Either way every user sees empty times until
-    // this poll lands, so it publishes progressively.
-    pollInBackground(codes, held === 0);
+  if (!snapshot || now - snapshot.fetchedAt > REFRESH_EVERY_MS) {
+    // "Cold" = we positively know there is nothing fresh to serve: a
+    // first-ever start, or a snapshot left over from a quiet night. Then
+    // every user sees empty times until this poll lands, so it publishes
+    // progressively. A failed Redis read is not proof of that, so it never
+    // counts as cold (and never publishes partial snapshots).
+    pollInBackground(codes, !readFailed && held === 0);
   }
 
-  const complete = held >= codes.length;
+  const complete = held > 0 && !snapshot?.partial;
+  let cacheControl = `public, s-maxage=${FILLING_FRESH_SECONDS}`;
+  if (complete) {
+    const secondsLeft = Math.floor((FRESH_FOR_MS - oldestAgeMs) / 1000);
+    const fresh = Math.max(1, Math.min(FRESH_SECONDS, secondsLeft));
+    const swr = Math.max(0, Math.min(STALE_WHILE_REVALIDATE_SECONDS, secondsLeft - fresh));
+    cacheControl = `public, s-maxage=${fresh}` + (swr > 0 ? `, stale-while-revalidate=${swr}` : "");
+  }
+
   return NextResponse.json(
-    { arrivals, total: codes.length },
-    {
-      headers: {
-        "Cache-Control": complete
-          ? `public, s-maxage=${FRESH_SECONDS}, stale-while-revalidate=${STALE_WHILE_REVALIDATE_SECONDS}`
-          : `public, s-maxage=${PARTIAL_FRESH_SECONDS}`,
-      },
-    },
+    { arrivals, total: codes.length, complete },
+    { headers: { "Cache-Control": cacheControl } },
   );
 }

@@ -2,7 +2,7 @@
 
 import { X, MapPin, ArrowRight } from "lucide-react";
 import { useArrivals } from "@/lib/use-arrivals";
-import { arrivalClockTime, hasDeparted, minutesLabel, minutesUntil } from "@/lib/format-eta";
+import { arrivalClockTime, minutesLabel, trainCountdown } from "@/lib/format-eta";
 import type { Station } from "@/data/stations";
 import { terminusInDirection, type PathResult } from "@/lib/transit-graph";
 import type { GeoPosition } from "@/lib/use-geolocation";
@@ -189,8 +189,9 @@ function LiveEta({ station, directionKey }: { station: Station; directionKey?: s
   const platform =
     data.platforms?.find((p) => directionKey && p.direction_key === directionKey) ?? data.platforms?.[0];
   const trains = (platform?.trains ?? [])
-    .map((train) => ({ train, left: minutesUntil(data.timestamp, train, now) }))
-    .filter(({ left }) => !hasDeparted(left));
+    .map((train) => ({ train, countdown: trainCountdown(data.timestamp, train, now) }))
+    .filter(({ countdown }) => !countdown?.departed)
+    .map(({ train, countdown }) => ({ train, left: countdown?.minutes ?? null }));
   const [next, ...upcoming] = trains;
   if (!next) return null;
   const clockTime = arrivalClockTime(data.timestamp, next.train.eta_precise ?? next.train.eta_minutes);

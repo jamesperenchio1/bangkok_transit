@@ -25,6 +25,8 @@ export interface Snapshot {
   arrivals: Record<string, Arrivals>;
   /** When the poll that produced this snapshot started (epoch ms). */
   fetchedAt: number;
+  /** True while a cold-start poll is still publishing results as they land. */
+  partial?: boolean;
 }
 
 const SNAPSHOT_KEY = "bts:snapshot";
@@ -50,6 +52,10 @@ const REFRESH_LOCK_KEY = "bts:refresh-lock";
  * serverless instance - this lock is what makes "one poll for everybody"
  * true fleet-wide rather than per instance. Always succeeds when Redis
  * isn't configured (a single dev process has nobody to coordinate with).
+ * If Redis errors it fails open, so an Upstash blip doesn't stop arrivals
+ * entirely; overlapping polls are then possible for that moment, which is
+ * why polls never publish partial results unless they know the shared
+ * snapshot is genuinely empty (see pollInBackground's `coldStart`).
  */
 export async function tryClaimRefresh(seconds: number): Promise<boolean> {
   if (!redis) return true;
