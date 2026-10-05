@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSnapshot, pollInBackground, REFRESH_EVERY_MS } from "@/lib/arrivals-service";
 import { liveStations } from "@/data/stations";
-import { isFresh, isShowable, isValidArrivals } from "@/lib/bts";
+import { ageMs, isFresh, isValidArrivals, MAX_SHOW_AGE_MS } from "@/lib/bts";
 
 /**
  * Live arrivals for every BTS station, as one shared document. This is the
@@ -30,6 +30,8 @@ import { isFresh, isShowable, isValidArrivals } from "@/lib/bts";
 const FRESH_SECONDS = 10;
 const STALE_WHILE_REVALIDATE_SECONDS = 10;
 const FILLING_FRESH_SECONDS = 2;
+/** The longest the CDN can hold a response (fresh + stale-while-revalidate). */
+const MAX_EDGE_AGE_MS = (FRESH_SECONDS + STALE_WHILE_REVALIDATE_SECONDS) * 1000;
 
 export async function GET() {
   const codes = liveStations.map((s) => s.code);
@@ -49,7 +51,9 @@ export async function GET() {
   let freshCount = 0;
   for (const code of codes) {
     const data = snapshot?.arrivals[code];
-    if (data && isValidArrivals(data) && isShowable(data.timestamp, now)) {
+    // Dropped a CDN lifetime early, so even the edge's cached copy never
+    // carries an entry past MAX_SHOW_AGE_MS.
+    if (data && isValidArrivals(data) && ageMs(data.timestamp, now) < MAX_SHOW_AGE_MS - MAX_EDGE_AGE_MS) {
       arrivals[code] = data;
       if (isFresh(data.timestamp, now)) freshCount++;
     }
