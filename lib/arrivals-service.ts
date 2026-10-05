@@ -74,8 +74,28 @@ async function pollUpstream(codes: string[], coldStart: boolean): Promise<void> 
   const fetchedAt = Date.now();
   const deadline = AbortSignal.timeout(POLL_DEADLINE_MS);
 
+  // The previous shared snapshot, to carry still-fresh entries over from.
+  // Normally the request that triggered this poll just read it into memory.
+  // If memory isn't current and Redis can't be read either, this poll can't
+  // see what everyone is being served, so it must not publish over it: a
+  // station that fails this time would vanish for everybody even though the
+  // shared snapshot still had a fresh reading. It then only updates this
+  // instance's own memory.
+  let previous: Snapshot | null = null;
+  let canPublish = true;
+  if (memory && (!cacheEnabled || Date.now() - memory.at < MEMORY_MS)) {
+    previous = memory.snapshot;
+  } else {
+    try {
+      previous = await readSnapshot();
+    } catch {
+      previous = memory?.snapshot ?? null;
+      canPublish = false;
+    }
+  }
+
   const arrivals: Record<string, Arrivals> = {};
-  for (const [code, data] of Object.entries(memory?.snapshot.arrivals ?? {})) {
+  for (const [code, data] of Object.entries(previous?.arrivals ?? {})) {
     if (isFresh(data.timestamp)) arrivals[code] = data;
   }
 
@@ -95,7 +115,7 @@ async function pollUpstream(codes: string[], coldStart: boolean): Promise<void> 
       } catch {
         continue; // keeps a still-fresh previous entry, if any; next poll retries
       }
-      if (coldStart) {
+      if (coldStart && canPublish) {
         const partial: Snapshot = { arrivals: { ...arrivals }, fetchedAt, partial: true };
         remember(partial);
         if (Date.now() - lastPublish >= COLD_START_PUBLISH_MS) {
@@ -109,7 +129,7 @@ async function pollUpstream(codes: string[], coldStart: boolean): Promise<void> 
 
   const snapshot: Snapshot = { arrivals, fetchedAt };
   remember(snapshot);
-  await writeSnapshot(snapshot, 99);
+  if (canPublish) await writeSnapshot(snapshot, 99);
 }
 
 /**

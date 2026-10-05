@@ -49,10 +49,10 @@ export type ArrivalsMap = Record<string, ArrivalsEntry>;
 interface ArrivalsStore {
   map: ArrivalsMap;
   /**
-   * Server clock minus this device's clock, in ms. Freshness and countdowns
-   * are measured on the server's clock (Date.now() + clockOffsetMs), so a
-   * phone whose clock is minutes off neither hides every time nor shows old
-   * ones as current.
+   * Server clock minus this device's clock, in ms, from the latest response.
+   * Freshness and countdowns are measured on the server's clock (see
+   * serverNow), so a phone whose clock is minutes off neither hides every
+   * time nor shows old ones as current.
    */
   clockOffsetMs: number;
   /** True once this tab has heard back from (or failed to reach) the server at least once. */
@@ -81,6 +81,28 @@ function serverNowFrom(res: Response): number | null {
   return date + (Number.isFinite(age) ? age * 1000 : 0);
 }
 
+/**
+ * The latest server time seen, pinned to the monotonic clock. Unlike the
+ * wall-clock offset, it can't be thrown off by the phone's clock changing
+ * mid-session (an NTP sync, a timezone or manual change).
+ */
+let anchor: { serverMs: number; perfMs: number } | null = null;
+
+/**
+ * Best estimate of the server's current time: the later of the wall clock
+ * corrected by the measured offset, and the monotonic clock run forward from
+ * the last server response. Taking the later of two independent estimates
+ * is deliberately conservative - a device clock jump or a monotonic clock
+ * that paused while the phone slept can each only make data look *older*
+ * (hidden a little early), never newer. Old times could show only if both
+ * failed in the same direction at once.
+ */
+export function serverNow(): number {
+  const wall = Date.now() + useArrivalsStore.getState().clockOffsetMs;
+  const mono = anchor ? anchor.serverMs + (performance.now() - anchor.perfMs) : -Infinity;
+  return Math.max(wall, mono);
+}
+
 function readSnapshot(clockOffsetMs: number): ArrivalsMap {
   if (typeof window === "undefined") return {};
   try {
@@ -88,11 +110,16 @@ function readSnapshot(clockOffsetMs: number): ArrivalsMap {
     if (!raw) return {};
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return {};
+    // A saved offset may be out of date (the phone's clock could have been
+    // changed since), so it may only make the check stricter: an entry must
+    // be fresh by the device clock *and* by the saved offset. Worst case the
+    // seed is dropped and times appear with the first poll instead.
+    const now = Math.max(Date.now(), Date.now() + clockOffsetMs);
     const out: ArrivalsMap = {};
     for (const [code, value] of Object.entries(parsed as Record<string, unknown>)) {
       // A persisted entry can predate a schema change or just be corrupted -
       // validating before trusting its shape is what keeps the page alive.
-      if (isValidArrivals(value) && isFresh(value.timestamp, Date.now() + clockOffsetMs)) out[code] = value;
+      if (isValidArrivals(value) && isFresh(value.timestamp, now)) out[code] = value;
     }
     return out;
   } catch {
@@ -123,9 +150,12 @@ export function startArrivalsPolling() {
   if (started || typeof window === "undefined") return;
   started = true;
 
+  // The saved offset only screens the seed (see readSnapshot). Until this
+  // session's first response measures it afresh, render-time checks use the
+  // stricter of the device clock and the saved offset too.
   const savedOffset = readClockOffset();
   const seeded = readSnapshot(savedOffset);
-  useArrivalsStore.setState({ clockOffsetMs: savedOffset });
+  useArrivalsStore.setState({ clockOffsetMs: Math.max(0, savedOffset) });
   if (Object.keys(seeded).length > 0) {
     useArrivalsStore.getState().setMap(seeded);
   }
@@ -170,9 +200,10 @@ export function startArrivalsPolling() {
         const json = (await res.json()) as { arrivals?: Record<string, unknown>; complete?: boolean };
         answered = true;
 
-        const serverNow = serverNowFrom(res);
-        if (serverNow !== null) {
-          const clockOffsetMs = serverNow - Date.now();
+        const measured = serverNowFrom(res);
+        if (measured !== null) {
+          anchor = { serverMs: measured, perfMs: performance.now() };
+          const clockOffsetMs = measured - Date.now();
           useArrivalsStore.setState({ clockOffsetMs });
           try {
             window.localStorage.setItem(CLOCK_OFFSET_KEY, String(clockOffsetMs));
@@ -180,7 +211,7 @@ export function startArrivalsPolling() {
             // non-fatal
           }
         }
-        const correctedNow = Date.now() + useArrivalsStore.getState().clockOffsetMs;
+        const correctedNow = serverNow();
 
         const next: ArrivalsMap = {};
         for (const [code, data] of Object.entries(json.arrivals ?? {})) {

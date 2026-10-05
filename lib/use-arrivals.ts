@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FRESH_FOR_MS, isFresh } from "./bts";
-import { useArrivalsStore, type ArrivalsEntry } from "./arrivals-store";
+import { serverNow, useArrivalsStore, type ArrivalsEntry } from "./arrivals-store";
 import { useNow } from "./use-now";
 
 export interface UseArrivalsResult {
@@ -38,15 +38,15 @@ export function useArrivals(code: string | null): UseArrivalsResult {
   useEffect(() => {
     if (!entry) return;
     const timestamp = entry.timestamp;
-    const msLeft = Date.parse(timestamp.endsWith("Z") ? timestamp : `${timestamp}Z`) + FRESH_FOR_MS -
-      (Date.now() + clockOffsetMs);
+    const msLeft = Date.parse(timestamp.endsWith("Z") ? timestamp : `${timestamp}Z`) + FRESH_FOR_MS - serverNow();
     if (!(msLeft > 0)) return;
     const timer = setTimeout(() => setExpiredAt(Date.now()), msLeft + 50);
     return () => clearTimeout(timer);
   }, [entry, clockOffsetMs]);
 
-  // Measured on the server's clock, not the device's (see clockOffsetMs).
-  const now = Math.max(tick, expiredAt) + clockOffsetMs;
+  // Measured on the server's clock, not the device's (see serverNow). The
+  // tick, the expiry timer, a new entry, or a new offset re-evaluates it.
+  const now = useMemo(() => serverNow(), [tick, expiredAt, entry, clockOffsetMs]); // eslint-disable-line react-hooks/exhaustive-deps
   const data = entry && isFresh(entry.timestamp, now) ? entry : null;
   return { data, settled, now };
 }
