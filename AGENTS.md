@@ -112,8 +112,10 @@ expanded. See `docs/` or ask the user for further design history if needed.
   outside fetches per invocation, so each alarm polls the ~half of the 61
   stations whose readings are oldest (6 at a time, within a ~9s budget), so
   every station refreshes about every 20s and one whose call failed is
-  retried first. The document's `poll` field reports the latest poll's
-  failures (status/"timeout"/"skipped") - read it with curl to diagnose.
+  retried first. Upstream rate-limits (HTTP 429, seen at ~180 calls/min):
+  after the first 429 an alarm starts no more calls. The document's `poll`
+  field reports the latest poll's failures (status/"timeout"/"skipped") -
+  read it with curl to diagnose.
   Each alarm merges into the previous readings and writes one document,
   `arrivals.json` (`lib/arrivals-document.ts`: `{ arrivals, total, complete }`),
   to the R2 bucket `bts-live`, served at `live.bangkok-transit.com` through

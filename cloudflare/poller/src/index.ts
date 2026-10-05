@@ -116,8 +116,11 @@ export class ArrivalsPoller extends DurableObject<Env> {
     const fresh: Record<string, Arrivals> = {};
     const failed: Record<string, string> = {};
     let cursor = 0;
+    // Upstream rate-limits (429). Once it says so, stop sending more this
+    // cycle rather than hammering it: whatever is left is stalest next time.
+    let throttled = false;
     const worker = async () => {
-      while (cursor < codes.length && Date.now() - startedAt < START_BUDGET_MS) {
+      while (cursor < codes.length && !throttled && Date.now() - startedAt < START_BUDGET_MS) {
         const code = codes[cursor++];
         try {
           fresh[code] = await fetchUpstream(code, deadline);
@@ -125,6 +128,7 @@ export class ArrivalsPoller extends DurableObject<Env> {
           // Keeps its previous reading (shown with its age); it is among the
           // stalest next cycle, so it is retried first.
           failed[code] = failureReason(err, deadline);
+          if (failed[code] === "429") throttled = true;
         }
       }
     };
