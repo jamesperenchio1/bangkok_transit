@@ -109,8 +109,11 @@ expanded. See `docs/` or ask the user for further design history if needed.
   `cloudflare/poller`: a single Durable Object (`ArrivalsPoller`, one
   instance worldwide, so no lock is needed) whose own alarm fires every 10s
   during service hours (every 5 min overnight). The free plan allows 50
-  outside fetches per invocation, so each alarm polls half of the 61 stations
-  (6 at a time) and the halves alternate: every station refreshes every 20s.
+  outside fetches per invocation, so each alarm polls the ~half of the 61
+  stations whose readings are oldest (6 at a time, within a ~9s budget), so
+  every station refreshes about every 20s and one whose call failed is
+  retried first. The document's `poll` field reports the latest poll's
+  failures (status/"timeout"/"skipped") - read it with curl to diagnose.
   Each alarm merges into the previous readings and writes one document,
   `arrivals.json` (`lib/arrivals-document.ts`: `{ arrivals, total, complete }`),
   to the R2 bucket `bts-live`, served at `live.bangkok-transit.com` through

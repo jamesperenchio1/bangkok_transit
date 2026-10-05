@@ -19,6 +19,21 @@ export interface ArrivalsDocument {
    * station upstream never answers for can't keep every client fast-polling.
    */
   complete: boolean;
+  /** What the latest poll did - diagnostics only, ignored by the client. */
+  poll?: PollReport;
+}
+
+export interface PollReport {
+  /** When the poll finished (ISO, UTC). */
+  at: string;
+  /** How long it took. */
+  ms: number;
+  /** Stations it tried. */
+  polled: number;
+  /** Stations that answered. */
+  ok: number;
+  /** Stations that didn't, with why: an HTTP status, "timeout", "deadline", "skipped", ... */
+  failed: Record<string, string>;
 }
 
 /**
@@ -56,6 +71,7 @@ export function buildArrivalsDocument(
   codes: string[],
   pollComplete: boolean,
   now = Date.now(),
+  poll?: PollReport,
 ): { document: ArrivalsDocument; cacheControl: string } {
   const arrivals: Record<string, Arrivals> = {};
   let freshCount = 0;
@@ -69,7 +85,7 @@ export function buildArrivalsDocument(
   const complete = pollComplete && freshCount > 0;
   const seconds = complete ? EDGE_FRESH_SECONDS : EDGE_FILLING_SECONDS;
   return {
-    document: { arrivals, total: codes.length, complete },
+    document: { arrivals, total: codes.length, complete, ...(poll && { poll }) },
     // max-age=0: browsers always come back to the edge; s-maxage: the edge
     // holds one copy for everybody.
     cacheControl: `public, max-age=0, s-maxage=${seconds}`,
