@@ -96,6 +96,11 @@ expanded. See `docs/` or ask the user for further design history if needed.
   Production build therefore uses webpack: `npm run build` runs
   `next build --webpack`.
 - **Icons**: Use `lucide-react`.
+- **Language**: EN/TH toggle in the header (default English, remembered in
+  `localStorage`). Strings and `stationName()` live in `lib/i18n.ts`, a
+  zustand store so the map's popup cards (separate React roots) follow it too.
+  The map swaps station labels and the basemap's bilingual place labels to
+  the chosen language.
 - **Live arrivals API**: `https://bts-api.topmile.com` — undocumented,
   BTS Sukhumvit + Silom only (~61 codes), no batch endpoint, no CORS, and
   `timestamp` in responses is UTC despite looking naive (see `lib/bts.ts`).

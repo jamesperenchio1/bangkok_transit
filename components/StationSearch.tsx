@@ -6,6 +6,7 @@ import { stations, type Station } from "@/data/stations";
 import { LINE_COLORS } from "@/lib/line-colors";
 import { useArrivals } from "@/lib/use-arrivals";
 import { minutesLabel, upcomingTrains } from "@/lib/format-eta";
+import { stationName, useT } from "@/lib/i18n";
 
 export interface StationSearchProps {
   onSelectStation: (station: Station) => void;
@@ -30,12 +31,13 @@ const searchIndex = stations.map((s) => ({
 
 function SearchResultEta({ station }: { station: Station }) {
   const { data, live, now } = useArrivals(station.hasLiveArrivals ? station.code : null);
+  const { t } = useT();
   if (!station.hasLiveArrivals) {
-    return <span className="shrink-0 text-[11px] text-neutral-400">No live data</span>;
+    return <span className="shrink-0 text-[11px] text-neutral-400">{t.noLiveData}</span>;
   }
   if (!data) return null;
   if (!data.service_active) {
-    return <span className="shrink-0 text-[11px] text-neutral-400">Closed</span>;
+    return <span className="shrink-0 text-[11px] text-neutral-400">{t.closed}</span>;
   }
   // First upcoming train that has an ETA: an untimed one ahead of it would
   // show "—" while a real time is available.
@@ -49,10 +51,10 @@ function SearchResultEta({ station }: { station: Station }) {
       className={`shrink-0 text-[11px] ${
         live ? "text-neutral-600 dark:text-neutral-300" : "text-amber-600 dark:text-amber-400"
       }`}
-      title={live ? undefined : "Last known time - live updates are delayed"}
+      title={live ? undefined : t.lastKnownDelayed}
     >
       {live ? "" : "~"}
-      {minutesLabel(next.left)}
+      {minutesLabel(next.left, t)}
     </span>
   );
 }
@@ -60,6 +62,7 @@ function SearchResultEta({ station }: { station: Station }) {
 export function StationSearch({ onSelectStation }: StationSearchProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const { lang, t } = useT();
 
   const results = useMemo(() => {
     const q = normalize(query);
@@ -84,7 +87,7 @@ export function StationSearch({ onSelectStation }: StationSearchProps) {
     <div className="relative shrink-0">
       <button
         onClick={() => setOpen((v) => !v)}
-        aria-label={open ? "Close search" : "Search stations"}
+        aria-label={open ? t.closeSearch : t.searchStations}
         className="rounded-full border border-neutral-300 p-2 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
       >
         {open ? <X size={16} /> : <Search size={16} />}
@@ -96,7 +99,7 @@ export function StationSearch({ onSelectStation }: StationSearchProps) {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search stations…"
+            placeholder={t.searchPlaceholder}
             className="w-full rounded-lg border border-neutral-200 px-3 py-1.5 text-sm outline-none placeholder:text-neutral-400 dark:border-neutral-700 dark:bg-neutral-800"
           />
 
@@ -112,7 +115,7 @@ export function StationSearch({ onSelectStation }: StationSearchProps) {
                       className="h-2.5 w-2.5 shrink-0 rounded-full"
                       style={{ backgroundColor: LINE_COLORS[s.lines[0].line] }}
                     />
-                    <span className="flex-1 truncate">{s.nameEn}</span>
+                    <span className="flex-1 truncate">{stationName(s, lang)}</span>
                     <SearchResultEta station={s} />
                     <span className="shrink-0 text-xs text-neutral-400">{s.code}</span>
                   </button>
@@ -122,7 +125,7 @@ export function StationSearch({ onSelectStation }: StationSearchProps) {
           )}
 
           {query.trim() && results.length === 0 && (
-            <p className="px-2 py-2 text-sm text-neutral-400">No stations found.</p>
+            <p className="px-2 py-2 text-sm text-neutral-400">{t.noStations}</p>
           )}
         </div>
       )}
