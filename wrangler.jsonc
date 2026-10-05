@@ -1,0 +1,17 @@
+{
+  // The site: a static export (`npm run build` -> out/) served as Workers
+  // static assets. Assets-only (no `main`), so no script ever runs and
+  // requests are free and unlimited. Live arrivals are a separate,
+  // CDN-cached document written by cloudflare/poller.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "bangkok-transit",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./out",
+    "not_found_handling": "404-page"
+  },
+  "routes": [
+    { "pattern": "bangkok-transit.com", "custom_domain": true },
+    { "pattern": "www.bangkok-transit.com", "custom_domain": true }
+  ]
+}

@@ -9,7 +9,7 @@ live location on the map.
 
 ```bash
 npm install
-cp .env.example .env.local  # optional: Upstash Redis caching
+cp .env.example .env.local  # optional: point live times at a local copy
 npm run dev
 ```
 

@@ -2,10 +2,11 @@
 
 import { create } from "zustand";
 import { ageMs, isShowable, isValidArrivals, type Arrivals } from "./bts";
+import { ARRIVALS_URL } from "./arrivals-url";
 
 /**
  * One shared arrivals store for the whole app, fed by the one shared
- * snapshot (/api/arrivals). Seeded from localStorage on mount so times are on
+ * snapshot (ARRIVALS_URL, lib/arrivals-url.ts). Seeded from localStorage on mount so times are on
  * screen the instant a station card opens, then polled for as long as the
  * page is open - minutes or days.
  *
@@ -192,7 +193,7 @@ export function startArrivalsPolling() {
     try {
       // `no-store` only skips the browser's own HTTP cache; the request is
       // still answered by the shared CDN copy, never by a per-user poll.
-      const res = await fetch("/api/arrivals", {
+      const res = await fetch(ARRIVALS_URL, {
         cache: "no-store",
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });

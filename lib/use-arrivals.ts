@@ -24,7 +24,7 @@ export interface UseArrivalsResult {
 
 /**
  * Reads arrivals from the shared store. There is no per-station fetch: the
- * store is refreshed from the one shared snapshot (/api/arrivals), so
+ * store is refreshed from the one shared snapshot (ARRIVALS_URL), so
  * opening a station never causes a request of its own.
  *
  * If updates stall, the last-known times keep showing (callers count them

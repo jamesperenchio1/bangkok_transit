@@ -11,23 +11,14 @@ const withSerwist = withSerwistInit({
   reloadOnOnline: false,
 });
 
+// A fully static site: served by Cloudflare as Workers static assets (see
+// wrangler.jsonc) straight from the edge, with no server code at all. Live
+// arrivals come from a separate CDN-cached document (lib/arrivals-url.ts).
+// Response headers (security, caching) live in public/_headers, since
+// `headers()` isn't available for a static export.
 const nextConfig: NextConfig = {
-  async headers() {
-    return [
-      {
-        source: "/:path*",
-        headers: [
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          // The app itself uses geolocation (lib/use-geolocation.ts), so
-          // scope it to same-origin rather than blocking it outright;
-          // everything else sensitive (camera, microphone, payment, ...)
-          // stays disabled by simply not appearing here.
-          { key: "Permissions-Policy", value: "geolocation=(self)" },
-        ],
-      },
-    ];
-  },
+  output: "export",
+  images: { unoptimized: true },
 };
 
 // Serwist injects a `webpack` config key even when `disable: true` is set,

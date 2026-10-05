@@ -2,8 +2,8 @@
  * Client for the undocumented bts-api.topmile.com live-arrivals API.
  *
  * Has no Access-Control-Allow-Origin header, so it can never be called from
- * the browser directly — all access goes through the shared snapshot behind
- * /api/arrivals.
+ * the browser directly — all access goes through the one shared poller
+ * (cloudflare/poller), which publishes a single document for everybody.
  *
  * Coverage is BTS Sukhumvit + Silom only; other codes (or Gold/Yellow/Pink)
  * return 400/"unavailable". `timestamp` in the payload is UTC despite
@@ -23,7 +23,7 @@ export const UPSTREAM_TIMEOUT_MS = 8_000;
  * There is no batch endpoint on the upstream API - confirmed by probing
  * `/arrivals/all`, comma-separated codes, `/arrivals/batch`, and multi-segment
  * paths, all of which 400/404 - hence our own single shared poll of every
- * station (lib/arrivals-service.ts).
+ * station (cloudflare/poller).
  */
 export const FRESH_FOR_MS = 90_000;
 
@@ -89,8 +89,8 @@ export function isShowable(timestampIso: string, now = Date.now()): boolean {
  * Past these, a field is malformed/hostile rather than merely unusual - a
  * real BTS platform has a handful of trains, not hundreds, and station/
  * destination names are short. Bounding sizes here, not just shapes, keeps
- * a misbehaving upstream from inflating what gets cached in Redis and
- * relayed to every polling client.
+ * a misbehaving upstream from inflating the shared document every client
+ * downloads.
  */
 const MAX_PLATFORMS = 10;
 const MAX_TRAINS_PER_PLATFORM = 20;
@@ -126,8 +126,7 @@ export function isValidArrivals(data: unknown): data is Arrivals {
 
 /**
  * `deadline` lets a caller cut the call short on top of the per-call
- * timeout - the shared poll uses it to guarantee it finishes before its
- * fleet-wide lock expires.
+ * timeout.
  */
 export async function fetchUpstream(code: string, deadline?: AbortSignal): Promise<Arrivals> {
   const timeout = AbortSignal.timeout(UPSTREAM_TIMEOUT_MS);

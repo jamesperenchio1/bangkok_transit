@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { preconnect, preload } from "react-dom";
 import "./globals.css";
+import { ARRIVALS_URL } from "@/lib/arrivals-url";
 
 // Must match TransitMap's STYLE_URL exactly, or this preload is wasted.
 // (Not imported from there: that module pulls in all of MapLibre.)
@@ -31,6 +32,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   preconnect("https://tiles.openfreemap.org", { crossOrigin: "anonymous" });
   preload(MAP_STYLE_URL, { as: "fetch", crossOrigin: "anonymous" });
   preload("/line-geometry.json", { as: "fetch", crossOrigin: "anonymous" });
+  // Live times too: a different origin (the CDN-cached data host), so its
+  // connection is opened up front. Not preloaded as a resource - the
+  // client fetches it with cache: "no-store", which a preload can't satisfy.
+  preconnect(new URL(ARRIVALS_URL).origin, { crossOrigin: "anonymous" });
 
   return (
     <html lang="en" className="h-full antialiased">
