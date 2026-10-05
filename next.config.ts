@@ -4,6 +4,11 @@ import withSerwistInit from "@serwist/next";
 const withSerwist = withSerwistInit({
   swSrc: "app/sw.ts",
   swDest: "public/sw.js",
+  // Serwist's default is a full `location.reload()` whenever the device
+  // comes back online - which on a phone leaving a tunnel or the subway
+  // wipes the open station card, the map view, and everything else on
+  // screen. Not needed: lib/arrivals-store.ts re-polls on `online` itself.
+  reloadOnOnline: false,
 });
 
 const nextConfig: NextConfig = {

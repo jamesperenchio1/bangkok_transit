@@ -3,7 +3,6 @@
 import { X, MapPin, ArrowRight } from "lucide-react";
 import { useArrivals } from "@/lib/use-arrivals";
 import { arrivalClockTime, hasDeparted, minutesLabel, minutesUntil } from "@/lib/format-eta";
-import { useNow } from "@/lib/use-now";
 import type { Station } from "@/data/stations";
 import { terminusInDirection, type PathResult } from "@/lib/transit-graph";
 import type { GeoPosition } from "@/lib/use-geolocation";
@@ -162,7 +161,12 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
 }
 
 function RouteSummary({ path }: { path: PathResult }) {
-  const stops = path.length - 1;
+  // A walking transfer between nearby stations is a graph edge too, labelled
+  // with the line being walked to - which the station being walked from
+  // doesn't serve. Only legs on a line the previous station serves are rides.
+  const stops = path.filter(
+    (leg, i) => i > 0 && leg.line !== null && path[i - 1].station.lines.some((l) => l.line === leg.line),
+  ).length;
   const changes = path.filter((leg) => leg.isTransfer).length;
   return (
     <p className="-mt-2 mb-3 text-xs text-neutral-600 dark:text-neutral-300">
@@ -172,8 +176,7 @@ function RouteSummary({ path }: { path: PathResult }) {
 }
 
 function LiveEta({ station, directionKey }: { station: Station; directionKey?: string }) {
-  const { data } = useArrivals(station.code);
-  const now = useNow();
+  const { data, now } = useArrivals(station.code);
   if (!data) return null;
   if (!data.service_active) {
     // Upstream's next_service string already includes its own leading "~"

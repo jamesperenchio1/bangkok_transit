@@ -1,7 +1,6 @@
 "use client";
 
 import { useArrivals } from "@/lib/use-arrivals";
-import { useNow } from "@/lib/use-now";
 import {
   arrivalClockTime,
   hasDeparted,
@@ -71,17 +70,20 @@ function PlatformTimes({
  * there is never a spinner or a late pop-in.
  */
 export function StationEta({ station }: { station: Station }) {
-  const { data } = useArrivals(station.hasLiveArrivals ? station.code : null);
-  const now = useNow();
+  const { data, settled, now } = useArrivals(station.hasLiveArrivals ? station.code : null);
 
   if (!station.hasLiveArrivals) {
     return <p className="text-xs text-neutral-500 dark:text-neutral-400">No live data for this line</p>;
   }
   if (!data) {
-    // Only reachable on a true cold start, before the shared snapshot has
-    // this station (a few seconds). Reserve the space so the card does not
-    // jump when the times arrive.
-    return <p className="text-xs text-neutral-500 dark:text-neutral-400">Checking times…</p>;
+    // Before the first response: still loading. After it: there is nothing
+    // fresh for this station (cold start still filling in, upstream trouble,
+    // or this device offline) - and old times are never shown instead.
+    return (
+      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+        {settled ? "Live times unavailable right now — retrying…" : "Checking times…"}
+      </p>
+    );
   }
 
   if (!data.service_active) {
@@ -108,13 +110,8 @@ export function StationEta({ station }: { station: Station }) {
           />
         ))}
       </div>
-      <p
-        className={`text-[11px] ${
-          data.stale ? "text-amber-600 dark:text-amber-400" : "text-neutral-500 dark:text-neutral-400"
-        }`}
-      >
+      <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
         Updated {updatedAgoLabel(data.timestamp, now)}
-        {data.stale ? " · may be out of date" : ""}
       </p>
     </div>
   );

@@ -1,42 +1,53 @@
 "use client";
 
 import { create } from "zustand";
-import { isValidArrivals, type Arrivals } from "./bts";
+import { isFresh, isValidArrivals, type Arrivals } from "./bts";
 
 /**
- * One shared arrivals store for the whole app. Seeded from localStorage on
- * mount so times are on screen the instant a station card opens, then
- * refreshed in bulk and polled. Background refreshes swap data in silently -
- * no loading flags, no "updating…" copy.
+ * One shared arrivals store for the whole app, fed by the one shared
+ * snapshot (/api/arrivals). Seeded from localStorage on mount so times are on
+ * screen the instant a station card opens, then polled for as long as the
+ * page is open - minutes or days.
+ *
+ * Old data is never kept: each poll replaces the map wholesale, the seed only
+ * accepts entries that are still fresh, and every render re-checks freshness
+ * against the live clock (lib/format-eta.ts isFreshNow) - so if updates stop
+ * for any reason, times disappear rather than linger.
  */
 
-const POLL_MS = 60_000;
+/** Steady-state poll. Served by the CDN, so this costs the server nothing per user. */
+const POLL_MS = 15_000;
 /**
- * The bulk endpoint returns immediately and fills in from the server's
- * background refresh, so a first-time visitor (empty localStorage) starts with
- * a partial payload. Poll fast until every live station has arrived, then fall
- * back to the slow interval.
+ * A first-time visitor can arrive while the shared snapshot is still filling
+ * in after a cold start. Poll fast until every live station has arrived.
  */
 const FAST_POLL_MS = 2_000;
 const MAX_FAST_POLLS = 15;
+/**
+ * Coming back (tab shown again, back online, restored from the back/forward
+ * cache) after a while can find the shared snapshot cold too - if nobody else
+ * was using the app, the server just started a fresh poll. Allow a few quick
+ * retries then, so the times appear in seconds rather than after a full
+ * POLL_MS. Only these user-return events grant them, so it can't loop.
+ */
+const RESUME_FAST_POLLS = 5;
+/**
+ * Backstop for a poll chain that silently died (a timer dropped while the
+ * phone slept, say): if no poll has started for this long while the page is
+ * visible, start one.
+ */
+const WATCHDOG_MS = 2 * POLL_MS;
 
 const SNAPSHOT_KEY = "bts:arrivals:v1";
-// Past this age a persisted entry is from an earlier visit rather than merely
-// a minute behind; don't present it as current data.
-const SNAPSHOT_STALE_CUTOFF_MS = 10 * 60_000;
 
-export type ArrivalsEntry = Arrivals & { stale?: boolean };
+export type ArrivalsEntry = Arrivals;
 export type ArrivalsMap = Record<string, ArrivalsEntry>;
 
 interface ArrivalsStore {
   map: ArrivalsMap;
+  /** True once this tab has heard back from (or failed to reach) the server at least once. */
+  settled: boolean;
   setMap: (map: ArrivalsMap) => void;
-  merge: (incoming: ArrivalsMap) => void;
-}
-
-function dataAgeMs(data: Arrivals): number {
-  const iso = data.timestamp.endsWith("Z") ? data.timestamp : data.timestamp + "Z";
-  return Date.now() - Date.parse(iso);
 }
 
 function readSnapshot(): ArrivalsMap {
@@ -50,9 +61,7 @@ function readSnapshot(): ArrivalsMap {
     for (const [code, value] of Object.entries(parsed as Record<string, unknown>)) {
       // A persisted entry can predate a schema change or just be corrupted -
       // validating before trusting its shape is what keeps the page alive.
-      if (isValidArrivals(value) && dataAgeMs(value) <= SNAPSHOT_STALE_CUTOFF_MS) {
-        out[code] = value as ArrivalsEntry;
-      }
+      if (isValidArrivals(value) && isFresh(value.timestamp)) out[code] = value;
     }
     return out;
   } catch {
@@ -71,13 +80,8 @@ function writeSnapshot(map: ArrivalsMap) {
 
 export const useArrivalsStore = create<ArrivalsStore>((set) => ({
   map: {},
+  settled: false,
   setMap: (map) => set({ map }),
-  merge: (incoming) =>
-    set((s) => {
-      const next = { ...s.map, ...incoming };
-      writeSnapshot(next);
-      return { map: next };
-    }),
 }));
 
 let started = false;
@@ -92,66 +96,85 @@ export function startArrivalsPolling() {
     useArrivalsStore.getState().setMap(seeded);
   }
 
-  let expected = 0;
   let fastPolls = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
-  let polling = false;
+  let inFlight = false;
+  let lastPollStart = 0;
 
-  // Nobody can see a hidden tab's times, so stop polling there (battery,
-  // data, and server load) and fetch straight away on return - the moment
-  // someone switches back is exactly when they want fresh times.
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) {
-      if (timer !== null) clearTimeout(timer);
-      timer = null;
-    } else if (timer === null && !polling) {
-      void poll();
-    }
-  });
+  function stop() {
+    if (timer !== null) clearTimeout(timer);
+    timer = null;
+  }
+
+  /** Poll right now (unless one is already running), resetting the schedule. */
+  function pollNow() {
+    if (inFlight || document.hidden) return;
+    stop();
+    void poll();
+  }
+
+  /** The user is back: poll now, with a few quick retries if the snapshot is still filling. */
+  function resume() {
+    fastPolls = Math.min(fastPolls, MAX_FAST_POLLS - RESUME_FAST_POLLS);
+    pollNow();
+  }
 
   async function poll() {
     timer = null;
-    polling = true;
-    let complete = true;
+    inFlight = true;
+    lastPollStart = Date.now();
+    let complete = false;
     try {
       // `no-store` only skips the browser's own HTTP cache; the request is
       // still answered by the shared CDN copy, never by a per-user poll.
       const res = await fetch("/api/arrivals", { cache: "no-store" });
       if (res.ok) {
-        const json = (await res.json()) as {
-          arrivals?: Record<string, Arrivals>;
-          stale?: Record<string, boolean>;
-          total?: number;
-        };
-        if (json.arrivals) {
-          const incoming: ArrivalsMap = {};
-          for (const [code, data] of Object.entries(json.arrivals)) {
-            if (!isValidArrivals(data)) continue;
-            incoming[code] = json.stale?.[code] ? { ...data, stale: true } : data;
-          }
-          useArrivalsStore.getState().merge(incoming);
+        const json = (await res.json()) as { arrivals?: Record<string, unknown>; total?: number };
+        const next: ArrivalsMap = {};
+        for (const [code, data] of Object.entries(json.arrivals ?? {})) {
+          if (isValidArrivals(data) && isFresh(data.timestamp)) next[code] = data;
         }
-        if (typeof json.total === "number") expected = json.total;
+        // Replace, don't merge: a station missing from the shared snapshot
+        // has nothing fresh, so whatever this tab held for it must go too.
+        useArrivalsStore.getState().setMap(next);
+        writeSnapshot(next);
+        complete = typeof json.total === "number" && Object.keys(next).length >= json.total;
       }
     } catch {
-      // network hiccup - keep showing what we have and retry next tick
+      // Network hiccup: nothing to replace the map with. What's held stays
+      // only while still fresh - renders re-check its age on a live clock.
+    } finally {
+      inFlight = false;
+      if (!useArrivalsStore.getState().settled) useArrivalsStore.setState({ settled: true });
     }
 
-    const held = Object.keys(useArrivalsStore.getState().map).length;
-    complete = expected > 0 && held >= expected;
-
-    // The fast burst is a one-off for a cold first load. It is deliberately
-    // never reset: if one station stays missing (say its upstream call keeps
-    // failing), resetting would restart a 15-request burst every minute,
-    // forever, for every open tab.
+    // The fast burst is a one-off for a cold first load, and ends for good
+    // the first time the snapshot comes back complete. It is never reset:
+    // otherwise one station that stays missing (its upstream call keeps
+    // failing), or a long network outage, would burn a 2s-poll burst on every
+    // cycle for every open tab. Outages retry at the normal POLL_MS cadence.
+    if (complete) fastPolls = MAX_FAST_POLLS;
+    // (resume() hands back a few of these for a cold snapshot after a return.)
     let delay = POLL_MS;
     if (!complete && fastPolls < MAX_FAST_POLLS) {
       fastPolls += 1;
       delay = FAST_POLL_MS;
     }
-    polling = false;
     if (!document.hidden) timer = setTimeout(poll, delay);
   }
+
+  // Nobody can see a hidden tab's times, so stop polling there (battery,
+  // data) and fetch straight away on return - the moment someone switches
+  // back is exactly when they want fresh times. The same goes for coming
+  // back online and for a page restored from the back/forward cache.
+  document.addEventListener("visibilitychange", () => (document.hidden ? stop() : resume()));
+  window.addEventListener("online", resume);
+  window.addEventListener("pageshow", (e) => {
+    if (e.persisted) resume();
+  });
+  setInterval(() => {
+    if (!document.hidden && !inFlight && Date.now() - lastPollStart > WATCHDOG_MS) pollNow();
+  }, POLL_MS);
 
   void poll();
 }

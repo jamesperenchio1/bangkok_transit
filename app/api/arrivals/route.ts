@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSnapshot, pollInBackground, REFRESH_EVERY_MS } from "@/lib/arrivals-service";
 import { liveStations } from "@/data/stations";
-import { ageMs, CACHE_SERVE_MS, isFresh, isValidArrivals } from "@/lib/bts";
+import { isFresh, isValidArrivals } from "@/lib/bts";
 
 /**
  * Live arrivals for every BTS station, as one shared document. This is the
@@ -9,23 +9,24 @@ import { ageMs, CACHE_SERVE_MS, isFresh, isValidArrivals } from "@/lib/bts";
  * straight from the CDN, and user traffic never causes upstream calls of its
  * own - see lib/arrivals-service.ts for the single shared poll behind it.
  *
- * Response shape: `{ arrivals: { [code]: Arrivals }, stale: { [code]: bool },
- * total: number }`.
+ * Only fresh data is ever returned (lib/bts.ts FRESH_FOR_MS): a station with
+ * nothing fresh is simply absent, and the client shows "unavailable" for it
+ * rather than old times.
+ *
+ * Response shape: `{ arrivals: { [code]: Arrivals }, total: number }`.
  */
 
 /**
- * CDN caching is what turns "one poll" into "one poll for everybody": with
- * stale-while-revalidate the edge answers every user instantly and only
- * re-asks this function about once per FRESH window per region, however many
- * users there are. Arrivals stay fresh for ~90s (lib/bts.ts FRESH_FOR_MS) and
- * the client counts each ETA down against its own clock, so this delay is
- * invisible to riders. A partial snapshot (cold start, still filling) is
- * cached only briefly so clients see stations land within a couple of
- * seconds - but still from the CDN, not one request per user.
+ * CDN caching is what turns "one poll" into "one poll for everybody": the
+ * edge answers every user and only re-asks this function about once per
+ * FRESH window per region, however many users there are. The client counts
+ * each ETA down against its own clock, so this delay is invisible to riders.
+ * A partial snapshot (cold start, still filling) is cached only for a moment
+ * and never served stale, so clients see stations land within seconds.
  */
 const FRESH_SECONDS = 10;
+const STALE_WHILE_REVALIDATE_SECONDS = 10;
 const PARTIAL_FRESH_SECONDS = 2;
-const STALE_WHILE_REVALIDATE_SECONDS = 60;
 
 export async function GET() {
   const codes = liveStations.map((s) => s.code);
@@ -38,26 +39,28 @@ export async function GET() {
     // rather than failing every user at once.
   }
 
-  if (!snapshot || Date.now() - snapshot.fetchedAt > REFRESH_EVERY_MS) {
-    pollInBackground(codes);
-  }
-
   const arrivals: Record<string, unknown> = {};
-  const stale: Record<string, boolean> = {};
   for (const code of codes) {
     const data = snapshot?.arrivals[code];
-    if (!data || !isValidArrivals(data) || ageMs(data.timestamp) >= CACHE_SERVE_MS) continue;
-    arrivals[code] = data;
-    if (!isFresh(data.timestamp)) stale[code] = true;
+    if (data && isValidArrivals(data) && isFresh(data.timestamp)) arrivals[code] = data;
+  }
+  const held = Object.keys(arrivals).length;
+
+  if (!snapshot || Date.now() - snapshot.fetchedAt > REFRESH_EVERY_MS) {
+    // "Cold" = nothing fresh to serve: a first-ever start, or a snapshot left
+    // over from a quiet night. Either way every user sees empty times until
+    // this poll lands, so it publishes progressively.
+    pollInBackground(codes, held === 0);
   }
 
-  const complete = Object.keys(arrivals).length >= codes.length;
-  const fresh = complete ? FRESH_SECONDS : PARTIAL_FRESH_SECONDS;
+  const complete = held >= codes.length;
   return NextResponse.json(
-    { arrivals, stale, total: codes.length },
+    { arrivals, total: codes.length },
     {
       headers: {
-        "Cache-Control": `public, s-maxage=${fresh}, stale-while-revalidate=${STALE_WHILE_REVALIDATE_SECONDS}`,
+        "Cache-Control": complete
+          ? `public, s-maxage=${FRESH_SECONDS}, stale-while-revalidate=${STALE_WHILE_REVALIDATE_SECONDS}`
+          : `public, s-maxage=${PARTIAL_FRESH_SECONDS}`,
       },
     },
   );

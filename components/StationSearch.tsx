@@ -6,7 +6,6 @@ import { stations, type Station } from "@/data/stations";
 import { LINE_COLORS } from "@/lib/line-colors";
 import { useArrivals } from "@/lib/use-arrivals";
 import { hasDeparted, minutesLabel, minutesUntil } from "@/lib/format-eta";
-import { useNow } from "@/lib/use-now";
 
 export interface StationSearchProps {
   onSelectStation: (station: Station) => void;
@@ -15,8 +14,7 @@ export interface StationSearchProps {
 const MAX_RESULTS = 8;
 
 function SearchResultEta({ station }: { station: Station }) {
-  const { data } = useArrivals(station.hasLiveArrivals ? station.code : null);
-  const now = useNow();
+  const { data, now } = useArrivals(station.hasLiveArrivals ? station.code : null);
   if (!station.hasLiveArrivals) {
     return <span className="shrink-0 text-[11px] text-neutral-400">No live data</span>;
   }

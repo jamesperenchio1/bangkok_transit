@@ -13,7 +13,7 @@ const bangkokClock = new Intl.DateTimeFormat("en-US", {
 /**
  * Wall-clock arrival time in Bangkok, computed from the payload's own
  * fetch timestamp plus the reported ETA - not from the client's clock,
- * so a stale cached read still shows the time that data actually implied.
+ * so a cached read still shows the time that data actually implied.
  */
 export function arrivalClockTime(fromIso: string, etaMinutes?: number): string | null {
   if (etaMinutes === undefined || etaMinutes === null) return null;
@@ -45,9 +45,12 @@ export function minutesUntil(
   return Math.floor((from + eta * 60_000 - now) / 60_000);
 }
 
-/** A train that left more than a minute ago according to the live countdown. */
+/**
+ * A train whose arrival time has passed according to the live countdown.
+ * (minutesUntil floors, so anything past the arrival moment is negative.)
+ */
 export function hasDeparted(minutesLeft: number | null): boolean {
-  return minutesLeft !== null && minutesLeft < -1;
+  return minutesLeft !== null && minutesLeft < 0;
 }
 
 /** "just now" / "40s ago" / "3 min ago" for the payload's own fetch time. */
