@@ -16,22 +16,26 @@ function directionLabel(direction: string): string {
   return (parts.length > 1 ? parts[parts.length - 1] : direction).trim();
 }
 
-function PlatformTimes({
-  platform,
-  timestamp,
-  now,
-}: {
-  platform: ArrivalPlatform;
-  timestamp: string;
-  now: number;
-}) {
-  const trains = platform.trains
+type UpcomingTrain = { train: ArrivalPlatform["trains"][number]; left: number | null };
+
+/** Up to three trains per platform that haven't left yet, per the live countdown. */
+function upcomingTrains(platform: ArrivalPlatform, timestamp: string, now: number): UpcomingTrain[] {
+  return platform.trains
     .map((train) => ({ train, countdown: trainCountdown(timestamp, train, now) }))
     .filter(({ countdown }) => !countdown?.departed)
     .map(({ train, countdown }) => ({ train, left: countdown?.minutes ?? null }))
     .slice(0, 3);
-  if (trains.length === 0) return null;
+}
 
+function PlatformTimes({
+  platform,
+  trains,
+  timestamp,
+}: {
+  platform: ArrivalPlatform;
+  trains: UpcomingTrain[];
+  timestamp: string;
+}) {
   return (
     <div className="min-w-0">
       <p className="truncate text-xs font-medium text-neutral-600 dark:text-neutral-300">
@@ -66,19 +70,20 @@ function PlatformTimes({
 /**
  * Live arrivals for the station card: up to three trains per direction, the
  * two directions side by side so the card stays short. Minutes count down
- * against the live clock between polls. Renders from the shared store, so
+ * against the live clock between polls; if updates stall, the last-known
+ * times stay up with their age flagged. Renders from the shared store, so
  * there is never a spinner or a late pop-in.
  */
 export function StationEta({ station }: { station: Station }) {
-  const { data, settled, now } = useArrivals(station.hasLiveArrivals ? station.code : null);
+  const { data, live, settled, now } = useArrivals(station.hasLiveArrivals ? station.code : null);
 
   if (!station.hasLiveArrivals) {
     return <p className="text-xs text-neutral-500 dark:text-neutral-400">No live data for this line</p>;
   }
   if (!data) {
-    // Before the first response: still loading. After it: there is nothing
-    // fresh for this station (cold start still filling in, upstream trouble,
-    // or this device offline) - and old times are never shown instead.
+    // Before the first response: still loading. After it: nothing recent
+    // enough to show for this station at all (cold start still filling in,
+    // or upstream/device offline for longer than MAX_SHOW_AGE_MS).
     return (
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
         {settled ? "Live times unavailable right now — retrying…" : "Checking times…"}
@@ -93,26 +98,49 @@ export function StationEta({ station }: { station: Station }) {
     return <p className="text-xs text-neutral-500 dark:text-neutral-400">Not running — next ~{nextService}</p>;
   }
 
-  const platforms = (data.platforms ?? []).filter((p) => p.trains.length > 0);
+  const platforms = (data.platforms ?? [])
+    .map((platform) => ({ platform, trains: upcomingTrains(platform, data.timestamp, now) }))
+    .filter(({ trains }) => trains.length > 0);
+
+  // Last-known times stay up (counted down) when updates stall; the line
+  // below says how old they are rather than hiding them.
+  const updated = (
+    <p
+      className={`text-[11px] ${
+        live ? "text-neutral-500 dark:text-neutral-400" : "text-amber-600 dark:text-amber-400"
+      }`}
+    >
+      Updated {updatedAgoLabel(data.timestamp, now)}
+      {live ? "" : " · reconnecting…"}
+    </p>
+  );
+
   if (platforms.length === 0) {
-    return <p className="text-xs text-neutral-500 dark:text-neutral-400">No live arrivals right now</p>;
+    // Every listed train has already left by the countdown (or none were
+    // listed): nothing useful to show until the next update lands.
+    return (
+      <div className="flex flex-col gap-1">
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          {live ? "No live arrivals right now" : "Waiting for new times…"}
+        </p>
+        {updated}
+      </div>
+    );
   }
 
   return (
     <div className="flex flex-col gap-1">
       <div className="grid grid-cols-2 gap-3">
-        {platforms.map((platform) => (
+        {platforms.map(({ platform, trains }) => (
           <PlatformTimes
             key={platform.platform}
             platform={platform}
+            trains={trains}
             timestamp={data.timestamp}
-            now={now}
           />
         ))}
       </div>
-      <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-        Updated {updatedAgoLabel(data.timestamp, now)}
-      </p>
+      {updated}
     </div>
   );
 }

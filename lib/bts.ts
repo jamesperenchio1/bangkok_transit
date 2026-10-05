@@ -14,11 +14,11 @@ export const UPSTREAM = "https://bts-api.topmile.com";
 export const UPSTREAM_TIMEOUT_MS = 8_000;
 
 /**
- * The one freshness rule for live arrivals, applied at every layer (server
- * snapshot, client store, and every render): data older than this is never
- * shown at all - the card says times are unavailable instead. Comfortably
- * above the normal worst-case age (20s shared poll + 10s CDN + 15s client
- * poll), so it only trips when updates have genuinely stopped.
+ * Arrivals younger than this are "live". Older ones are still shown - a
+ * slightly old time, counted down against the clock, beats an empty card -
+ * just with their age flagged ("Updated 3 min ago"). Comfortably above the
+ * normal worst-case age (20s shared poll + 10s CDN + 15s client poll), so it
+ * only trips when updates have genuinely stalled.
  *
  * There is no batch endpoint on the upstream API - confirmed by probing
  * `/arrivals/all`, comma-separated codes, `/arrivals/batch`, and multi-segment
@@ -26,6 +26,14 @@ export const UPSTREAM_TIMEOUT_MS = 8_000;
  * station (lib/arrivals-service.ts).
  */
 export const FRESH_FOR_MS = 90_000;
+
+/**
+ * Past this age an entry is dropped everywhere (server snapshot, client
+ * store, render). By then every train it listed has left according to its
+ * own countdown, and what remains would be stale service status - e.g. last
+ * night's "Not running" showing the next morning.
+ */
+export const MAX_SHOW_AGE_MS = 30 * 60_000;
 
 export interface ArrivalTrain {
   train_no: string;
@@ -70,6 +78,11 @@ export function ageMs(timestampIso: string, now = Date.now()): number {
 
 export function isFresh(timestampIso: string, now = Date.now()): boolean {
   return ageMs(timestampIso, now) < FRESH_FOR_MS;
+}
+
+/** Recent enough to show at all (see MAX_SHOW_AGE_MS), live or not. */
+export function isShowable(timestampIso: string, now = Date.now()): boolean {
+  return ageMs(timestampIso, now) < MAX_SHOW_AGE_MS;
 }
 
 /**

@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { isFresh, isValidArrivals, type Arrivals } from "./bts";
+import { isShowable, isValidArrivals, type Arrivals } from "./bts";
 
 /**
  * One shared arrivals store for the whole app, fed by the one shared
@@ -9,10 +9,10 @@ import { isFresh, isValidArrivals, type Arrivals } from "./bts";
  * screen the instant a station card opens, then polled for as long as the
  * page is open - minutes or days.
  *
- * Old data is never kept: each poll replaces the map wholesale, the seed only
- * accepts entries that are still fresh, and every render re-checks freshness
- * against the live clock (lib/format-eta.ts isFreshNow) - so if updates stop
- * for any reason, times disappear rather than linger.
+ * If updates stall, the last-known times stay on screen (counted down, with
+ * their age shown) rather than disappearing - a slightly old time beats an
+ * empty card. Only entries past MAX_SHOW_AGE_MS are dropped: in the seed,
+ * on each poll, and on every render (lib/use-arrivals.ts).
  */
 
 /** Steady-state poll. Served by the CDN, so this costs the server nothing per user. */
@@ -112,14 +112,14 @@ function readSnapshot(clockOffsetMs: number): ArrivalsMap {
     if (!parsed || typeof parsed !== "object") return {};
     // A saved offset may be out of date (the phone's clock could have been
     // changed since), so it may only make the check stricter: an entry must
-    // be fresh by the device clock *and* by the saved offset. Worst case the
-    // seed is dropped and times appear with the first poll instead.
+    // be recent enough by the device clock *and* by the saved offset. Worst
+    // case the seed is dropped and times appear with the first poll instead.
     const now = Math.max(Date.now(), Date.now() + clockOffsetMs);
     const out: ArrivalsMap = {};
     for (const [code, value] of Object.entries(parsed as Record<string, unknown>)) {
       // A persisted entry can predate a schema change or just be corrupted -
       // validating before trusting its shape is what keeps the page alive.
-      if (isValidArrivals(value) && isFresh(value.timestamp, now)) out[code] = value;
+      if (isValidArrivals(value) && isShowable(value.timestamp, now)) out[code] = value;
     }
     return out;
   } catch {
@@ -215,10 +215,11 @@ export function startArrivalsPolling() {
 
         const next: ArrivalsMap = {};
         for (const [code, data] of Object.entries(json.arrivals ?? {})) {
-          if (isValidArrivals(data) && isFresh(data.timestamp, correctedNow)) next[code] = data;
+          if (isValidArrivals(data) && isShowable(data.timestamp, correctedNow)) next[code] = data;
         }
-        // Replace, don't merge: a station missing from the shared snapshot
-        // has nothing fresh, so whatever this tab held for it must go too.
+        // Replace, don't merge: the shared snapshot already keeps each
+        // station's last reading until MAX_SHOW_AGE_MS, so a station missing
+        // from it has nothing worth showing.
         useArrivalsStore.getState().setMap(next);
         writeSnapshot(next);
         // "Complete" comes from the server: the latest shared poll finished.
@@ -227,9 +228,8 @@ export function startArrivalsPolling() {
         complete = json.complete === true;
       }
     } catch {
-      // Network hiccup or timeout: nothing to replace the map with. What's
-      // held stays only while still fresh - renders re-check its age on a
-      // live clock.
+      // Network hiccup or timeout: keep showing what's held (its age is shown
+      // on the card); renders still drop anything past MAX_SHOW_AGE_MS.
     } finally {
       inFlight = false;
       if (!useArrivalsStore.getState().settled) useArrivalsStore.setState({ settled: true });

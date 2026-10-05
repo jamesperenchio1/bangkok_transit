@@ -13,6 +13,21 @@ export interface StationSearchProps {
 
 const MAX_RESULTS = 8;
 
+/**
+ * Lowercase and drop spaces, dots and hyphens, so "แยกคปอ" finds
+ * "แยก คปอ.", "n 15" finds "N15", and "phayathai" finds "Phaya Thai".
+ * (toLowerCase leaves Thai untouched.)
+ */
+function normalize(text: string): string {
+  return text.toLowerCase().replace(/[\s.\-]+/g, "");
+}
+
+// Normalized once: the station list is static.
+const searchIndex = stations.map((s) => ({
+  station: s,
+  keys: [normalize(s.nameEn), normalize(s.nameTh), normalize(s.code)],
+}));
+
 function SearchResultEta({ station }: { station: Station }) {
   const { data, now } = useArrivals(station.hasLiveArrivals ? station.code : null);
   if (!station.hasLiveArrivals) {
@@ -34,16 +49,11 @@ export function StationSearch({ onSelectStation }: StationSearchProps) {
   const [query, setQuery] = useState("");
 
   const results = useMemo(() => {
-    const trimmed = query.trim();
-    if (!trimmed) return [];
-    const q = trimmed.toLowerCase();
-    return stations
-      .filter(
-        (s) =>
-          s.nameEn.toLowerCase().includes(q) ||
-          s.nameTh.includes(trimmed) ||
-          s.code.toLowerCase().includes(q),
-      )
+    const q = normalize(query);
+    if (!q) return [];
+    return searchIndex
+      .filter(({ keys }) => keys.some((key) => key.includes(q)))
+      .map(({ station }) => station)
       .slice(0, MAX_RESULTS);
   }, [query]);
 
