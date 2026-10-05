@@ -6,7 +6,8 @@
     "dev": "wrangler dev --test-scheduled",
     "deploy": "wrangler deploy",
     "types": "wrangler types",
-    "typecheck": "wrangler types && tsc --noEmit"
+    "typecheck": "wrangler types && tsc --noEmit",
+    "cors:set": "wrangler r2 bucket cors set bts-live --file r2-cors.json --force"
   },
   "devDependencies": {
     "typescript": "^5",

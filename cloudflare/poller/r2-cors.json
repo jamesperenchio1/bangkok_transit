@@ -1,0 +1,13 @@
+{
+  "rules": [
+    {
+      "allowed": {
+        "origins": ["https://bangkok-transit.com", "https://www.bangkok-transit.com", "http://localhost:3000"],
+        "methods": ["GET", "HEAD"],
+        "headers": ["*"]
+      },
+      "exposeHeaders": ["Date", "Age"],
+      "maxAgeSeconds": 86400
+    }
+  ]
+}
