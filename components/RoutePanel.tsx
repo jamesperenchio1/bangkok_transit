@@ -4,10 +4,12 @@ import { X, MapPin, ArrowRight } from "lucide-react";
 import { useArrivals } from "@/lib/use-arrivals";
 import { arrivalClockTime, minutesLabel, upcomingTrains, updatedAgoLabel } from "@/lib/format-eta";
 import type { Station } from "@/data/stations";
-import { terminusInDirection, type PathResult } from "@/lib/transit-graph";
+import { countChanges, countStops, terminusInDirection, type PathResult } from "@/lib/transit-graph";
 import type { GeoPosition } from "@/lib/use-geolocation";
 import { LINE_COLORS } from "@/lib/line-colors";
 import { stationName, useT } from "@/lib/i18n";
+import { distanceLabel } from "@/lib/format-distance";
+import { LinePill, TransferIcon } from "@/components/TransitBadges";
 
 function directionsUrl(
   origin: { lat: number; lon: number },
@@ -37,9 +39,11 @@ export interface RoutePanelProps {
   state: RoutePanelState | null;
   userPosition: GeoPosition | null;
   onClose: () => void;
+  /** Open a station's own page (its name was tapped). */
+  onOpenStation: (station: Station) => void;
 }
 
-export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
+export function RoutePanel({ state, userPosition, onClose, onOpenStation }: RoutePanelProps) {
   const open = state !== null;
   const { lang, t } = useT();
 
@@ -54,7 +58,7 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
       {state?.mode === "route" && (
         <div className="flex max-h-[70vh] flex-col overflow-y-auto p-4">
           <div className="mb-3 flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2 text-sm font-semibold">
+            <div className="flex flex-wrap items-center gap-x-2 text-sm font-semibold">
               <span>{stationName(state.start, lang)}</span>
               <ArrowRight size={14} className="shrink-0 text-neutral-400" />
               <span>{stationName(state.destination, lang)}</span>
@@ -85,73 +89,80 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
           {state.path && (
             <ul className="flex flex-col">
               {state.path.map((leg, i) => {
-                const isLast = i === state.path!.length - 1;
-                const nextLeg = state.path![i + 1];
-                const incomingColor = leg.line ? LINE_COLORS[leg.line] : null;
-                const outgoingColor = nextLeg?.line ? LINE_COLORS[nextLeg.line] : null;
-                const dotColor = incomingColor ?? outgoingColor ?? "#999";
+                const path = state.path!;
+                const isLast = i === path.length - 1;
+                const nextLeg = path[i + 1];
+                // The rail drawn above and below each stop: the line ridden
+                // in and out, or dashed grey for a walk.
+                const railIn = i === 0 ? null : leg.isWalk ? "walk" : LINE_COLORS[leg.line!];
+                const railOut = !nextLeg ? null : nextLeg.isWalk ? "walk" : LINE_COLORS[nextLeg.line!];
+                const dotColor = (railIn !== "walk" && railIn) || (railOut !== "walk" && railOut) || "#999";
+                const change = leg.change;
 
                 return (
-                  <li key={leg.station.code} className="flex items-stretch gap-3">
-                    <div className="relative w-4 shrink-0">
-                      {incomingColor && (
-                        <span
-                          className="absolute top-0 left-1/2 h-1/2 w-0.5 -translate-x-1/2"
-                          style={{ backgroundColor: incomingColor }}
-                        />
-                      )}
-                      {!isLast && outgoingColor && (
-                        <span
-                          className="absolute bottom-0 left-1/2 h-1/2 w-0.5 -translate-x-1/2"
-                          style={{ backgroundColor: outgoingColor }}
-                        />
-                      )}
-                      <span
-                        className="absolute top-1/2 left-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white dark:ring-neutral-900"
-                        style={{ backgroundColor: dotColor }}
-                      />
-                    </div>
-                    <div className="flex-1 py-1.5">
-                      <p className="flex items-center text-sm font-medium">
-                        {stationName(leg.station, lang)}
-                        {leg.isTransfer && (
+                  <li key={leg.station.code} className="flex flex-col">
+                    <div className="flex items-stretch gap-3">
+                      <div className="relative w-5 shrink-0">
+                        {railIn && <Rail color={railIn} position="top" />}
+                        {railOut && <Rail color={railOut} position="bottom" />}
+                        {change ? (
+                          // Interchange: white with a dark ring, as on the map.
+                          <span className="absolute top-1/2 left-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-neutral-800 bg-white" />
+                        ) : (
                           <span
-                            className="ml-1.5 inline-flex items-center gap-1"
-                            title={
-                              leg.towardStation
-                                ? t.changeLineToward(stationName(leg.towardStation, lang))
-                                : t.changeLine
-                            }
-                          >
-                            <span
-                              className="h-2.5 w-2.5 rounded-full ring-1 ring-white dark:ring-neutral-900"
-                              style={{ backgroundColor: incomingColor ?? "#999" }}
-                            />
-                            <ArrowRight size={10} className="text-neutral-400" />
-                            <span
-                              className="h-2.5 w-2.5 rounded-full ring-1 ring-white dark:ring-neutral-900"
-                              style={{ backgroundColor: outgoingColor ?? "#999" }}
-                            />
-                          </span>
+                            className="absolute top-1/2 left-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white dark:ring-neutral-900"
+                            style={{ backgroundColor: dotColor }}
+                          />
                         )}
-                      </p>
-                      {leg.station.hasLiveArrivals && (isLast || i === 0) && (
-                        <LiveEta
-                          station={leg.station}
-                          // The platform heading the way this route rides:
-                          // out of the start, or into the destination.
-                          directionKey={
-                            i === 0
-                              ? nextLeg?.line
-                                ? terminusInDirection(nextLeg.line, leg.station.code, nextLeg.station.code)
-                                : undefined
-                              : leg.line
-                                ? terminusInDirection(leg.line, state.path![i - 1].station.code, leg.station.code)
-                                : undefined
-                          }
-                        />
-                      )}
+                      </div>
+                      <div className="min-w-0 flex-1 py-1.5">
+                        <button
+                          onClick={() => onOpenStation(leg.station)}
+                          className="text-left text-sm font-medium hover:underline"
+                        >
+                          {stationName(leg.station, lang)}
+                        </button>
+                        {leg.station.hasLiveArrivals &&
+                          // Not where the route walks off to (or in from) another station.
+                          ((i === 0 && !nextLeg?.isWalk) || (isLast && !leg.isWalk)) && (
+                          <LiveEta
+                            station={leg.station}
+                            // The platform heading the way this route rides:
+                            // out of the start, or into the destination.
+                            directionKey={
+                              i === 0
+                                ? nextLeg?.line && !nextLeg.isWalk
+                                  ? terminusInDirection(nextLeg.line, leg.station.code, nextLeg.station.code)
+                                  : undefined
+                                : leg.line && !leg.isWalk
+                                  ? terminusInDirection(leg.line, path[i - 1].station.code, leg.station.code)
+                                  : undefined
+                            }
+                          />
+                        )}
+                      </div>
                     </div>
+                    {change && (
+                      <div className="flex items-stretch gap-3">
+                        <div className="relative flex w-5 shrink-0 items-center justify-center">
+                          {railOut && <Rail color={railOut} position="full" />}
+                          <span className="relative">
+                            <TransferIcon walk={change.walkMeters !== undefined} size={20} />
+                          </span>
+                        </div>
+                        <p className="my-1 flex flex-1 flex-wrap items-center gap-x-1.5 gap-y-1 rounded-lg bg-neutral-100 px-2.5 py-1.5 text-xs text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200">
+                          <span className="font-semibold">
+                            {change.walkMeters !== undefined
+                              ? t.walkTo(distanceLabel(change.walkMeters))
+                              : t.changeTo}
+                          </span>
+                          <LinePill line={change.toLine} />
+                          {change.towardStation && (
+                            <span>{t.toward(stationName(change.towardStation, lang))}</span>
+                          )}
+                        </p>
+                      </div>
+                    )}
                   </li>
                 );
               })}
@@ -163,18 +174,29 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
   );
 }
 
+function Rail({ color, position }: { color: string; position: "top" | "bottom" | "full" }) {
+  const placement =
+    position === "top" ? "top-0 h-1/2" : position === "bottom" ? "bottom-0 h-1/2" : "top-0 h-full";
+  if (color === "walk") {
+    return (
+      <span
+        className={`absolute left-1/2 w-0 -translate-x-1/2 border-l-2 border-dotted border-neutral-400 ${placement}`}
+      />
+    );
+  }
+  return (
+    <span
+      className={`absolute left-1/2 w-1 -translate-x-1/2 ${placement}`}
+      style={{ backgroundColor: color }}
+    />
+  );
+}
+
 function RouteSummary({ path }: { path: PathResult }) {
-  // A walking transfer between nearby stations is a graph edge too, labelled
-  // with the line being walked to - which the station being walked from
-  // doesn't serve. Only legs on a line the previous station serves are rides.
-  const stops = path.filter(
-    (leg, i) => i > 0 && leg.line !== null && path[i - 1].station.lines.some((l) => l.line === leg.line),
-  ).length;
-  const changes = path.filter((leg) => leg.isTransfer).length;
   const { t } = useT();
   return (
     <p className="-mt-2 mb-3 text-xs text-neutral-600 dark:text-neutral-300">
-      {t.stops(stops)} · {t.changes(changes)}
+      {t.stops(countStops(path))} · {t.changes(countChanges(path))}
     </p>
   );
 }

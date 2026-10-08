@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { AlertTriangle, ArrowLeftRight, ArrowRight, Navigation, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, ArrowUpDown, Navigation, RotateCcw, X } from "lucide-react";
 import { stations, stationsByCode, type Station } from "@/data/stations";
 import { RoutePanel, type RoutePanelState } from "@/components/RoutePanel";
 import { StationSearch } from "@/components/StationSearch";
+import { StationDetail } from "@/components/StationDetail";
 import { findPath } from "@/lib/transit-graph";
 import { useGeolocation } from "@/lib/use-geolocation";
 import { startArrivalsPolling } from "@/lib/arrivals-store";
 import { haversineMeters } from "@/lib/line-geometry";
 import { restoreLang, stationName, useLangStore, useT } from "@/lib/i18n";
+import { distanceLabel } from "@/lib/format-distance";
 
 // Kicked off as soon as this module evaluates (not when <TransitMap> first
 // renders), so the MapLibre chunk - by far the largest download - starts in
@@ -63,8 +65,67 @@ function LangToggle() {
   );
 }
 
-function distanceLabel(meters: number): string {
-  return meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toFixed(1)} km`;
+/**
+ * One end of the route in the header. Its marker matches the map's (solid
+ * green = start, dashed green ring = destination); the full name wraps
+ * rather than truncating, and an empty row says what to do next instead of
+ * a separate hint line.
+ */
+function EndpointRow({
+  kind,
+  station,
+  placeholder,
+  prompt,
+  onOpen,
+  onClear,
+}: {
+  kind: "start" | "destination";
+  station: Station | null;
+  placeholder: string;
+  /** The empty row is the next thing to fill in - say so more loudly. */
+  prompt: boolean;
+  onOpen: (station: Station) => void;
+  onClear: () => void;
+}) {
+  const { lang, t } = useT();
+  return (
+    <div className="flex min-h-12 items-center gap-2.5 pl-3">
+      {kind === "start" ? (
+        <span className="h-3.5 w-3.5 shrink-0 rounded-full border-[3px] border-green-600 bg-green-600 ring-2 ring-green-600/25" aria-hidden />
+      ) : (
+        <span className="h-3.5 w-3.5 shrink-0 rounded-full border-[3px] border-dashed border-green-600 bg-white dark:bg-neutral-900" aria-hidden />
+      )}
+      <div className="min-w-0 flex-1 py-1">
+        <p className="text-[11px] leading-tight text-neutral-500">{kind === "start" ? t.start : t.destination}</p>
+        {station ? (
+          <button
+            onClick={() => onOpen(station)}
+            className="text-left text-sm leading-snug font-semibold break-words hover:underline"
+          >
+            {stationName(station, lang)}
+          </button>
+        ) : (
+          <p
+            className={`text-sm leading-snug ${
+              prompt ? "font-semibold text-green-700 dark:text-green-400" : "text-neutral-400"
+            }`}
+          >
+            {placeholder}
+          </p>
+        )}
+      </div>
+      {station && (
+        <button
+          onClick={onClear}
+          aria-label={kind === "start" ? t.clearStart : t.clearDestination}
+          title={kind === "start" ? t.clearStart : t.clearDestination}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+        >
+          <X size={20} strokeWidth={2.5} />
+        </button>
+      )}
+    </div>
+  );
 }
 
 export default function Home() {
@@ -72,6 +133,10 @@ export default function Home() {
   const [destination, setDestination] = useState<Station | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [focusStation, setFocusStation] = useState<Station | null>(null);
+  // The station page, open over the map (which stays mounted underneath).
+  // Mirrored as ?station=CODE so it can be shared, and pushed as a history
+  // entry so the phone's Back button closes it.
+  const [detailStation, setDetailStation] = useState<Station | null>(null);
   const { position, error: geoError } = useGeolocation();
   const { lang, t } = useT();
 
@@ -94,6 +159,7 @@ export default function Home() {
     /* eslint-disable react-hooks/set-state-in-effect */
     if (from) setStart(from);
     if (to && to.code !== from?.code) setDestination(to);
+    setDetailStation(stationsByCode.get(params.get("station") ?? "") ?? null);
     setUrlRead(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
@@ -105,8 +171,46 @@ export default function Home() {
     if (destination) params.set("to", destination.code);
     else params.delete("to");
     const query = params.toString();
-    window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
-  }, [urlRead, start, destination]);
+    window.history.replaceState(window.history.state, "", query ? `?${query}` : window.location.pathname);
+    // detailStation too: picking Start/Destination on the station page also
+    // closes it (history.back()), landing on an older entry that predates
+    // the change - re-mirror the route onto it.
+  }, [urlRead, start, destination, detailStation]);
+
+  // Back/forward moves in and out of the station page.
+  useEffect(() => {
+    const onPopState = () => {
+      const code = new URLSearchParams(window.location.search).get("station");
+      setDetailStation(stationsByCode.get(code ?? "") ?? null);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  const openStation = useCallback((station: Station) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set("station", station.code);
+    // Station-to-station hops (a connection link) replace rather than stack,
+    // so one Back always returns to the map.
+    const replace = window.history.state?.stationPage === true;
+    window.history[replace ? "replaceState" : "pushState"]({ stationPage: true }, "", `?${params}`);
+    setDetailStation(station);
+    setSheetOpen(false);
+  }, []);
+
+  const closeStation = useCallback(() => {
+    if (window.history.state?.stationPage) {
+      // Opened in this visit: pop our own entry (popstate clears the state).
+      window.history.back();
+    } else {
+      // Landed straight on a ?station= link - there's nothing to go back to.
+      const params = new URLSearchParams(window.location.search);
+      params.delete("station");
+      const query = params.toString();
+      window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
+      setDetailStation(null);
+    }
+  }, []);
 
   const nearest = useMemo(
     () => (position ? nearestStation(position.lat, position.lon) : null),
@@ -165,69 +269,58 @@ export default function Home() {
   const destinationCode = destination?.code ?? null;
   const hasRoute = start !== null && destination !== null;
 
-  const subtitle = !start && !destination
-    ? t.hintIdle
-    : start && !destination
-      ? t.hintStartSet
-      : !start && destination
-        ? t.hintDestSet
-        : t.hintRoute;
 
   return (
     <main className="flex flex-1 flex-col">
-      <header className="flex items-center justify-between gap-2 border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
-        <div className="min-w-0">
-          <h1 className="text-base font-semibold">{t.appTitle}</h1>
-          <p className="truncate text-xs text-neutral-500">{subtitle}</p>
-          {(start || destination) && (
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              <span className="inline-flex max-w-[40vw] items-center gap-1 rounded-full bg-green-600 px-2 py-0.5 text-[11px] font-medium text-white">
-                <span className="shrink-0 opacity-80">{t.start}:</span>
-                <span className="truncate">{start ? stationName(start, lang) : "—"}</span>
-                {start && (
-                  <button onClick={() => setStart(null)} aria-label={t.clearStart} className="shrink-0">
-                    <X size={11} />
-                  </button>
-                )}
-              </span>
+      <header className="border-b border-neutral-200 px-3 pt-2 pb-3 dark:border-neutral-800">
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="truncate pl-1 text-base font-semibold">{t.appTitle}</h1>
+          <div className="flex shrink-0 items-center gap-2">
+            {(start || destination) && (
               <button
-                onClick={swapRoute}
-                aria-label={t.swap}
-                title={t.swap}
-                className="rounded-full p-0.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                onClick={clearRoute}
+                aria-label={t.resetRoute}
+                className="flex items-center gap-1 rounded-full border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
               >
-                <ArrowLeftRight size={13} />
+                <RotateCcw size={14} />
+                {t.reset}
               </button>
-              <span className="inline-flex max-w-[40vw] items-center gap-1 rounded-full border border-green-600 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:text-green-400">
-                <span className="shrink-0 opacity-80">{t.destination}:</span>
-                <span className="truncate">{destination ? stationName(destination, lang) : "—"}</span>
-                {destination && (
-                  <button
-                    onClick={() => {
-                      setDestination(null);
-                      setSheetOpen(false);
-                    }}
-                    aria-label={t.clearDestination}
-                    className="shrink-0"
-                  >
-                    <X size={11} />
-                  </button>
-                )}
-              </span>
-            </div>
-          )}
+            )}
+            <LangToggle />
+            <StationSearch onSelectStation={handleSearchSelect} />
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {(start || destination) && (
-            <button
-              onClick={clearRoute}
-              className="rounded-full border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-            >
-              {t.clear}
-            </button>
-          )}
-          <LangToggle />
-          <StationSearch onSelectStation={handleSearchSelect} />
+        <div className="mt-2 flex items-center gap-1.5">
+          <div className="min-w-0 flex-1 divide-y divide-neutral-200 rounded-xl border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
+            <EndpointRow
+              kind="start"
+              station={start}
+              placeholder={destination ? t.nowPickStart : t.pickStart}
+              prompt={!start && destination !== null}
+              onOpen={openStation}
+              onClear={() => setStart(null)}
+            />
+            <EndpointRow
+              kind="destination"
+              station={destination}
+              placeholder={start ? t.nowPickDestination : t.pickDestination}
+              prompt={start !== null && !destination}
+              onOpen={openStation}
+              onClear={() => {
+                setDestination(null);
+                setSheetOpen(false);
+              }}
+            />
+          </div>
+          <button
+            onClick={swapRoute}
+            disabled={!start && !destination}
+            aria-label={t.swap}
+            title={t.swap}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100 disabled:opacity-30 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          >
+            <ArrowUpDown size={20} />
+          </button>
         </div>
       </header>
 
@@ -248,6 +341,7 @@ export default function Home() {
           path={path}
           userPosition={position}
           focusStation={focusStation}
+          onOpenStation={openStation}
         />
 
         {nearest && !hasRoute && (
@@ -279,7 +373,26 @@ export default function Home() {
         state={sheetOpen ? panelState : null}
         userPosition={position}
         onClose={() => setSheetOpen(false)}
+        onOpenStation={openStation}
       />
+
+      {detailStation && (
+        <StationDetail
+          station={detailStation}
+          startCode={startCode}
+          destinationCode={destinationCode}
+          onSetStart={(s) => {
+            handleSetStart(s);
+            closeStation();
+          }}
+          onSetDestination={(s) => {
+            handleSetDestination(s);
+            closeStation();
+          }}
+          onOpenStation={openStation}
+          onClose={closeStation}
+        />
+      )}
     </main>
   );
 }

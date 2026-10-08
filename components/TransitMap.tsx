@@ -4,14 +4,15 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import * as maplibregl from "maplibre-gl";
 import { useEffect, useMemo, useRef, type RefObject } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { LocateFixed } from "lucide-react";
+import { ChevronRight, LocateFixed } from "lucide-react";
 import { stations, type Station } from "@/data/stations";
 import { fetchLineGeometry, fullLineSegments, trackBetween, type LineSegments } from "@/lib/line-geometry";
 import type { GeoPosition } from "@/lib/use-geolocation";
-import type { PathResult } from "@/lib/transit-graph";
+import { interchangeCodes, type PathResult } from "@/lib/transit-graph";
 import { StationActions } from "@/components/StationActions";
 import { LINE_COLORS, readableTextColor } from "@/lib/line-colors";
-import { stationName, useLangStore, useT, type Lang } from "@/lib/i18n";
+import { lineName, stationName, useLangStore, useT, type Lang } from "@/lib/i18n";
+import { distanceLabel } from "@/lib/format-distance";
 
 // MapLibre uses [lon, lat] everywhere, the opposite of Leaflet's [lat, lon] -
 // every coordinate pair in this file is in that order.
@@ -63,6 +64,10 @@ function transformStyle(
   };
 }
 
+function transferLabelField(lang: Lang): maplibregl.ExpressionSpecification {
+  return ["get", lang === "th" ? "labelTh" : "labelEn"];
+}
+
 /** Our own station labels: the name in the chosen language, plus the code once zoomed in. */
 function stationLabelField(lang: Lang): maplibregl.ExpressionSpecification {
   const name = ["get", lang === "th" ? "nameTh" : "nameEn"] as maplibregl.ExpressionSpecification;
@@ -96,12 +101,19 @@ export interface TransitMapProps {
   userPosition: GeoPosition | null;
   /** Set (e.g. from a search result) to fly the map to a station on demand. */
   focusStation: Station | null;
+  /** Open a station's own page (its name in the card was tapped). */
+  onOpenStation: (station: Station) => void;
 }
 
 const LINES_SOURCE = "transit-lines";
 const LINES_LAYER = "transit-lines-layer";
 const ROUTE_SOURCE = "highlighted-route";
 const ROUTE_LAYER = "highlighted-route-layer";
+const ROUTE_WALK_LAYER = "highlighted-route-walk-layer";
+const TRANSFER_SOURCE = "route-transfers";
+const TRANSFER_LAYER = "route-transfers-layer";
+const TRANSFER_ICON = "transfer-icon";
+const WALK_ICON = "walk-icon";
 const STATIONS_SOURCE = "stations";
 const STATIONS_HIT_LAYER = "stations-hit-layer";
 const STATIONS_LAYER = "stations-layer";
@@ -153,11 +165,18 @@ function routeGeoJSON(
     features: path.slice(1).flatMap((leg, i) => {
       const prevStation = path[i].station;
       if (!leg.line) return [];
-      const positions = trackBetween(segmentsByLine, leg.line, prevStation, leg.station);
+      // A walk between two nearby stations follows no track - draw it as a
+      // plain dashed hop rather than snapping it onto either line.
+      const positions: [number, number][] = leg.isWalk
+        ? [
+            [prevStation.lat, prevStation.lon],
+            [leg.station.lat, leg.station.lon],
+          ]
+        : trackBetween(segmentsByLine, leg.line, prevStation, leg.station);
       return [
         {
           type: "Feature" as const,
-          properties: { line: leg.line },
+          properties: { line: leg.line, walk: leg.isWalk },
           geometry: {
             type: "LineString" as const,
             coordinates: positions.map(([lat, lon]) => [lon, lat]),
@@ -166,6 +185,92 @@ function routeGeoJSON(
       ];
     }),
   };
+}
+
+/** One badge per line change on the route, at the interchange itself. */
+function transfersGeoJSON(path: PathResult | null): GeoJSON.FeatureCollection<GeoJSON.Point> {
+  return {
+    type: "FeatureCollection",
+    features: (path ?? []).flatMap((leg) => {
+      const change = leg.change;
+      if (!change) return [];
+      const walk = change.walkMeters !== undefined;
+      const label = (lang: Lang) =>
+        walk
+          ? `${lang === "th" ? "เดิน" : "Walk"} ${distanceLabel(change.walkMeters!)}`
+          : `${lang === "th" ? "เปลี่ยนสาย" : "Change"} → ${lineName(change.toLine, lang, true)}`;
+      return [
+        {
+          type: "Feature" as const,
+          properties: { walk, labelEn: label("en"), labelTh: label("th") },
+          geometry: { type: "Point" as const, coordinates: [leg.station.lon, leg.station.lat] },
+        },
+      ];
+    }),
+  };
+}
+
+/**
+ * The interchange sign drawn onto a canvas once and used as a map icon: two
+ * opposing arrows (the near-universal "change here" pictogram) or, for a
+ * walking transfer, a walking figure - in a white disc with a dark ring,
+ * matching TransferIcon in the route list. Drawn at 2x for sharp edges.
+ */
+function drawTransferIcon(walk: boolean): ImageData | null {
+  const scale = 2;
+  const size = 30 * scale;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  const c = size / 2;
+  ctx.fillStyle = "#ffffff";
+  ctx.strokeStyle = "#262626";
+  ctx.lineWidth = 3 * scale;
+  ctx.beginPath();
+  ctx.arc(c, c, c - ctx.lineWidth / 2 - scale, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.lineWidth = 2.5 * scale;
+  if (!walk) {
+    const u = scale;
+    // Upper arrow pointing right, lower arrow pointing left.
+    const arrow = (y: number, dir: 1 | -1) => {
+      const x0 = c - 7 * u * dir;
+      const x1 = c + 7 * u * dir;
+      ctx.beginPath();
+      ctx.moveTo(x0, y);
+      ctx.lineTo(x1, y);
+      ctx.moveTo(x1 - 4 * u * dir, y - 4 * u);
+      ctx.lineTo(x1, y);
+      ctx.lineTo(x1 - 4 * u * dir, y + 4 * u);
+      ctx.stroke();
+    };
+    arrow(c - 4 * u, 1);
+    arrow(c + 4 * u, -1);
+  } else {
+    const u = scale;
+    // A stick figure mid-stride.
+    ctx.fillStyle = "#262626";
+    ctx.beginPath();
+    ctx.arc(c + 1 * u, c - 8 * u, 2.4 * u, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(c, c - 4 * u);
+    ctx.lineTo(c - 1 * u, c + 3 * u);
+    ctx.moveTo(c - 1 * u, c + 3 * u);
+    ctx.lineTo(c - 5 * u, c + 9 * u);
+    ctx.moveTo(c - 1 * u, c + 3 * u);
+    ctx.lineTo(c + 4 * u, c + 9 * u);
+    ctx.moveTo(c - 5 * u, c + 1 * u);
+    ctx.lineTo(c, c - 4 * u);
+    ctx.lineTo(c + 5 * u, c);
+    ctx.stroke();
+  }
+  return ctx.getImageData(0, 0, size, size);
 }
 
 function stationsGeoJSON(
@@ -184,7 +289,11 @@ function stationsGeoJSON(
       const dimmed = isRouting && !onPath;
       // Lower sorts first and so wins label collisions: route ends, then the
       // rest of the route, then interchanges, then everything else.
-      const sortKey = isEndpoint ? 0 : onPath ? 1 : s.lines.length > 1 ? 2 : 3;
+      const isInterchange = interchangeCodes.has(s.code);
+      const sortKey = isEndpoint ? 0 : onPath ? 1 : isInterchange ? 2 : 3;
+      // Interchanges use the standard metro-map sign: white with a dark
+      // ring (as on Bangkok's own network maps), not a line color.
+      const interchangeStyle = isInterchange && !isEndpoint && !dimmed;
       return {
         type: "Feature",
         properties: {
@@ -193,12 +302,12 @@ function stationsGeoJSON(
           nameTh: s.nameTh || s.nameEn,
           sortKey,
           labelOpacity: dimmed ? 0.45 : 1,
-          radius: isEndpoint ? 8 : s.lines.length > 1 ? 6 : 4,
+          radius: isEndpoint ? 8 : isInterchange ? 6 : 4,
           // Green fill = start, white fill/green outline = destination, so
           // the two ends of the route are distinguishable at a glance.
-          strokeColor: dimmed ? "#ccc" : isEndpoint ? ENDPOINT_COLOR : "#fff",
-          strokeWidth: isEndpoint ? 4 : 1.5,
-          fillColor: dimmed ? "#ddd" : isStart ? ENDPOINT_COLOR : stationLineColor(s),
+          strokeColor: dimmed ? "#ccc" : isEndpoint ? ENDPOINT_COLOR : interchangeStyle ? "#262626" : "#fff",
+          strokeWidth: isEndpoint ? 4 : interchangeStyle ? 2.5 : 1.5,
+          fillColor: dimmed ? "#ddd" : isStart ? ENDPOINT_COLOR : interchangeStyle ? "#fff" : stationLineColor(s),
           fillOpacity: dimmed ? 0.7 : 1,
           isDestination,
         },
@@ -257,6 +366,7 @@ export function TransitMap({
   path,
   userPosition,
   focusStation,
+  onOpenStation,
 }: TransitMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -279,11 +389,12 @@ export function TransitMap({
     onSelectStation,
     onSetStart,
     onSetDestination,
+    onOpenStation,
     startCode,
     destinationCode,
   });
   useEffect(() => {
-    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode };
+    latest.current = { onSelectStation, onSetStart, onSetDestination, onOpenStation, startCode, destinationCode };
   });
 
   // Create the map once per mount. Like the Leaflet canvas renderer this
@@ -340,9 +451,18 @@ export function TransitMap({
         data: { type: "FeatureCollection", features: [] },
       });
       map.addLayer({
+        id: ROUTE_WALK_LAYER,
+        type: "line",
+        source: ROUTE_SOURCE,
+        filter: ["==", ["get", "walk"], true],
+        layout: { "line-cap": "round" },
+        paint: { "line-color": "#525252", "line-width": 3, "line-dasharray": [0.5, 2] },
+      });
+      map.addLayer({
         id: ROUTE_LAYER,
         type: "line",
         source: ROUTE_SOURCE,
+        filter: ["!=", ["get", "walk"], true],
         layout: { "line-join": "round", "line-cap": "round" },
         paint: {
           "line-color": LINE_COLOR_MATCH,
@@ -436,6 +556,36 @@ export function TransitMap({
           "text-halo-color": "#ffffff",
           "text-halo-width": 1.6,
           "text-opacity": ["get", "labelOpacity"],
+        },
+      });
+
+      // Change-here badges, above the station markers and labels so a
+      // transfer is never hidden behind a neighbouring name.
+      for (const [id, walk] of [[TRANSFER_ICON, false], [WALK_ICON, true]] as const) {
+        if (map.hasImage(id)) continue;
+        const image = drawTransferIcon(walk);
+        if (image) map.addImage(id, image, { pixelRatio: 2 });
+      }
+      map.addSource(TRANSFER_SOURCE, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addLayer({
+        id: TRANSFER_LAYER,
+        type: "symbol",
+        source: TRANSFER_SOURCE,
+        layout: {
+          "icon-image": ["case", ["get", "walk"], WALK_ICON, TRANSFER_ICON],
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+          "text-field": transferLabelField(useLangStore.getState().lang),
+          "text-font": ["Noto Sans Bold"],
+          "text-size": 12,
+          "text-variable-anchor": ["top", "bottom", "left", "right"],
+          "text-radial-offset": 1.4,
+          "text-allow-overlap": true,
+        },
+        paint: {
+          "text-color": "#111827",
+          "text-halo-color": "#ffffff",
+          "text-halo-width": 2,
         },
       });
 
@@ -554,6 +704,7 @@ export function TransitMap({
       const apply = () => {
         const source = map.getSource<maplibregl.GeoJSONSource>(ROUTE_SOURCE);
         source?.setData(path ? routeGeoJSON(path, segmentsByLine) : { type: "FeatureCollection", features: [] });
+        map.getSource<maplibregl.GeoJSONSource>(TRANSFER_SOURCE)?.setData(transfersGeoJSON(path));
       };
       if (loadedRef.current) apply();
       else map.once("load", apply);
@@ -607,6 +758,7 @@ export function TransitMap({
     if (!map) return;
     const apply = () => {
       map.setLayoutProperty(STATIONS_LABEL_LAYER, "text-field", stationLabelField(lang));
+      map.setLayoutProperty(TRANSFER_LAYER, "text-field", transferLabelField(lang));
       for (const id of basemapLabelLayers) {
         if (map.getLayer(id)) map.setLayoutProperty(id, "text-field", basemapLabelField(lang));
       }
@@ -660,12 +812,18 @@ export function TransitMap({
 
 // Its own component so the name re-renders when the language changes - the
 // popup is a separate React root that only re-renders on demand otherwise.
-function PopupStationName({ station }: { station: Station }) {
-  const { lang } = useT();
+// Tapping the name opens the station's own page.
+function PopupStationName({ station, onOpen }: { station: Station; onOpen: () => void }) {
+  const { lang, t } = useT();
   return (
-    <span className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-      {stationName(station, lang)}
-    </span>
+    <button
+      onClick={onOpen}
+      title={t.stationDetails}
+      className="flex min-w-0 items-center gap-0.5 text-left text-sm font-semibold text-neutral-900 underline decoration-neutral-300 underline-offset-2 hover:decoration-neutral-600 dark:text-neutral-100"
+    >
+      <span className="truncate">{stationName(station, lang)}</span>
+      <ChevronRight size={16} className="shrink-0 text-neutral-500" />
+    </button>
   );
 }
 
@@ -675,6 +833,7 @@ function openPopup(
   station: Station,
   latest: RefObject<{
     onSetStart: (s: Station) => void;
+    onOpenStation: (s: Station) => void;
     onSetDestination: (s: Station) => void;
     startCode: string | null;
     destinationCode: string | null;
@@ -712,7 +871,13 @@ function openPopup(
           >
             {station.code}
           </span>
-          <PopupStationName station={station} />
+          <PopupStationName
+            station={station}
+            onOpen={() => {
+              latest.current.onOpenStation(station);
+              queueMicrotask(() => popup.remove());
+            }}
+          />
         </div>
         <StationActions
           station={station}
