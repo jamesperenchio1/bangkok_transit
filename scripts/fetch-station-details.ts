@@ -450,8 +450,9 @@ async function main() {
   }
 
   // --- Assemble -------------------------------------------------------
-  await rm(OUT_DIR, { recursive: true, force: true });
-  await mkdir(OUT_DIR, { recursive: true });
+  // Everything is gathered first and only written at the end, so a run that
+  // dies halfway leaves the previous output intact.
+  const outputs: { code: string; details: unknown }[] = [];
   let withPhotos = 0;
   let withExits = 0;
   let withSummary = 0;
@@ -488,7 +489,13 @@ async function main() {
       .filter((p, i, all) => all.findIndex((q) => q.nameEn === p.nameEn) === i)
       .slice(0, MAX_NEARBY);
 
-    const photos = e ? await photosFor(e) : [];
+    let photos: Awaited<ReturnType<typeof photosFor>> = [];
+    try {
+      photos = e ? await photosFor(e) : [];
+    } catch (err) {
+      // Not cached, so the next run tries this station's photos again.
+      console.warn(`Photos skipped for ${s.code}: ${(err as Error).message}`);
+    }
     const exitList = [...(exits.get(s.code)?.values() ?? [])].sort((a, b) => sortExitLabel(a.label, b.label));
     const wheelchair = ["yes", "limited", "no"].includes(tags.wheelchair) ? tags.wheelchair : undefined;
 
@@ -516,7 +523,12 @@ async function main() {
     if (photos.length) withPhotos++;
     if (exitList.length) withExits++;
     if (details.summary) withSummary++;
-    await writeFile(path.join(OUT_DIR, `${s.code}.json`), JSON.stringify(details) + "\n");
+    outputs.push({ code: s.code, details });
+  }
+  await rm(OUT_DIR, { recursive: true, force: true });
+  await mkdir(OUT_DIR, { recursive: true });
+  for (const { code, details } of outputs) {
+    await writeFile(path.join(OUT_DIR, `${code}.json`), JSON.stringify(details) + "\n");
   }
   console.log(
     `${stations.length} stations: ${wikidataId.size} matched to Wikidata, ${withPhotos} with photos, ` +
