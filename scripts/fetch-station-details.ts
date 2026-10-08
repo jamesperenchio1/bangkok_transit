@@ -225,6 +225,19 @@ function stripHtml(html: string | undefined): string | undefined {
   return text ? text.slice(0, 80) : undefined;
 }
 
+/**
+ * Wikipedia leads open with a parenthetical of other scripts and
+ * pronunciation - "(Thai: สถานีสยาม, RTGS: Sathani Sayam, pronounced [...])"
+ * or "(อังกฤษ: Siam station; รหัส: CEN)" - noise on a phone screen.
+ */
+function cleanSummary(text: string): string {
+  return text
+    .replace(/\s*\n+\s*/g, " ")
+    .replace(/\s*\((?:Thai|อังกฤษ)[^()]*(?:\([^()]*\)[^()]*)*\)/, "")
+    .replace(/\s+([,.])/g, "$1")
+    .trim();
+}
+
 function sortExitLabel(a: string, b: string): number {
   const na = parseInt(a, 10);
   const nb = parseInt(b, 10);
@@ -393,7 +406,7 @@ async function main() {
         for (const page of res.query?.pages ?? []) {
           if (!page.extract) continue;
           const original = redirects.get(page.title) ?? page.title;
-          summaries[lang].set(original, page.extract.replace(/\s*\n+\s*/g, " ").trim());
+          summaries[lang].set(original, cleanSummary(page.extract));
         }
       } catch (err) {
         console.warn(`Wikipedia ${lang} summaries skipped for a batch: ${(err as Error).message}`);
