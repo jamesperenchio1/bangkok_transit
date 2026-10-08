@@ -1,19 +1,32 @@
 import { stations, stationsByCode, type LineKey } from "@/data/stations";
 import lineSequences from "@/data/line-sequences.json";
 
-export interface PathLeg {
-  station: (typeof stations)[number];
-  /** The line ridden to arrive at this station (undefined for the starting station). */
-  line: LineKey | null;
-  /** True if this leg is a change of line at the same or a nearby station. */
-  isTransfer: boolean;
+export interface LineChange {
+  /** The line ridden into this station (absent when the route starts with a walk). */
+  fromLine?: LineKey;
+  /** The line to board next. */
+  toLine: LineKey;
+  /** For a walking transfer: straight-line distance to the next station. */
+  walkMeters?: number;
   /**
-   * For a transfer leg, the terminus of the just-boarded line in the
-   * direction the route continues (e.g. "board toward Khu Khot"). Omitted
-   * when the transfer is the final leg, or the immediate next hop isn't a
-   * ride on that same line (so direction can't be inferred from it).
+   * The terminus of `toLine` in the direction the route continues (e.g.
+   * "board toward Khu Khot"). Omitted when the change is the route's final
+   * hop, so there's no next stop on that line to infer a direction from.
    */
   towardStation?: (typeof stations)[number];
+}
+
+export interface PathLeg {
+  station: (typeof stations)[number];
+  /** The line ridden to arrive at this station (null for the starting station). For a walk, the line walked to. */
+  line: LineKey | null;
+  /** True if this station is reached on foot from the previous one (a walking transfer), not by train. */
+  isWalk: boolean;
+  /**
+   * Set on the station where you change lines - the interchange itself, not
+   * the stop after it - including where a walk to a nearby station begins.
+   */
+  change?: LineChange;
 }
 
 export type PathResult = PathLeg[];
@@ -176,25 +189,66 @@ export function findPath(fromCode: string, toCode: string): PathResult | null {
   }
   codes.reverse();
 
-  return codes.map((c, i) => {
+  const legs: PathLeg[] = codes.map((c, i) => {
     const station = stationsByCode.get(c.code)!;
-    const prevLine = i > 0 ? codes[i - 1].line : null;
-    const isTransfer = i > 0 && prevLine !== null && c.line !== null && prevLine !== c.line;
-
-    let towardStation: (typeof stations)[number] | undefined;
-    if (isTransfer && c.line) {
-      const next = codes[i + 1];
-      if (next && next.line === c.line) {
-        const terminusCode = terminusInDirection(c.line, c.code, next.code);
-        towardStation = terminusCode ? stationsByCode.get(terminusCode) : undefined;
-      }
-    }
-
-    return {
-      station,
-      line: c.line,
-      isTransfer,
-      towardStation,
-    };
+    // A walking-transfer edge is labelled with the line walked *to*, which
+    // the station walked from doesn't serve; every ride edge's line is
+    // served by both of its ends.
+    const prevStation = i > 0 ? stationsByCode.get(codes[i - 1].code)! : null;
+    const isWalk = prevStation !== null && c.line !== null && !prevStation.lines.some((l) => l.line === c.line);
+    return { station, line: c.line, isWalk };
   });
+
+  const toward = (line: LineKey, from: PathLeg, next: PathLeg | undefined) => {
+    if (!next || next.isWalk || next.line !== line) return undefined;
+    const terminusCode = terminusInDirection(line, from.station.code, next.station.code);
+    return terminusCode ? stationsByCode.get(terminusCode) : undefined;
+  };
+
+  for (let k = 0; k < legs.length - 1; k++) {
+    const here = legs[k];
+    const next = legs[k + 1];
+    const ridingLine = k > 0 && !here.isWalk ? (here.line ?? undefined) : undefined;
+    if (next.isWalk) {
+      // Walk to a nearby station, then board whatever the route rides
+      // from there (usually, but not always, the line the walk edge names).
+      const after = legs[k + 2];
+      const toLine = after && !after.isWalk && after.line ? after.line : next.line!;
+      here.change = {
+        fromLine: ridingLine,
+        toLine,
+        walkMeters: Math.round(haversineMeters([here.station.lon, here.station.lat], [next.station.lon, next.station.lat]) / 10) * 10,
+        towardStation: toward(toLine, next, after),
+      };
+    } else if (ridingLine && next.line && next.line !== ridingLine) {
+      here.change = { fromLine: ridingLine, toLine: next.line, towardStation: toward(next.line, here, next) };
+    }
+  }
+
+  return legs;
 }
+
+/** Line changes along a path that switch from one train to another (a walk at the very start doesn't count). */
+export function countChanges(path: PathResult): number {
+  return path.filter((leg) => leg.change?.fromLine).length;
+}
+
+/** Train stops ridden along a path (walks excluded). */
+export function countStops(path: PathResult): number {
+  return path.filter((leg, i) => i > 0 && !leg.isWalk).length;
+}
+
+/**
+ * Stations where you can change lines: one node serving several lines
+ * (Siam, Tao Poon, ...) or a short walk from a station on another line
+ * (Mo Chit <-> Chatuchak Park). The map draws these as interchange markers.
+ */
+export const interchangeCodes: ReadonlySet<string> = (() => {
+  const codes = new Set<string>();
+  for (const s of stations) if (s.lines.length > 1) codes.add(s.code);
+  for (const [from, edges] of getGraph()) {
+    const fromStation = stationsByCode.get(from);
+    if (edges.some((e) => fromStation && !fromStation.lines.some((l) => l.line === e.line))) codes.add(from);
+  }
+  return codes;
+})();

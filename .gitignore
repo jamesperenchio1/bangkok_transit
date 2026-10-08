@@ -49,3 +49,6 @@ next-env.d.ts
 # copied by scripts/copy-maplibre-worker.mjs (postinstall)
 /public/maplibre/
 .wrangler/
+
+# scripts/fetch-station-details.ts response cache
+/data/raw/station-details-cache/

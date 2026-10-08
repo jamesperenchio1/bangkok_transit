@@ -76,6 +76,30 @@ expanded. See `docs/` or ask the user for further design history if needed.
   Same-complex interchanges (Siam, Tao Poon, ...) need no special edge at
   all: they're modeled as one station node carrying multiple lines, so ride
   edges on each of its lines are already present.
+- **Transfers**: `findPath` marks each line change on the interchange
+  station itself (`leg.change`: from/to line, walk distance for a walking
+  transfer, direction to board), and walking hops as `leg.isWalk`. The map
+  draws a change badge there (canvas-drawn two-arrow interchange sign, or a
+  walking figure, plus a "Change → Silom" / "Walk 60 m" label) and walking
+  hops dashed; the route list shows the same sign in a "Change to [line
+  pill]" row. Lines are always shown with their *name* (`lineName()` in
+  `lib/i18n.ts`), never by color alone - Sukhumvit/Silom are both green and
+  Purple/ARL both purple. In the network view, `interchangeCodes`
+  (multi-line nodes + stations with a walking transfer) get the standard
+  white-with-dark-ring interchange marker.
+- **Station page**: tapping a station name (map card, header, route list)
+  opens `components/StationDetail.tsx`, a full-screen view over the map (the
+  map stays mounted). It's in the URL as `?station=CODE` via `pushState`, so
+  Back closes it and links are shareable. Its extras - Commons photos (with
+  author/license credit, required by CC), Wikipedia summary, numbered exits,
+  lifts/wheelchair/toilets, bus stops and nearby places - come from
+  `public/station-details/<code>.json` (one small file per station, fetched
+  on open), built by the one-off `scripts/fetch-station-details.ts` from
+  OpenStreetMap (Overpass), Wikidata, Wikimedia Commons and Wikipedia. See
+  that script for matching rules and known gaps; missing data is just hidden.
+  Note the BMA source names MRT Chatuchak Park "หมอชิต" (Mo Chit) - it's
+  fixed by hand in `data/stations.json` (BL28), so re-running
+  `scripts/build-stations.ts` would bring that error back.
 - **External station/line data**: BMA's public, unauthenticated ArcGIS REST
   API at `cityplangis.bangkok.go.th/arcgis/rest/services/bma/Basemap/MapServer`
   (layer 1 = station points, layer 3 = line geometry) was the one-time source
