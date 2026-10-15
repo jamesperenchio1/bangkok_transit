@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { ageMs, isShowable, isValidArrivals, type Arrivals } from "./bts";
 import { ARRIVALS_URL } from "./arrivals-url";
+import type { ArrivalsDocument, UpstreamState } from "./arrivals-document";
 
 /**
  * One shared arrivals store for the whole app, fed by the one shared
@@ -58,6 +59,8 @@ interface ArrivalsStore {
   clockOffsetMs: number;
   /** True once this tab has heard back from (or failed to reach) the server at least once. */
   settled: boolean;
+  /** The upstream API's health per the latest document (null until known, or from an older poller). */
+  upstream: UpstreamState | null;
   setMap: (map: ArrivalsMap) => void;
 }
 
@@ -141,6 +144,7 @@ export const useArrivalsStore = create<ArrivalsStore>((set) => ({
   map: {},
   clockOffsetMs: 0,
   settled: false,
+  upstream: null,
   setMap: (map) => set({ map }),
 }));
 
@@ -198,8 +202,9 @@ export function startArrivalsPolling() {
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
       if (res.ok) {
-        const json = (await res.json()) as { arrivals?: Record<string, unknown>; complete?: boolean };
+        const json = (await res.json()) as Partial<ArrivalsDocument> & { arrivals?: Record<string, unknown> };
         answered = true;
+        useArrivalsStore.setState({ upstream: json.status?.state ?? null });
 
         const measured = serverNowFrom(res);
         if (measured !== null) {

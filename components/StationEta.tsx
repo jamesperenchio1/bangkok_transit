@@ -70,7 +70,7 @@ function PlatformTimes({
  * there is never a spinner or a late pop-in.
  */
 export function StationEta({ station }: { station: Station }) {
-  const { data, live, settled, now } = useArrivals(station.hasLiveArrivals ? station.code : null);
+  const { data, live, settled, now, upstreamDown } = useArrivals(station.hasLiveArrivals ? station.code : null);
   const { t } = useT();
 
   if (!station.hasLiveArrivals) {
@@ -82,7 +82,7 @@ export function StationEta({ station }: { station: Station }) {
     // or upstream/device offline for longer than MAX_SHOW_AGE_MS).
     return (
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-        {settled ? t.timesUnavailable : t.checkingTimes}
+        {!settled ? t.checkingTimes : upstreamDown ? t.sourceDown : t.timesUnavailable}
       </p>
     );
   }
@@ -97,7 +97,7 @@ export function StationEta({ station }: { station: Station }) {
       }`}
     >
       {t.updated(updatedAgoLabel(data.timestamp, now, t))}
-      {live ? "" : ` · ${t.lastKnown}`}
+      {live ? "" : ` · ${upstreamDown ? t.sourceDownShort : t.lastKnown}`}
     </p>
   );
 
