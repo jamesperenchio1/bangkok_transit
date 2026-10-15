@@ -1,0 +1,68 @@
+# Every push and pull request: lint, typecheck, unit tests, the poller's
+# Workers-runtime tests, and the end-to-end suite against the production
+# build. Deployment itself is Cloudflare Workers Builds (on push to main),
+# so no Cloudflare credentials live in GitHub.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  site:
+    name: Site
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: End-to-end tests (builds the site and serves it with wrangler)
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+
+  poller:
+    name: Poller
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: cloudflare/poller
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: cloudflare/poller/.node-version
+          cache: npm
+          cache-dependency-path: cloudflare/poller/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Bundle (dry-run deploy)
+        run: npm run build
+      - name: Smoke test (boot the real Worker in workerd, fire the cron)
+        run: npm run smoke
+      - run: npm audit --audit-level=high

@@ -13,6 +13,10 @@
     "directory": "./out",
     "not_found_handling": "404-page"
   },
+  // Workers Builds deploys every non-main branch as a Worker Preview
+  // (`wrangler preview`), which needs this block. Empty is right: the site
+  // is static assets only, so a Preview needs no bindings of its own.
+  "previews": {},
   "routes": [
     { "pattern": "bangkok-transit.com", "custom_domain": true },
     { "pattern": "www.bangkok-transit.com", "custom_domain": true }

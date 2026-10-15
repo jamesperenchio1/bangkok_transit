@@ -5,6 +5,12 @@
   # The app uses geolocation (lib/use-geolocation.ts), so scope it to
   # same-origin; everything else sensitive stays disabled by not appearing.
   Permissions-Policy: geolocation=(self)
+  # 'unsafe-inline' for scripts is unavoidable for a static export: Next
+  # inlines its bootstrap scripts and nonces need a server per request.
+  # Everything the page talks to is listed explicitly: map tiles/fonts/
+  # sprites (OpenFreeMap) and the live arrivals document. The e2e suite
+  # fails on any CSP violation, so a new origin can't slip in unnoticed.
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org; font-src 'self' data:; connect-src 'self' https://tiles.openfreemap.org https://live.bangkok-transit.com; worker-src 'self' blob:; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
 
 # Content-hashed build output never changes under the same name.
 /_next/static/*

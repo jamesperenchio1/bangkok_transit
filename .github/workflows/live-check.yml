@@ -1,0 +1,27 @@
+# Production health check every 30 minutes: the site and its headers, the
+# live arrivals document's CORS/caching headers, and whether its data is
+# fresh. A failed run makes GitHub email the repository owner - free
+# alerting with no secrets. See scripts/check-live.mjs.
+#
+# Note: GitHub disables scheduled workflows in a repository with no
+# activity for 60 days; re-enable it from the Actions tab if that happens.
+name: Live check
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - run: node scripts/check-live.mjs

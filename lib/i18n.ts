@@ -45,7 +45,7 @@ export function stationName(station: Station, lang: Lang): string {
   return lang === "th" ? station.nameTh || station.nameEn : station.nameEn;
 }
 
-const strings = {
+export const strings = {
   en: {
     appTitle: "Bangkok Transit",
     hintIdle: "Tap a station, then choose Start or Destination",
@@ -65,7 +65,10 @@ const strings = {
     googleMaps: "Get directions in Google Maps",
     noRoute: "No route found between these stations yet - try Google Maps above.",
     changeLine: "Change line",
-    changeLineToward: (name: string) => `Change line, toward ${name}`,
+    boardToward: (name: string) => `Board toward ${name}`,
+    walked: (m: number) => `Walk ${m} m from the previous station`,
+    walk: (m: number) => `${m} m walk`,
+    aboutMinutes: (n: number) => `~${n} min`,
     stops: (n: number) => `${n} ${n === 1 ? "stop" : "stops"}`,
     changes: (n: number) => (n === 0 ? "no changes" : `${n} ${n === 1 ? "change" : "changes"}`),
     lastKnown: "last known",
@@ -74,6 +77,8 @@ const strings = {
     then: "then",
     noLiveDataLine: "No live data for this line",
     timesUnavailable: "Live times unavailable right now — retrying…",
+    sourceDown: "BTS live times are down at the source — retrying…",
+    sourceDownShort: "last known, source down",
     checkingTimes: "Checking times…",
     updated: (ago: string) => `Updated ${ago}`,
     noArrivals: "No live arrivals right now",
@@ -112,7 +117,10 @@ const strings = {
     googleMaps: "ขอเส้นทางใน Google Maps",
     noRoute: "ยังไม่พบเส้นทางระหว่างสถานีนี้ - ลองใช้ Google Maps ด้านบน",
     changeLine: "เปลี่ยนสาย",
-    changeLineToward: (name: string) => `เปลี่ยนสาย ไปทาง ${name}`,
+    boardToward: (name: string) => `ขึ้นขบวนไปทาง ${name}`,
+    walked: (m: number) => `เดิน ${m} ม. จากสถานีก่อนหน้า`,
+    walk: (m: number) => `เดิน ${m} ม.`,
+    aboutMinutes: (n: number) => `~${n} นาที`,
     stops: (n: number) => `${n} สถานี`,
     changes: (n: number) => (n === 0 ? "ไม่ต้องเปลี่ยนสาย" : `เปลี่ยนสาย ${n} ครั้ง`),
     lastKnown: "ข้อมูลล่าสุดที่มี",
@@ -121,6 +129,8 @@ const strings = {
     then: "ถัดไป",
     noLiveDataLine: "ไม่มีข้อมูลเรียลไทม์สำหรับสายนี้",
     timesUnavailable: "ยังไม่มีเวลาเรียลไทม์ — กำลังลองใหม่…",
+    sourceDown: "ระบบเวลาเรียลไทม์ของ BTS ขัดข้องที่ต้นทาง — กำลังลองใหม่…",
+    sourceDownShort: "ข้อมูลล่าสุด ต้นทางขัดข้อง",
     checkingTimes: "กำลังตรวจสอบเวลา…",
     updated: (ago: string) => `อัปเดต ${ago}`,
     noArrivals: "ยังไม่มีขบวนเข้าในขณะนี้",

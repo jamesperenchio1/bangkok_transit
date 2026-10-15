@@ -125,19 +125,35 @@ export function isValidArrivals(data: unknown): data is Arrivals {
 }
 
 /**
+ * An AbortSignal that fires after `ms`, plus a way to cancel the timer once
+ * the work is done. Unlike AbortSignal.timeout(), the timer doesn't outlive
+ * the work - in a Durable Object a pending timer keeps the object busy (and
+ * billed) long after the poll that set it has finished.
+ */
+export function deadlineAfter(ms: number): { signal: AbortSignal; clear: () => void } {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new DOMException("deadline passed", "TimeoutError")), ms);
+  return { signal: controller.signal, clear: () => clearTimeout(timer) };
+}
+
+/**
  * `deadline` lets a caller cut the call short on top of the per-call
  * timeout.
  */
 export async function fetchUpstream(code: string, deadline?: AbortSignal): Promise<Arrivals> {
-  const timeout = AbortSignal.timeout(UPSTREAM_TIMEOUT_MS);
-  const signal = deadline ? AbortSignal.any([timeout, deadline]) : timeout;
-  const res = await fetch(`${UPSTREAM}/arrivals/${code}`, { signal, cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`upstream ${res.status} for ${code}`);
+  const timeout = deadlineAfter(UPSTREAM_TIMEOUT_MS);
+  const signal = deadline ? AbortSignal.any([timeout.signal, deadline]) : timeout.signal;
+  try {
+    const res = await fetch(`${UPSTREAM}/arrivals/${code}`, { signal, cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`upstream ${res.status} for ${code}`);
+    }
+    const data = await res.json();
+    if (!isValidArrivals(data)) {
+      throw new Error(`upstream returned malformed arrivals for ${code}`);
+    }
+    return data;
+  } finally {
+    timeout.clear();
   }
-  const data = await res.json();
-  if (!isValidArrivals(data)) {
-    throw new Error(`upstream returned malformed arrivals for ${code}`);
-  }
-  return data;
 }

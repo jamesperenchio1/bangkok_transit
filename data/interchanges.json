@@ -1,0 +1,18 @@
+[
+  {"a": "N8", "b": "BL28", "note": "Mo Chit <-> Chatuchak Park"},
+  {"a": "N9", "b": "BL27", "note": "Ha Yaek Lat Phrao <-> Phahon Yothin"},
+  {"a": "N2", "b": "A01", "note": "Phaya Thai <-> Phaya Thai"},
+  {"a": "E4", "b": "BL19", "note": "Asok <-> Sukhumvit"},
+  {"a": "S2", "b": "BL15", "note": "Sala Daeng <-> Si Lom"},
+  {"a": "S7", "b": "G1", "note": "Krung Thon Buri <-> Krung Thon Buri (BTS Gold Line)"},
+  {"a": "S12", "b": "BL05", "note": "Bang Wa <-> Bang Wa"},
+  {"a": "E15", "b": "YL23", "note": "Samrong <-> Samrong"},
+  {"a": "N17", "b": "PK16", "note": "Wat Phra Sri Mahathat <-> Wat Phra Si Mahathat"},
+  {"a": "BL20", "b": "A03", "note": "Phetchaburi <-> Makkasan"},
+  {"a": "BL26", "b": "YL01", "note": "Lat Phrao <-> Ladprao"},
+  {"a": "BL30", "b": "RD04", "note": "Bang Sue <-> Krung Thep Aphiwat (Bang Sue Grand)"},
+  {"a": "PK01", "b": "PP11", "note": "Nonthaburi Civic Center <-> Nonthaburi Civic Center"},
+  {"a": "PK14", "b": "RD09", "note": "Lak Si <-> Lak Si"},
+  {"a": "PP15", "b": "RD01", "note": "Bang Son <-> Bang Son"},
+  {"a": "YL11", "b": "A05", "note": "Huamark <-> Hua Mak"}
+]

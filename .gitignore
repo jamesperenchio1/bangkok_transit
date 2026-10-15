@@ -49,3 +49,7 @@ next-env.d.ts
 # copied by scripts/copy-maplibre-worker.mjs (postinstall)
 /public/maplibre/
 .wrangler/
+
+# playwright
+/playwright-report/
+/test-results/

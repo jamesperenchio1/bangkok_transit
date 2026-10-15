@@ -20,6 +20,8 @@ export interface UseArrivalsResult {
   settled: boolean;
   /** The live (server-corrected) clock this result was checked against; reuse it for countdowns. */
   now: number;
+  /** True when the poller reports the upstream API itself is down. */
+  upstreamDown: boolean;
 }
 
 /**
@@ -35,6 +37,7 @@ export interface UseArrivalsResult {
 export function useArrivals(code: string | null): UseArrivalsResult {
   const entry = useArrivalsStore((s) => (code ? (s.map[code] ?? null) : null));
   const settled = useArrivalsStore((s) => s.settled);
+  const upstreamDown = useArrivalsStore((s) => s.upstream === "down");
   const clockOffsetMs = useArrivalsStore((s) => s.clockOffsetMs);
   const tick = useNow();
   // Bumped exactly when the held entry crosses its next threshold (stops
@@ -56,5 +59,5 @@ export function useArrivals(code: string | null): UseArrivalsResult {
   const now = useMemo(() => serverNow(), [tick, crossedAt, entry, clockOffsetMs]); // eslint-disable-line react-hooks/exhaustive-deps
   const data = entry && isShowable(entry.timestamp, now) ? entry : null;
   const live = data !== null && isFresh(data.timestamp, now);
-  return { data, live, settled, now };
+  return { data, live, settled, now, upstreamDown };
 }
