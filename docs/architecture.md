@@ -87,7 +87,7 @@ All numbers per day unless stated; limits are Cloudflare's free plan (checked ag
 | Durable Object duration (128 MB) | worst case awake all service hours ≈ 9,500 GB-s; billed only while active, so typically far less | 13,000 GB-s | ≤ 73% |
 | Worker requests (cron) | 1,440 | 100,000 | ~1.5% |
 | R2 Class A (writes) | ≤ 7,400/day ≈ 223k/month; identical documents are skipped | 1M / month | ≤ 22% |
-| R2 Class B (reads) | edge revalidations: ≤ 8,640 per edge location per day; with Smart Tiered Cache one upper tier ≈ 260k/month | 10M / month | ~3% |
+| R2 Class B (reads) | edge revalidations go through one upper tier (Smart Tiered Cache, enabled): ≤ 8,640/day ≈ 260k/month | 10M / month | ~3% |
 | Static assets | every page view | unlimited, free | — |
 | CDN bandwidth / R2 egress | every client poll | free | — |
 | Upstream API | ≤ 186 calls/min, constant | (their rate limit ≈ 180/min) | — |

@@ -22,7 +22,7 @@ None of this is in code, so `scripts/check-live.mjs` checks the effects of each 
 2. **Edge caching for `live.`** — `cf-cache-status` must be `HIT`/`EXPIRED`/`REVALIDATED`, never `DYNAMIC`. (JSON isn't cached by default; a Cache Rule "eligible for cache" on hostname `live.bangkok-transit.com` that respects origin `Cache-Control` does it.) Without it every client poll becomes an R2 read.
 3. **CORS Transform Rule** — Rules → Transform Rules → Modify Response Header, hostname `live.bangkok-transit.com`: set `Access-Control-Allow-Origin: *` and `Access-Control-Expose-Headers: Date, Age`.
 4. **No CORS policy on the R2 bucket.** With both, responses can carry two `Access-Control-Allow-Origin` headers and browsers reject them.
-5. **Smart Tiered Cache** (recommended, free) — Caching → Tiered Cache → Smart Tiered Caching Topology. Edge locations then revalidate against one upper tier instead of each hitting R2, so R2 reads stay flat regardless of where users are.
+5. **Smart Tiered Cache** (on, free) — Caching → Tiered Cache → Smart Tiered Cache. Edge locations then revalidate against one upper tier instead of each hitting R2, so R2 reads stay flat regardless of where users are.
 
 ## Is it healthy?
 
