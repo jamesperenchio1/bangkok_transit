@@ -11,6 +11,11 @@ export const metadata: Metadata = {
   title: "Bangkok Transit",
   description: "Plan routes and see live arrivals across every BTS, MRT, and rail line in Bangkok.",
   manifest: "/manifest.json",
+  icons: {
+    icon: [{ url: "/icons/icon.svg", type: "image/svg+xml" }, { url: "/favicon.ico" }],
+    apple: "/icons/apple-touch-icon.png",
+  },
+  appleWebApp: { capable: true, title: "BKK Transit", statusBarStyle: "default" },
 };
 
 // Page-wide pinch zoom is disabled so the map component can implement its
@@ -21,6 +26,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  themeColor: "#76b729",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

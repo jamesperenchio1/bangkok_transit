@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Full-bleed background so the same art works as a maskable icon; the
+       train sits inside the central 60% safe zone. -->
+  <rect width="512" height="512" fill="#76b729"/>
+  <g fill="#ffffff">
+    <rect x="166" y="126" width="180" height="210" rx="44"/>
+    <rect x="186" y="356" width="18" height="40" rx="6" transform="rotate(25 195 376)"/>
+    <rect x="308" y="356" width="18" height="40" rx="6" transform="rotate(-25 317 376)"/>
+  </g>
+  <g fill="#76b729">
+    <rect x="192" y="156" width="128" height="74" rx="14"/>
+    <circle cx="208" cy="292" r="16"/>
+    <circle cx="304" cy="292" r="16"/>
+  </g>
+</svg>

@@ -14,7 +14,7 @@ describe("findPath", () => {
 
   it("starts with a walk when the start station isn't on the line you need", () => {
     // Mo Chit BTS -> Thailand Cultural Centre: walk to Chatuchak Park MRT, then ride.
-    const path = findPath("N8", "BL19");
+    const path = findPath("N8", "BL22");
     expect(path!.legs[1]).toMatchObject({ mode: "walk", line: null });
     expect(path!.legs[1].station.nameEn).toBe("Chatuchak Park");
     expect(path!.legs[1].walkMeters).toBeGreaterThan(0);
