@@ -92,6 +92,9 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
                 const incomingColor = leg.mode === "ride" && leg.line ? LINE_COLORS[leg.line] : null;
                 const outgoingColor = nextLeg?.mode === "ride" && nextLeg.line ? LINE_COLORS[nextLeg.line] : null;
                 const dotColor = incomingColor ?? outgoingColor ?? LINE_COLORS[leg.station.lines[0].line];
+                // For a change badge: the next line actually ridden, past any walk.
+                const nextRide = legs.slice(i + 1).find((l) => l.mode === "ride");
+                const nextLineColor = nextRide?.line ? LINE_COLORS[nextRide.line] : null;
 
                 return (
                   <li key={`${leg.station.code}-${i}`} className="flex items-stretch gap-3">
@@ -135,7 +138,7 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
                             <ArrowRight size={10} className="text-neutral-400" />
                             <span
                               className="h-2.5 w-2.5 rounded-full ring-1 ring-white dark:ring-neutral-900"
-                              style={{ backgroundColor: outgoingColor ?? "#999" }}
+                              style={{ backgroundColor: nextLineColor ?? "#999" }}
                             />
                           </span>
                         )}

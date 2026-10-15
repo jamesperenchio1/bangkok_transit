@@ -24,6 +24,7 @@ const eslintConfig = defineConfig([
     "test-results/**",
     "public/maplibre/**",
     "cloudflare/**/node_modules/**",
+    ".wrangler/**",
     "cloudflare/**/.wrangler/**",
     "cloudflare/**/worker-configuration.d.ts",
   ]),

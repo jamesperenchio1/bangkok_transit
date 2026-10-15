@@ -96,6 +96,8 @@ export interface TransitMapProps {
   userPosition: GeoPosition | null;
   /** Set (e.g. from a search result) to fly the map to a station on demand. */
   focusStation: Station | null;
+  /** Whether the route sheet covers the bottom of the screen (up to 70vh). */
+  sheetOpen: boolean;
 }
 
 const LINES_SOURCE = "transit-lines";
@@ -263,6 +265,7 @@ export function TransitMap({
   path,
   userPosition,
   focusStation,
+  sheetOpen,
 }: TransitMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -587,6 +590,32 @@ export function TransitMap({
       });
     }
   }, [path]);
+
+  // Keep a planned route in view: fitted to whatever part of the map the
+  // route sheet (fixed to the bottom of the screen, up to 70vh) leaves
+  // uncovered, and refitted when the sheet opens or closes.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !path) return;
+    const apply = () => {
+      const lons = path.legs.map((l) => l.station.lon);
+      const lats = path.legs.map((l) => l.station.lat);
+      const rect = map.getContainer().getBoundingClientRect();
+      const sheetTop = window.innerHeight * 0.3;
+      const covered = sheetOpen ? Math.max(0, rect.bottom - sheetTop) : 0;
+      // Never pad away the whole map (MapLibre refuses to fit then).
+      const bottom = Math.min(covered + 24, rect.height - 120);
+      map.fitBounds(
+        [
+          [Math.min(...lons), Math.min(...lats)],
+          [Math.max(...lons), Math.max(...lats)],
+        ],
+        { padding: { top: 40, left: 40, right: 40, bottom: Math.max(40, bottom) }, maxZoom: 15, duration: 600 },
+      );
+    };
+    if (loadedRef.current) apply();
+    else map.once("load", apply);
+  }, [path, sheetOpen]);
 
   // Station marker styling (start/destination/on-path/dimmed).
   useEffect(() => {

@@ -249,6 +249,7 @@ export default function Home() {
           path={path}
           userPosition={position}
           focusStation={focusStation}
+          sheetOpen={sheetOpen && hasRoute}
         />
 
         {nearest && !hasRoute && (
