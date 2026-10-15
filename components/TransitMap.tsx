@@ -102,6 +102,7 @@ const LINES_SOURCE = "transit-lines";
 const LINES_LAYER = "transit-lines-layer";
 const ROUTE_SOURCE = "highlighted-route";
 const ROUTE_LAYER = "highlighted-route-layer";
+const ROUTE_WALK_LAYER = "highlighted-route-walk-layer";
 const STATIONS_SOURCE = "stations";
 const STATIONS_HIT_LAYER = "stations-hit-layer";
 const STATIONS_LAYER = "stations-layer";
@@ -150,20 +151,25 @@ function routeGeoJSON(
 ): GeoJSON.FeatureCollection<GeoJSON.LineString> {
   return {
     type: "FeatureCollection",
-    features: path.slice(1).flatMap((leg, i) => {
-      const prevStation = path[i].station;
-      if (!leg.line) return [];
-      const positions = trackBetween(segmentsByLine, leg.line, prevStation, leg.station);
-      return [
-        {
-          type: "Feature" as const,
-          properties: { line: leg.line },
-          geometry: {
-            type: "LineString" as const,
-            coordinates: positions.map(([lat, lon]) => [lon, lat]),
-          },
+    features: path.legs.slice(1).map((leg, i) => {
+      const prevStation = path.legs[i].station;
+      // Rides follow the real track; a walking transfer is a short straight
+      // dashed line between the two stations.
+      const positions =
+        leg.mode === "ride" && leg.line
+          ? trackBetween(segmentsByLine, leg.line, prevStation, leg.station)
+          : [
+              [prevStation.lat, prevStation.lon],
+              [leg.station.lat, leg.station.lon],
+            ];
+      return {
+        type: "Feature" as const,
+        properties: { line: leg.line ?? "", walk: leg.mode === "walk" },
+        geometry: {
+          type: "LineString" as const,
+          coordinates: positions.map(([lat, lon]) => [lon, lat]),
         },
-      ];
+      };
     }),
   };
 }
@@ -266,7 +272,7 @@ export function TransitMap({
   const popupsRef = useRef(new Map<string, { popup: maplibregl.Popup; root: Root; render: () => void }>());
 
   const pathCodes = useMemo(
-    () => new Set(path?.map((leg) => leg.station.code) ?? []),
+    () => new Set(path?.legs.map((leg) => leg.station.code) ?? []),
     [path],
   );
   const isRouting = path !== null;
@@ -343,12 +349,21 @@ export function TransitMap({
         id: ROUTE_LAYER,
         type: "line",
         source: ROUTE_SOURCE,
+        filter: ["!=", ["get", "walk"], true],
         layout: { "line-join": "round", "line-cap": "round" },
         paint: {
           "line-color": LINE_COLOR_MATCH,
           "line-width": 5,
           "line-opacity": 1,
         },
+      });
+      map.addLayer({
+        id: ROUTE_WALK_LAYER,
+        type: "line",
+        source: ROUTE_SOURCE,
+        filter: ["==", ["get", "walk"], true],
+        layout: { "line-cap": "round" },
+        paint: { "line-color": "#525252", "line-width": 3, "line-dasharray": [0.5, 1.5] },
       });
 
       map.addSource(STATIONS_SOURCE, {

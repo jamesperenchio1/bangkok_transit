@@ -84,28 +84,40 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
 
           {state.path && (
             <ul className="flex flex-col">
-              {state.path.map((leg, i) => {
-                const isLast = i === state.path!.length - 1;
-                const nextLeg = state.path![i + 1];
-                const incomingColor = leg.line ? LINE_COLORS[leg.line] : null;
-                const outgoingColor = nextLeg?.line ? LINE_COLORS[nextLeg.line] : null;
-                const dotColor = incomingColor ?? outgoingColor ?? "#999";
+              {state.path.legs.map((leg, i, legs) => {
+                const isLast = i === legs.length - 1;
+                const nextLeg = legs[i + 1];
+                // Connector colors: the line ridden into this station, and out of it.
+                // A walking transfer has no line, so it's drawn dashed and grey.
+                const incomingColor = leg.mode === "ride" && leg.line ? LINE_COLORS[leg.line] : null;
+                const outgoingColor = nextLeg?.mode === "ride" && nextLeg.line ? LINE_COLORS[nextLeg.line] : null;
+                const dotColor = incomingColor ?? outgoingColor ?? LINE_COLORS[leg.station.lines[0].line];
 
                 return (
-                  <li key={leg.station.code} className="flex items-stretch gap-3">
+                  <li key={`${leg.station.code}-${i}`} className="flex items-stretch gap-3">
                     <div className="relative w-4 shrink-0">
-                      {incomingColor && (
-                        <span
-                          className="absolute top-0 left-1/2 h-1/2 w-0.5 -translate-x-1/2"
-                          style={{ backgroundColor: incomingColor }}
-                        />
-                      )}
-                      {!isLast && outgoingColor && (
-                        <span
-                          className="absolute bottom-0 left-1/2 h-1/2 w-0.5 -translate-x-1/2"
-                          style={{ backgroundColor: outgoingColor }}
-                        />
-                      )}
+                      {i > 0 &&
+                        (leg.mode === "walk" ? (
+                          <span className="absolute top-0 left-1/2 h-1/2 -translate-x-1/2 border-l-2 border-dotted border-neutral-400" />
+                        ) : (
+                          incomingColor && (
+                            <span
+                              className="absolute top-0 left-1/2 h-1/2 w-0.5 -translate-x-1/2"
+                              style={{ backgroundColor: incomingColor }}
+                            />
+                          )
+                        ))}
+                      {!isLast &&
+                        (nextLeg.mode === "walk" ? (
+                          <span className="absolute bottom-0 left-1/2 h-1/2 -translate-x-1/2 border-l-2 border-dotted border-neutral-400" />
+                        ) : (
+                          outgoingColor && (
+                            <span
+                              className="absolute bottom-0 left-1/2 h-1/2 w-0.5 -translate-x-1/2"
+                              style={{ backgroundColor: outgoingColor }}
+                            />
+                          )
+                        ))}
                       <span
                         className="absolute top-1/2 left-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white dark:ring-neutral-900"
                         style={{ backgroundColor: dotColor }}
@@ -114,15 +126,8 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
                     <div className="flex-1 py-1.5">
                       <p className="flex items-center text-sm font-medium">
                         {stationName(leg.station, lang)}
-                        {leg.isTransfer && (
-                          <span
-                            className="ml-1.5 inline-flex items-center gap-1"
-                            title={
-                              leg.towardStation
-                                ? t.changeLineToward(stationName(leg.towardStation, lang))
-                                : t.changeLine
-                            }
-                          >
+                        {leg.isChange && (
+                          <span className="ml-1.5 inline-flex items-center gap-1" title={t.changeLine}>
                             <span
                               className="h-2.5 w-2.5 rounded-full ring-1 ring-white dark:ring-neutral-900"
                               style={{ backgroundColor: incomingColor ?? "#999" }}
@@ -135,20 +140,19 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
                           </span>
                         )}
                       </p>
-                      {leg.station.hasLiveArrivals && (isLast || i === 0) && (
+                      {leg.mode === "walk" && leg.walkMeters !== undefined && (
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">{t.walked(leg.walkMeters)}</p>
+                      )}
+                      {leg.boardToward && (
+                        <p className="text-xs text-neutral-600 dark:text-neutral-300">
+                          {t.boardToward(stationName(leg.boardToward, lang))}
+                        </p>
+                      )}
+                      {leg.boardToward && leg.station.hasLiveArrivals && nextLeg?.line && (
+                        // Live times for the platform this route boards from.
                         <LiveEta
                           station={leg.station}
-                          // The platform heading the way this route rides:
-                          // out of the start, or into the destination.
-                          directionKey={
-                            i === 0
-                              ? nextLeg?.line
-                                ? terminusInDirection(nextLeg.line, leg.station.code, nextLeg.station.code)
-                                : undefined
-                              : leg.line
-                                ? terminusInDirection(leg.line, state.path![i - 1].station.code, leg.station.code)
-                                : undefined
-                          }
+                          directionKey={terminusInDirection(nextLeg.line, leg.station.code, nextLeg.station.code)}
                         />
                       )}
                     </div>
@@ -164,19 +168,11 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
 }
 
 function RouteSummary({ path }: { path: PathResult }) {
-  // A walking transfer between nearby stations is a graph edge too, labelled
-  // with the line being walked to - which the station being walked from
-  // doesn't serve. Only legs on a line the previous station serves are rides.
-  const stops = path.filter(
-    (leg, i) => i > 0 && leg.line !== null && path[i - 1].station.lines.some((l) => l.line === leg.line),
-  ).length;
-  const changes = path.filter((leg) => leg.isTransfer).length;
   const { t } = useT();
-  return (
-    <p className="-mt-2 mb-3 text-xs text-neutral-600 dark:text-neutral-300">
-      {t.stops(stops)} · {t.changes(changes)}
-    </p>
-  );
+  const parts = [t.stops(path.stops), t.changes(path.changes)];
+  if (path.walkMeters > 0) parts.push(t.walk(path.walkMeters));
+  parts.push(t.aboutMinutes(path.minutes));
+  return <p className="-mt-2 mb-3 text-xs text-neutral-600 dark:text-neutral-300">{parts.join(" · ")}</p>;
 }
 
 function LiveEta({ station, directionKey }: { station: Station; directionKey?: string }) {
