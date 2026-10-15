@@ -9,13 +9,14 @@ import { StationSearch } from "@/components/StationSearch";
 import { findPath } from "@/lib/transit-graph";
 import { useGeolocation } from "@/lib/use-geolocation";
 import { startArrivalsPolling } from "@/lib/arrivals-store";
-import { haversineMeters } from "@/lib/line-geometry";
+import { fetchLineGeometry, haversineMeters } from "@/lib/line-geometry";
 import { restoreLang, stationName, useLangStore, useT } from "@/lib/i18n";
 
 // Kicked off as soon as this module evaluates (not when <TransitMap> first
-// renders), so the MapLibre chunk - by far the largest download - starts in
-// parallel with hydration instead of after it.
+// renders), so the MapLibre chunk - by far the largest download - and the
+// line geometry both start in parallel with hydration instead of after it.
 const transitMapModule = typeof window !== "undefined" ? import("@/components/TransitMap") : null;
+if (typeof window !== "undefined") void fetchLineGeometry();
 
 const TransitMap = dynamic(
   () => (transitMapModule ?? import("@/components/TransitMap")).then((m) => m.TransitMap),

@@ -314,6 +314,9 @@ export function TransitMap({
     // style is fetched once, here.
     map.setStyle(STYLE_URL, { transformStyle });
     mapRef.current = map;
+    // Exposed for debugging and the e2e suite, which asserts on rendered
+    // features rather than pixels.
+    (window as { __map?: maplibregl.Map }).__map = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
 
     map.on("load", () => {

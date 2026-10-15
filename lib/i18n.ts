@@ -45,7 +45,7 @@ export function stationName(station: Station, lang: Lang): string {
   return lang === "th" ? station.nameTh || station.nameEn : station.nameEn;
 }
 
-const strings = {
+export const strings = {
   en: {
     appTitle: "Bangkok Transit",
     hintIdle: "Tap a station, then choose Start or Destination",

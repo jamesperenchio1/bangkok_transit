@@ -24,14 +24,15 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  // The map can't start until its JS chunk, its style JSON, and the line
-  // geometry have all arrived. Hinting the latter two here lets them
-  // download while the page is still hydrating instead of one after another
-  // once the map component mounts. crossOrigin matches how MapLibre and
-  // fetch() request them, so the preloaded responses are actually reused.
+  // The map can't start until its JS chunk and its style JSON have arrived.
+  // Hinting the style here lets it download while the page is still
+  // hydrating. crossOrigin matches how MapLibre requests it, so the
+  // preloaded response is actually reused. (The line geometry is fetched by
+  // app/page.tsx as soon as it loads - a preload for it went unused, because
+  // the map only asks for it after its own load event, and was downloaded
+  // twice.)
   preconnect("https://tiles.openfreemap.org", { crossOrigin: "anonymous" });
   preload(MAP_STYLE_URL, { as: "fetch", crossOrigin: "anonymous" });
-  preload("/line-geometry.json", { as: "fetch", crossOrigin: "anonymous" });
   // Live times too: a different origin (the CDN-cached data host), so its
   // connection is opened up front. Not preloaded as a resource - the
   // client fetches it with cache: "no-store", which a preload can't satisfy.

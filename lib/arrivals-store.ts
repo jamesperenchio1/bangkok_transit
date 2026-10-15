@@ -78,7 +78,7 @@ function readClockOffset(): number {
  * `Age` header when the CDN answered from a copy it has held for a while.
  * Null when the header is missing or unparseable.
  */
-function serverNowFrom(res: Response): number | null {
+export function serverNowFrom(res: Response): number | null {
   const date = Date.parse(res.headers.get("date") ?? "");
   if (Number.isNaN(date)) return null;
   const age = Number(res.headers.get("age") ?? 0);
@@ -138,6 +138,25 @@ function writeSnapshot(map: ArrivalsMap) {
   } catch {
     // storage full/unavailable - non-fatal, just skip persistence
   }
+}
+
+/**
+ * The readings to hold after a poll: per station, the newer of what this tab
+ * already has and what the server sent, minus anything too old to show.
+ * Incoming entries are validated - the document is third-party data relayed
+ * as-is.
+ */
+export function mergeReadings(held: ArrivalsMap, incoming: Record<string, unknown>, now: number): ArrivalsMap {
+  const next: ArrivalsMap = {};
+  for (const [code, data] of Object.entries(held)) {
+    if (isShowable(data.timestamp, now)) next[code] = data;
+  }
+  for (const [code, data] of Object.entries(incoming)) {
+    if (!isValidArrivals(data) || !isShowable(data.timestamp, now)) continue;
+    const current = next[code];
+    if (!current || ageMs(data.timestamp, now) <= ageMs(current.timestamp, now)) next[code] = data;
+  }
+  return next;
 }
 
 export const useArrivalsStore = create<ArrivalsStore>((set) => ({
@@ -223,18 +242,7 @@ export function startArrivalsPolling() {
         // replacing: an empty or partial answer (a poll that failed upstream,
         // a cold-start snapshot still filling) must not wipe last-known times this tab
         // already holds. Anything past MAX_SHOW_AGE_MS is dropped here.
-        const next: ArrivalsMap = {};
-        const held = useArrivalsStore.getState().map;
-        for (const [code, data] of Object.entries(held)) {
-          if (isShowable(data.timestamp, correctedNow)) next[code] = data;
-        }
-        for (const [code, data] of Object.entries(json.arrivals ?? {})) {
-          if (!isValidArrivals(data) || !isShowable(data.timestamp, correctedNow)) continue;
-          const current = next[code];
-          if (!current || ageMs(data.timestamp, correctedNow) <= ageMs(current.timestamp, correctedNow)) {
-            next[code] = data;
-          }
-        }
+        const next = mergeReadings(useArrivalsStore.getState().map, json.arrivals ?? {}, correctedNow);
         useArrivalsStore.getState().setMap(next);
         writeSnapshot(next);
         // "Complete" comes from the server: the latest shared poll finished.

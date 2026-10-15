@@ -11,7 +11,18 @@ let cachedPromise: Promise<LineSegments> | null = null;
 
 export function fetchLineGeometry(): Promise<LineSegments> {
   if (!cachedPromise) {
-    cachedPromise = fetch("/line-geometry.json").then((res) => res.json() as Promise<LineSegments>);
+    cachedPromise = fetch("/line-geometry.json")
+      .then((res) => {
+        if (!res.ok) throw new Error(`line-geometry.json: HTTP ${res.status}`);
+        return res.json() as Promise<LineSegments>;
+      })
+      .catch((err: unknown) => {
+        // Don't cache a failure (a flaky connection on first load): the
+        // next caller retries. Until then lines fall back to straight hops.
+        cachedPromise = null;
+        console.warn("line geometry unavailable", err);
+        return {};
+      });
   }
   return cachedPromise;
 }
