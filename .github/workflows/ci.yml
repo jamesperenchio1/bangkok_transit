@@ -63,4 +63,6 @@ jobs:
       - run: npm test
       - name: Bundle (dry-run deploy)
         run: npm run build
+      - name: Smoke test (boot the real Worker in workerd, fire the cron)
+        run: npm run smoke
       - run: npm audit --audit-level=high

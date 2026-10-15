@@ -63,6 +63,7 @@ The poller lives in [`cloudflare/poller`](cloudflare/poller) with its own `packa
 cd cloudflare/poller
 npm install
 npm test                 # runs the Durable Object in workerd with a local R2 bucket
+npm run smoke            # boots the real Worker with wrangler dev, fires the cron, checks the output
 npm run dev              # local poller; trigger the cron at /__scheduled
 ```
 

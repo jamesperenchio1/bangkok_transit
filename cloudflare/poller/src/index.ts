@@ -14,6 +14,7 @@ import {
   nextHealth,
   nextIntervalMs,
   stalest,
+  DOCUMENT_KEY,
   type Health,
 } from "./schedule";
 
@@ -40,10 +41,13 @@ import {
  * few stations on a growing interval, publishes `status.state = "down"` with
  * an outage history, and stops rewriting a document that isn't changing.
  * Scheduling decisions live in ./schedule.ts.
+ *
+ * Only the Durable Object class and the default handler may be exported from
+ * this module: workerd treats every named export of the entry point as an
+ * entrypoint and refuses to start if one isn't a class or handler object.
  */
 
 const OBJECT_NAME = "bts";
-export const DOCUMENT_KEY = "arrivals.json";
 const HEALTH_KEY = "health";
 
 /** Simultaneous open connections a Worker invocation may hold. */

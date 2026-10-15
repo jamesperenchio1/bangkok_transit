@@ -87,6 +87,10 @@ fix names/order against an authoritative source and let the tests guard it.
   `[lat, lon]`. Convert at GeoJSON build time.
 - Upstream `timestamp`s are UTC without a `Z`; always parse via `ageMs`/
   `parseUtc`.
+- The poller's entry module (`cloudflare/poller/src/index.ts`) may export
+  only the Durable Object class and the default handler - workerd rejects
+  the Worker if any other named export isn't a class/handler. `npm run
+  smoke` (also in CI) boots the real Worker and catches this.
 - Timers in the poller must be cancellable (`deadlineAfter` in `lib/bts.ts`),
   not `AbortSignal.timeout()` — a pending timer keeps the Durable Object
   busy and billed.
@@ -102,7 +106,7 @@ npm test               # Vitest unit tests (tests/)
 npm run test:e2e       # Playwright against the production build via wrangler dev
 npm start              # build + serve out/ the way production does
 npm run check:live     # production health check
-cd cloudflare/poller && npm install && npm run typecheck && npm test
+cd cloudflare/poller && npm install && npm run typecheck && npm test && npm run smoke
 ```
 
 CI (`.github/workflows/ci.yml`) runs all of the above on every push/PR.

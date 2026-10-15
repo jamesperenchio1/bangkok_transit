@@ -2,8 +2,7 @@ import { env } from "cloudflare:workers";
 import { evictDurableObject, runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ArrivalsDocument } from "../../../lib/arrivals-document";
-import { DOCUMENT_KEY } from "../src/index";
-import { BATCH, PROBE } from "../src/schedule";
+import { BATCH, DOCUMENT_KEY, PROBE } from "../src/schedule";
 import { mockUpstream, ok, status } from "./helpers";
 
 /**

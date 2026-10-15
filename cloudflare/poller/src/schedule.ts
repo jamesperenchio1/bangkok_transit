@@ -8,6 +8,9 @@ import type { Incident, UpstreamStatus } from "../../../lib/arrivals-document";
  * a runtime (test/schedule.test.ts).
  */
 
+/** The published document's key in the R2 bucket (served as live.<domain>/arrivals.json). */
+export const DOCUMENT_KEY = "arrivals.json";
+
 /** Alarm cadence while trains run (each alarm = half the stations). */
 export const ACTIVE_INTERVAL_MS = 10_000;
 /** Overnight the only news is "Not running - next ~05:15"; check rarely. */
