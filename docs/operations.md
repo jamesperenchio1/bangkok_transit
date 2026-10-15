@@ -10,6 +10,8 @@ Everything that runs in production, what's configured outside the repo, and how 
 | Poller | Worker `bangkok-transit-poller` with the `ArrivalsPoller` Durable Object and a `* * * * *` cron (`cloudflare/poller/wrangler.jsonc`) | Cloudflare Workers Builds, root `cloudflare/poller`, on push to `main` |
 | Live document | R2 bucket `bts-live`, object `arrivals.json`, custom domain `live.bangkok-transit.com` | Written by the poller |
 
+Every other branch (e.g. a PR) is deployed by Workers Builds as a **Worker Preview** (`npx wrangler preview`), which is why both `wrangler.jsonc` files carry an empty `previews` block — without it those builds fail. A site Preview gets its own URL, posted on the PR. A poller Preview is inert: Previews inherit no bindings (so it can't write the production R2 document), get their own Durable Object namespace, and Cron Triggers only fire production.
+
 Both builds use Node 22 (`.node-version`). The site's `wrangler.jsonc` runs `npm run build` itself, so Workers Builds needs no build command. The poller has `workers_dev` and preview URLs off: its only entry points are the cron and the alarm.
 
 ## Configuration that lives in the Cloudflare dashboard

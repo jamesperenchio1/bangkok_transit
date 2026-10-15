@@ -16,5 +16,11 @@
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ArrivalsPoller"] }],
   "r2_buckets": [{ "binding": "LIVE", "bucket_name": "bts-live" }],
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Workers Builds deploys every non-main branch as a Worker Preview
+  // (`wrangler preview`), which needs this block. Deliberately empty: a
+  // Preview inherits no bindings (so it can't write the production R2
+  // document), gets its own Durable Object namespace, and Cron Triggers
+  // only ever fire production - a Preview of the poller just uploads code.
+  "previews": {}
 }
