@@ -44,7 +44,7 @@ function PlatformTimes({
             <li key={`${train.train_no}-${i}`} className="flex items-baseline gap-1.5 leading-snug">
               <span
                 className={`text-sm font-semibold tabular-nums ${
-                  soon ? "text-green-600 dark:text-green-400" : "text-neutral-900 dark:text-white"
+                  soon ? "text-green-700 dark:text-green-400" : "text-neutral-900 dark:text-white"
                 }`}
               >
                 {minutesLabel(left, t)}
@@ -70,7 +70,7 @@ function PlatformTimes({
  * there is never a spinner or a late pop-in.
  */
 export function StationEta({ station }: { station: Station }) {
-  const { data, live, settled, now, upstreamDown } = useArrivals(station.hasLiveArrivals ? station.code : null);
+  const { data, live, settled, now, upstreamDown, offline } = useArrivals(station.hasLiveArrivals ? station.code : null);
   const { t } = useT();
 
   if (!station.hasLiveArrivals) {
@@ -82,7 +82,7 @@ export function StationEta({ station }: { station: Station }) {
     // or upstream/device offline for longer than MAX_SHOW_AGE_MS).
     return (
       <p className="text-xs text-neutral-500 dark:text-neutral-400">
-        {!settled ? t.checkingTimes : upstreamDown ? t.sourceDown : t.timesUnavailable}
+        {!settled ? t.checkingTimes : offline ? t.offlineTimes : upstreamDown ? t.sourceDown : t.timesUnavailable}
       </p>
     );
   }
@@ -93,11 +93,11 @@ export function StationEta({ station }: { station: Station }) {
   const updated = (
     <p
       className={`text-[11px] ${
-        live ? "text-neutral-500 dark:text-neutral-400" : "text-amber-600 dark:text-amber-400"
+        live ? "text-neutral-500 dark:text-neutral-400" : "text-amber-800 dark:text-amber-300"
       }`}
     >
       {t.updated(updatedAgoLabel(data.timestamp, now, t))}
-      {live ? "" : ` · ${upstreamDown ? t.sourceDownShort : t.lastKnown}`}
+      {live ? "" : ` · ${offline ? t.offlineShort : upstreamDown ? t.sourceDownShort : t.lastKnown}`}
     </p>
   );
 

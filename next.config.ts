@@ -1,9 +1,13 @@
 import type { NextConfig } from "next";
+import { randomUUID } from "node:crypto";
 import withSerwistInit from "@serwist/next";
 
 const withSerwist = withSerwistInit({
   swSrc: "app/sw.ts",
   swDest: "public/sw.js",
+  // A static export's index.html isn't in the glob-built manifest, so list
+  // the shell explicitly. A fresh revision per build re-fetches it on deploy.
+  additionalPrecacheEntries: [{ url: "/", revision: randomUUID() }],
   // Serwist's default is a full `location.reload()` whenever the device
   // comes back online - which on a phone leaving a tunnel or the subway
   // wipes the open station card, the map view, and everything else on

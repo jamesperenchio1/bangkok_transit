@@ -50,3 +50,29 @@ svg circle {
 .maplibregl-popup-close-button {
   color: var(--foreground) !important;
 }
+
+/* Keyboard focus must always be visible (WCAG 2.4.7); inputs and buttons
+   that remove the default outline rely on this instead. */
+:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :focus-visible {
+    outline-color: #93c5fd;
+  }
+}
+
+/* Honour "reduce motion": no sliding sheets or animated map camera
+   (the camera is handled in TransitMap via the same media query). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

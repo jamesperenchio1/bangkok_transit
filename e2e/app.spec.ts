@@ -45,9 +45,9 @@ test.describe("map", () => {
     await expect(page.getByRole("button", { name: /Nearest: Siam/ })).toBeVisible();
     await page.getByRole("button", { name: "Search stations" }).click();
     await page.getByPlaceholder("Search stations…").fill("phaya thai");
-    await expect(page.getByRole("button", { name: /Phaya Thai.*N2/ })).toBeVisible();
+    await expect(page.getByRole("option", { name: /Phaya Thai.*N2/ })).toBeVisible();
     await page.getByPlaceholder("Search stations…").fill("n 15");
-    await page.getByRole("button", { name: /N15/ }).click();
+    await page.getByRole("option", { name: /N15/ }).click();
     await expect(page.locator(".maplibregl-popup").getByRole("button", { name: "Start" })).toBeVisible();
   });
 });
@@ -62,7 +62,7 @@ test.describe("routes", () => {
     const search = async (q: string) => {
       await page.getByRole("button", { name: "Search stations" }).click();
       await page.getByPlaceholder("Search stations…").fill(q);
-      await page.locator("ul button").first().click();
+      await page.getByRole("option").first().click();
     };
     await search("national stadium");
     await page.locator(".maplibregl-popup").getByRole("button", { name: "Start" }).click();
@@ -111,7 +111,7 @@ test.describe("live data outage", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Search stations" }).click();
     await page.getByPlaceholder("Search stations…").fill("siam");
-    await page.locator("ul button").first().click();
+    await page.getByRole("option").first().click();
     await expect(page.locator(".maplibregl-popup").getByText(/down at the source/)).toBeVisible();
   });
 });

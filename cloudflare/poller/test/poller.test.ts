@@ -53,7 +53,7 @@ describe("ArrivalsPoller", () => {
     ({ doc, cacheControl } = await published());
     expect(Object.keys(doc.arrivals)).toHaveLength(61);
     expect(doc.complete).toBe(true);
-    expect(cacheControl).toBe("public, max-age=0, s-maxage=10");
+    expect(cacheControl).toBe("public, max-age=0, s-maxage=10, stale-if-error=300");
   });
 
   it("is started by the cron watchdog when no alarm is set", async () => {
@@ -103,7 +103,7 @@ describe("ArrivalsPoller", () => {
     expect(doc.status?.state).toBe("down");
     expect(doc.status?.incidents[0]).toMatchObject({ end: null });
     expect(doc.complete).toBe(true); // nothing to wait for: clients stop fast-polling
-    expect(cacheControl).toBe("public, max-age=0, s-maxage=30");
+    expect(cacheControl).toBe("public, max-age=0, s-maxage=30, stale-if-error=300");
     expect(await nextAlarmIn(stub)).toBeGreaterThan(15_000);
 
     vi.restoreAllMocks();
@@ -129,6 +129,21 @@ describe("ArrivalsPoller", () => {
     const before = (await published()).etag;
     await runDurableObjectAlarm(stub); // still down, same content
     expect((await published()).etag).toBe(before);
+  });
+
+  it("stays complete across an eviction instead of reverting to filling", async () => {
+    mockUpstream(ok);
+    const stub = freshPoller();
+    await arm(stub);
+    await runDurableObjectAlarm(stub);
+    await runDurableObjectAlarm(stub);
+    expect((await published()).doc.complete).toBe(true);
+
+    await evictDurableObject(stub);
+    await runDurableObjectAlarm(stub); // a new instance: its own `tried` is empty
+    const { doc, cacheControl } = await published();
+    expect(doc.complete).toBe(true);
+    expect(cacheControl).toContain("s-maxage=10");
   });
 
   it("keeps readings and outage state across an eviction", async () => {

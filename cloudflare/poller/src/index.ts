@@ -73,6 +73,8 @@ export class ArrivalsPoller extends DurableObject<Env> {
    * Codes tried since this instance loaded: the document is "complete" once
    * every code has had a turn - not once every one has answered, so a
    * station upstream never answers for can't keep every client fast-polling.
+   * (Codes already holding a reading in the published file also count - see
+   * poll() - so an eviction doesn't make the document look unfinished.)
    */
   private tried = new Set<string>();
 
@@ -168,10 +170,15 @@ export class ArrivalsPoller extends DurableObject<Env> {
       failed,
     };
     if (Object.keys(failed).length > 0) console.warn("upstream failures", report);
+    // A code with a reading already in hand has had its turn, even if this
+    // instance was just (re)created. Without this, an eviction would drop
+    // the document back to "filling" (2 s edge cache, clients fast-polling)
+    // until two alarms had passed - extra origin reads for every user.
+    const covered = (code: string) => this.tried.has(code) || code in this.arrivals!;
     const { document, cacheControl } = buildArrivalsDocument(
       this.arrivals,
       CODES,
-      this.tried.size === CODES.length,
+      CODES.every(covered),
       now,
       report,
       this.health.status,

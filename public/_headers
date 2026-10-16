@@ -21,3 +21,13 @@
 # The service worker must always be re-checked, or updates stall.
 /sw.js
   Cache-Control: no-cache
+
+# Unhashed static data and icons: let browsers reuse them for a day and
+# refresh in the background. (The service worker precaches them with a
+# per-build revision, so installed copies update on deploy regardless.)
+/line-geometry.json
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/maplibre/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/icons/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800

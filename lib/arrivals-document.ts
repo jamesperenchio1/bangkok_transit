@@ -72,6 +72,13 @@ export interface PollReport {
 export const EDGE_FRESH_SECONDS = 10;
 export const EDGE_FILLING_SECONDS = 2;
 export const EDGE_DOWN_SECONDS = 30;
+/**
+ * If the origin (R2) errors, the edge may keep serving its last copy for
+ * this long rather than failing every client. Clients show each reading's
+ * age (from `Date` + `Age`), so a copy served this way is still honest.
+ * Not applied while filling: a half-built document shouldn't linger.
+ */
+export const EDGE_STALE_IF_ERROR_SECONDS = 300;
 
 /**
  * Previous readings carried over, then this poll's on top. A station whose
@@ -119,6 +126,6 @@ export function buildArrivalsDocument(
     document: { arrivals, total: codes.length, complete, ...(status && { status }), ...(poll && { poll }) },
     // max-age=0: browsers always come back to the edge; s-maxage: the edge
     // holds one copy for everybody.
-    cacheControl: `public, max-age=0, s-maxage=${seconds}`,
+    cacheControl: `public, max-age=0, s-maxage=${seconds}${complete ? `, stale-if-error=${EDGE_STALE_IF_ERROR_SECONDS}` : ""}`,
   };
 }
