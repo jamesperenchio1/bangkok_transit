@@ -15,10 +15,10 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-      <AlertTriangle size={32} className="text-amber-500" />
+    <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+      <AlertTriangle size={32} className="text-amber-500" aria-hidden="true" />
       <h1 className="text-base font-semibold">Something went wrong</h1>
-      <p className="max-w-xs text-sm text-neutral-500">
+      <p className="max-w-xs text-sm text-neutral-600 dark:text-neutral-400">
         The map hit an unexpected error. You can try again, or reload the page.
       </p>
       <div className="mt-2 flex gap-2">

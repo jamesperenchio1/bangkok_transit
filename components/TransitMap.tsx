@@ -24,6 +24,10 @@ const STATION_BOUNDS: [[number, number], [number, number]] = [
 // downloads while the page hydrates - keep the two URLs identical.
 const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 
+/** Camera animations collapse to instant jumps for people who ask for less motion. */
+const motionMs = (ms: number) =>
+  typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : ms;
+
 // Basemap layers this app has no use for. `poi_transit` is the basemap's own
 // station icons/names, which would duplicate (and fight for space with) our
 // labelled station markers; 3D buildings and the dense low-rank POI layers
@@ -610,7 +614,7 @@ export function TransitMap({
           [Math.min(...lons), Math.min(...lats)],
           [Math.max(...lons), Math.max(...lats)],
         ],
-        { padding: { top: 40, left: 40, right: 40, bottom: Math.max(40, bottom) }, maxZoom: 15, duration: 600 },
+        { padding: { top: 40, left: 40, right: 40, bottom: Math.max(40, bottom) }, maxZoom: 15, duration: motionMs(600) },
       );
     };
     if (loadedRef.current) apply();
@@ -671,7 +675,7 @@ export function TransitMap({
       map.flyTo({
         center: [focusStation.lon, focusStation.lat],
         zoom: Math.max(map.getZoom(), 14),
-        duration: 600,
+        duration: motionMs(600),
       });
       openPopup(map, popupsRef, focusStation, latest);
     };
@@ -690,14 +694,14 @@ export function TransitMap({
             map.flyTo({
               center: [userPosition.lon, userPosition.lat],
               zoom: Math.max(map.getZoom(), 16),
-              duration: 600,
+              duration: motionMs(600),
             });
           }
         }}
         disabled={!userPosition}
         aria-label={t.centerOnMe}
         title={userPosition ? t.centerOnMe : t.waitingLocation}
-        className="absolute top-3 right-3 z-[1000] rounded-full border border-neutral-300 bg-white p-2.5 text-neutral-700 shadow-md hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+        className="absolute top-3 right-3 z-[1000] flex h-11 w-11 items-center justify-center rounded-full border border-neutral-300 bg-white text-neutral-700 shadow-md hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
       >
         <LocateFixed size={18} />
       </button>

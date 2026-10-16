@@ -18,14 +18,12 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "BKK Transit", statusBarStyle: "default" },
 };
 
-// Page-wide pinch zoom is disabled so the map component can implement its
-// own scoped pinch-zoom/pan instead - otherwise the two gestures fight
-// each other and zooming to tap a station also zooms the header/sheet.
+// Page zoom stays enabled (WCAG 1.4.4): people with low vision rely on it.
+// The map canvas sets `touch-action: none`, so pinching on the map zooms the
+// map while pinching anywhere else zooms the page.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   themeColor: "#76b729",
 };
 

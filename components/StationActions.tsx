@@ -2,7 +2,7 @@
 
 import type { Station } from "@/data/stations";
 import { StationEta } from "@/components/StationEta";
-import { useT } from "@/lib/i18n";
+import { stationName, useT } from "@/lib/i18n";
 
 export interface StationActionsProps {
   station: Station;
@@ -21,7 +21,7 @@ export function StationActions({
 }: StationActionsProps) {
   const isStart = station.code === startCode;
   const isDestination = station.code === destinationCode;
-  const { t } = useT();
+  const { lang, t } = useT();
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -29,13 +29,15 @@ export function StationActions({
       <div className="flex gap-2">
         <button
           onClick={() => onSetStart(station)}
-          className="flex-1 rounded-full bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700"
+          aria-label={t.startStationLabel(stationName(station, lang))}
+          className="min-h-11 flex-1 rounded-full bg-green-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-800"
         >
           {isStart ? `${t.start} ✓` : t.start}
         </button>
         <button
           onClick={() => onSetDestination(station)}
-          className="flex-1 rounded-full border border-green-600 bg-white px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-50 dark:bg-neutral-900 dark:text-green-400 dark:hover:bg-neutral-800"
+          aria-label={t.destinationStationLabel(stationName(station, lang))}
+          className="min-h-11 flex-1 rounded-full border border-green-700 bg-white px-3 py-1.5 text-xs font-semibold text-green-800 hover:bg-green-50 dark:bg-neutral-900 dark:text-green-400 dark:hover:bg-neutral-800"
         >
           {isDestination ? `${t.destination} ✓` : t.destination}
         </button>

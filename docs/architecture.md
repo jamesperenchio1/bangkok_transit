@@ -71,6 +71,19 @@ Polling a cached file beats WebSockets/SSE here: the data changes every ~20 s, t
 - Readings older than 90 s are shown as *last known* (amber, with their age); older than 30 min they're dropped everywhere — server, store and render. If the poller reports the upstream down, the card says so.
 - The service worker never caches `arrivals.json` (`NetworkOnly`): a cached copy's old `Date` header would wind the client's clock back and make stale times look live.
 
+## Offline (`app/sw.ts`, `lib/offline-warm.ts`)
+
+Everything except live times is local data, so the app is offline-first:
+
+- The shell (`/`) is added to the Serwist precache in `next.config.ts` (a static export's `index.html` isn't in the glob manifest), next to the hashed chunks, `line-geometry.json`, icons and the MapLibre worker. Navigations are answered from the precache, with query strings ignored, so even a never-opened `/?from=…&to=…` link loads offline. Precache entries carry a per-build revision and outdated caches are cleaned up.
+- The basemap is cached by a `CacheFirst` rule on `tiles.openfreemap.org` (3000 entries, 90 days). On the first idle moment after a visit, `lib/offline-warm.ts` fetches the style, sprite, Latin/Thai glyph ranges and the vector tiles covering the network (z10–13) and every station's surroundings (z14) — a few hundred small tiles, once, skipped on Data Saver or non-4g/cellular links — and asks for persistent storage so the browser doesn't evict them.
+- `lib/arrivals-store.ts` tracks `offline` (from `navigator.onLine` and the `online`/`offline` events). While offline it makes no requests, keeps counting down last-known times, and resumes at once on `online`. The UI says "Offline" rather than blaming the source.
+- `arrivals.json` is polled with `cache: "no-cache"`, so an unchanged document is a 304 revalidated against the edge ETag instead of a full download.
+
+## Station alert (`lib/stop-alert.ts`, `lib/use-stop-alert.ts`, `lib/alert-output.ts`)
+
+Pure target selection (`alertTargets`, `dueTarget`) is separate from the browser outputs. The destination always rings, plus optionally the station 1–3 rode stops before it and line changes; a fix within ~300–500 m (widened to its accuracy, ignored past 1 km) triggers a target once. Outputs are a synthesised Web Audio chime (no asset, no CSP change; unlocked by the tap that enables alerts), `navigator.vibrate`, an assertive on-screen alert, a service-worker notification if permitted, and a screen wake lock while a trip is watched. Nothing leaves the device.
+
 ## Routing (`lib/transit-graph.ts`)
 
 - Nodes are station codes. Ride edges come from `data/line-sequences.json`, where each line is one or more **segments** — branches share a station (SRT Light/Dark Red at Krung Thep Aphiwat, Pink's Muang Thong Thani spur at PK10), and MRT Blue is one segment that visits Tha Phra twice (trains run Lak Song → Tha Phra → round the loop → Tha Phra). A line's termini are just its segments' ends, which is also what the boarding direction and the live-arrivals platform matching use.
@@ -101,8 +114,10 @@ Durable Object duration is the tightest line, and the reason two details matter:
 | Upstream 5xx / timeouts | Last-known times in amber, then "BTS live times are down at the source" | After two failed cycles: state `down`, incident opened, probe 3 stations with backoff (20 s → 5 min). First answer closes the incident. |
 | Upstream 429 | Some stations a few seconds older | The cycle stops sending at the first 429; the rest are stalest next time. |
 | Poller alarm chain stops | Times age into "last known" | The cron watchdog re-arms it within a minute. |
-| Durable Object evicted | Nothing | Readings reload from R2, health from storage. |
-| Phone offline / flaky | Last-known times keep counting down | Retries at the normal cadence; immediate poll on `online`. |
+| Durable Object evicted | Nothing | Readings reload from R2, health from storage; a code that already has a reading counts as tried, so the document stays "complete" (no fast-polling burst). |
+| Phone offline | "Offline" notice; last-known times keep counting down; everything else works from cache | No requests while offline; immediate poll on `online`. |
+| Phone flaky | Last-known times keep counting down | Retries at the normal cadence. |
+| R2 origin errors | Nothing | The edge serves its last copy for up to 5 min (`stale-if-error`); clients show each reading's age. |
 | Phone clock wrong | Nothing | Countdowns use the server's clock. |
 | `live.` loses edge caching or gets a second CORS header | Possibly no live times (CORS) or more R2 reads | `check-live` fails within 30 minutes and GitHub emails the owner. |
 
@@ -110,4 +125,4 @@ Durable Object duration is the tightest line, and the reason two details matter:
 
 - `tests/` (Vitest): routing, data invariants, ETA formatting, payload validation, the arrivals document, track geometry, and the client store's cadence, clock and merge logic.
 - `cloudflare/poller/test/` (Vitest in workerd via `@cloudflare/vitest-plugin`): the real Durable Object with a local R2 bucket and a mocked upstream — batching, 429 handling, outage backoff and recovery, skipped writes, eviction — plus pure tests of the scheduling module.
-- `e2e/` (Playwright, desktop + Pixel 7) against the production build served by `wrangler dev` with the real response headers: tap a marker, search, plan a route, walking transfer, URL sync, Thai, outage message, headers/manifest. Any console error or CSP violation fails the test.
+- `e2e/` (Playwright, desktop + Pixel 7; includes offline reload after one visit, the station alert, and axe-core WCAG 2.2 AA audits) against the production build served by `wrangler dev` with the real response headers: tap a marker, search, plan a route, walking transfer, URL sync, Thai, outage message, headers/manifest. Any console error or CSP violation fails the test.

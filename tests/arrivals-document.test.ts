@@ -66,7 +66,7 @@ describe("buildArrivalsDocument", () => {
     );
     const done = buildArrivalsDocument({ A: reading("A", 0) }, ["A", "B"], true, NOW);
     expect(done.document.complete).toBe(true);
-    expect(done.cacheControl).toBe("public, max-age=0, s-maxage=10");
+    expect(done.cacheControl).toBe("public, max-age=0, s-maxage=10, stale-if-error=300");
   });
 
   it("isn't complete without a single fresh reading, unless upstream is down", () => {
@@ -74,7 +74,7 @@ describe("buildArrivalsDocument", () => {
     expect(buildArrivalsDocument(stale, ["A"], true, NOW).document.complete).toBe(false);
     const res = buildArrivalsDocument(stale, ["A"], false, NOW, undefined, down);
     expect(res.document.complete).toBe(true);
-    expect(res.cacheControl).toBe("public, max-age=0, s-maxage=30");
+    expect(res.cacheControl).toBe("public, max-age=0, s-maxage=30, stale-if-error=300");
     expect(res.document.status).toBe(down);
   });
 

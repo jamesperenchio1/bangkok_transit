@@ -1,13 +1,16 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { X, MapPin, ArrowRight } from "lucide-react";
 import { useArrivals } from "@/lib/use-arrivals";
 import { arrivalClockTime, minutesLabel, upcomingTrains, updatedAgoLabel } from "@/lib/format-eta";
 import type { Station } from "@/data/stations";
 import { terminusInDirection, type PathResult } from "@/lib/transit-graph";
 import type { GeoPosition } from "@/lib/use-geolocation";
-import { LINE_COLORS } from "@/lib/line-colors";
+import { LINE_COLORS, LINE_NAMES } from "@/lib/line-colors";
 import { stationName, useT } from "@/lib/i18n";
+import { StopAlertControl } from "@/components/StopAlertControl";
+import type { StopAlert } from "@/lib/use-stop-alert";
 
 function directionsUrl(
   origin: { lat: number; lon: number },
@@ -25,7 +28,7 @@ function GoogleMapsLink({ href }: { href: string }) {
       rel="noopener noreferrer"
       className="flex w-fit items-center gap-1.5 rounded-full border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
     >
-      <MapPin size={14} />
+      <MapPin size={14} aria-hidden="true" />
       {t.googleMaps}
     </a>
   );
@@ -36,15 +39,57 @@ export type RoutePanelState = { mode: "route"; start: Station; destination: Stat
 export interface RoutePanelProps {
   state: RoutePanelState | null;
   userPosition: GeoPosition | null;
+  stopAlert: StopAlert;
   onClose: () => void;
 }
 
-export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
+export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePanelProps) {
   const open = state !== null;
   const { lang, t } = useT();
+  const headingRef = useRef<HTMLDivElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  // Latest onClose without re-running the focus effect on every parent render.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
+  // A non-modal dialog: on open, move focus to its heading so keyboard and
+  // screen-reader users land on the route; on close, hand focus back to
+  // whatever opened it. Escape closes.
+  useEffect(() => {
+    if (!open) return;
+    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    headingRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCloseRef.current();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      const target = returnFocusRef.current;
+      if (target?.isConnected) target.focus();
+    };
+  }, [open]);
+
+  const from = state ? stationName(state.start, lang) : "";
+  const to = state ? stationName(state.destination, lang) : "";
+  const summary = state?.path
+    ? [t.stops(state.path.stops), t.changes(state.path.changes), t.aboutMinutes(state.path.minutes)].join(", ")
+    : state
+      ? t.noRoute
+      : "";
 
   return (
+    <>
+    {/* Always mounted so assistive tech reliably announces the change. */}
+    <p className="sr-only" role="status" lang={lang}>
+      {state ? t.routeFound(from, to, summary) : ""}
+    </p>
     <div
+      role="dialog"
+      aria-modal="false"
+      aria-label={open ? t.routeDialog(from, to) : undefined}
       className={`fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border-t border-neutral-200 bg-white shadow-2xl transition-transform duration-200 dark:border-neutral-800 dark:bg-neutral-900 ${
         open ? "translate-y-0" : "translate-y-full"
       }`}
@@ -54,17 +99,17 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
       {state?.mode === "route" && (
         <div className="flex max-h-[70vh] flex-col overflow-y-auto p-4">
           <div className="mb-3 flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <span>{stationName(state.start, lang)}</span>
-              <ArrowRight size={14} className="shrink-0 text-neutral-400" />
-              <span>{stationName(state.destination, lang)}</span>
+            <div ref={headingRef} tabIndex={-1} lang={lang} className="flex items-center gap-2 text-sm font-semibold outline-none">
+              <span>{from}</span>
+              <ArrowRight size={14} className="shrink-0 text-neutral-600 dark:text-neutral-400" aria-label={t.destination} role="img" />
+              <span>{to}</span>
             </div>
             <button
               onClick={onClose}
-              className="rounded-full p-1.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
               aria-label={t.close}
             >
-              <X size={20} />
+              <X size={20} aria-hidden="true" />
             </button>
           </div>
 
@@ -76,8 +121,10 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
             />
           </div>
 
+          {state.path && <StopAlertControl alert={stopAlert} />}
+
           {!state.path && (
-            <p className="py-4 text-center text-sm text-neutral-500">
+            <p className="py-4 text-center text-sm text-neutral-600 dark:text-neutral-400">
               {t.noRoute}
             </p>
           )}
@@ -131,11 +178,14 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
                         {stationName(leg.station, lang)}
                         {leg.isChange && (
                           <span className="ml-1.5 inline-flex items-center gap-1" title={t.changeLine}>
+                            <span className="sr-only">
+                              {nextRide?.line ? t.changeLineTo(LINE_NAMES[nextRide.line]) : t.changeLine}
+                            </span>
                             <span
                               className="h-2.5 w-2.5 rounded-full ring-1 ring-white dark:ring-neutral-900"
                               style={{ backgroundColor: incomingColor ?? "#999" }}
                             />
-                            <ArrowRight size={10} className="text-neutral-400" />
+                            <ArrowRight size={10} className="text-neutral-600 dark:text-neutral-400" aria-hidden="true" />
                             <span
                               className="h-2.5 w-2.5 rounded-full ring-1 ring-white dark:ring-neutral-900"
                               style={{ backgroundColor: nextLineColor ?? "#999" }}
@@ -144,10 +194,14 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
                         )}
                       </p>
                       {leg.mode === "walk" && leg.walkMeters !== undefined && (
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400">{t.walked(leg.walkMeters)}</p>
+                        <p className="text-xs text-neutral-600 dark:text-neutral-400">{t.walked(leg.walkMeters)}</p>
                       )}
                       {leg.boardToward && (
                         <p className="text-xs text-neutral-600 dark:text-neutral-300">
+                          {nextLeg?.line && (
+                            // The line by name, so it never depends on colour alone.
+                            <span lang="en" className="font-medium">{LINE_NAMES[nextLeg.line]} · </span>
+                          )}
                           {t.boardToward(stationName(leg.boardToward, lang))}
                         </p>
                       )}
@@ -167,6 +221,7 @@ export function RoutePanel({ state, userPosition, onClose }: RoutePanelProps) {
         </div>
       )}
     </div>
+  </>
   );
 }
 
@@ -184,14 +239,14 @@ function LiveEta({ station, directionKey }: { station: Station; directionKey?: s
   if (!data) return null;
   // Last-known (not live) data is still shown, with its age, in amber.
   const age = live ? null : (
-    <span className="text-amber-600 dark:text-amber-400"> · {t.lastKnown}, {updatedAgoLabel(data.timestamp, now, t)}</span>
+    <span className="text-amber-800 dark:text-amber-300"> · {t.lastKnown}, {updatedAgoLabel(data.timestamp, now, t)}</span>
   );
   if (!data.service_active) {
     // Upstream's next_service string already includes its own leading "~"
     // (e.g. "~05:30") - strip it before adding ours, or it doubles up.
     const nextService = data.next_service?.replace(/^~\s*/, "") ?? "?";
     return (
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-neutral-600 dark:text-neutral-400">
         {t.notRunning(nextService)}
         {age}
       </p>

@@ -1,4 +1,4 @@
-import type { LineKey } from "@/data/stations";
+import { stations, type LineKey } from "@/data/stations";
 
 /**
  * Canonical per-line colors, matching each line's official brand color as
@@ -32,3 +32,17 @@ export function readableTextColor(hex: string): string {
   const yiq = (r * 299 + g * 587 + b * 114) / 1000;
   return yiq >= 150 ? "#171717" : "#ffffff";
 }
+
+/**
+ * Human-readable line names ("BTS Sukhumvit Line"), so a line is never
+ * identified by colour alone - screen readers and colour-blind users get the
+ * name as text. Derived from the station data, which already carries them.
+ */
+export const LINE_NAMES: Record<LineKey, string> = (() => {
+  const names = {} as Record<LineKey, string>;
+  for (const s of stations) for (const l of s.lines) names[l.line] ??= l.name;
+  return names;
+})();
+
+/** Display order for grouping stations by line. */
+export const LINE_ORDER: LineKey[] = ["sukhumvit", "silom", "gold", "yellow", "pink", "blue", "purple", "arl", "srtRed"];

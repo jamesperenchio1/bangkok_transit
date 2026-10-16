@@ -22,7 +22,7 @@ const openFreeMapCache: RuntimeCaching = {
   matcher: ({ url }) => url.hostname === "tiles.openfreemap.org",
   handler: new CacheFirst({
     cacheName: "openfreemap-tiles",
-    plugins: [new ExpirationPlugin({ maxEntries: 2000, maxAgeSeconds: 60 * 60 * 24 * 30 })],
+    plugins: [new ExpirationPlugin({ maxEntries: 3000, maxAgeSeconds: 60 * 60 * 24 * 90 })],
   }),
 };
 
@@ -38,6 +38,11 @@ const liveArrivals: RuntimeCaching = {
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
+  // The shell ("/", added in next.config.ts) is precached, so a cold start
+  // offline - or online - answers from the cache at once instead of waiting
+  // out a network timeout. Query strings are ignored so a shared
+  // `/?from=N8&to=CEN` link opens offline too: the route is read client-side.
+  precacheOptions: { cleanupOutdatedCaches: true, ignoreURLParametersMatching: [/.*/] },
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,

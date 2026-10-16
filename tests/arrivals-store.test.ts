@@ -122,4 +122,24 @@ describe("startArrivalsPolling", () => {
     await vi.advanceTimersByTimeAsync(15_000);
     expect(Object.keys(useArrivalsStore.getState().map)).toEqual(["N8"]);
   });
+  it("goes offline without fetching, keeps held times, and resumes on `online`", async () => {
+    const fetch = serve({ arrivals: { N8: reading("N8", NOW) }, complete: true });
+    const { startArrivalsPolling, useArrivalsStore } = await loadStore();
+    startArrivalsPolling();
+    await vi.waitFor(() => expect(useArrivalsStore.getState().settled).toBe(true));
+    expect(fetch).toHaveBeenCalledTimes(1);
+
+    const onLine = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    window.dispatchEvent(new Event("offline"));
+    expect(useArrivalsStore.getState().offline).toBe(true);
+    await vi.advanceTimersByTimeAsync(45_000);
+    expect(fetch).toHaveBeenCalledTimes(1); // no requests while offline
+    expect(Object.keys(useArrivalsStore.getState().map)).toEqual(["N8"]);
+
+    onLine.mockReturnValue(true);
+    window.dispatchEvent(new Event("online"));
+    expect(useArrivalsStore.getState().offline).toBe(false);
+    // resume() also grants a few quick retries, so more than one call.
+    await vi.waitFor(() => expect(fetch.mock.calls.length).toBeGreaterThan(1));
+  });
 });

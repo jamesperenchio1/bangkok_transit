@@ -61,6 +61,12 @@ interface ArrivalsStore {
   settled: boolean;
   /** The upstream API's health per the latest document (null until known, or from an older poller). */
   upstream: UpstreamState | null;
+  /**
+   * True when the device reports no connection. Live times can't update, but
+   * everything else in the app works from local data, so this only changes
+   * what the time displays say - never blocks anything.
+   */
+  offline: boolean;
   setMap: (map: ArrivalsMap) => void;
 }
 
@@ -164,6 +170,7 @@ export const useArrivalsStore = create<ArrivalsStore>((set) => ({
   clockOffsetMs: 0,
   settled: false,
   upstream: null,
+  offline: false,
   setMap: (map) => set({ map }),
 }));
 
@@ -183,6 +190,8 @@ export function startArrivalsPolling() {
   if (Object.keys(seeded).length > 0) {
     useArrivalsStore.getState().setMap(seeded);
   }
+
+  useArrivalsStore.setState({ offline: !navigator.onLine });
 
   let fastPolls = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -213,17 +222,28 @@ export function startArrivalsPolling() {
     lastPollStart = Date.now();
     let complete = false;
     let answered = false;
+    // No connection: don't fire a request that can only fail (it would just
+    // wake the radio and log errors). The `online` event resumes polling at
+    // once; the held last-known times keep counting down meanwhile.
+    if (!navigator.onLine) {
+      useArrivalsStore.setState({ offline: true, settled: true });
+      inFlight = false;
+      if (!document.hidden) timer = setTimeout(poll, POLL_MS);
+      return;
+    }
     try {
-      // `no-store` only skips the browser's own HTTP cache; the request is
-      // still answered by the shared CDN copy, never by a per-user poll.
+      // `no-cache` revalidates with the CDN's ETag on every poll, so an
+      // unchanged document (overnight, an outage) costs a 304 instead of the
+      // full body, yet is never served stale from this device's HTTP cache.
+      // Still answered by the shared CDN copy, never by a per-user poll.
       const res = await fetch(ARRIVALS_URL, {
-        cache: "no-store",
+        cache: "no-cache",
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
       if (res.ok) {
         const json = (await res.json()) as Partial<ArrivalsDocument> & { arrivals?: Record<string, unknown> };
         answered = true;
-        useArrivalsStore.setState({ upstream: json.status?.state ?? null });
+        useArrivalsStore.setState({ upstream: json.status?.state ?? null, offline: false });
 
         const measured = serverNowFrom(res);
         if (measured !== null) {
@@ -253,6 +273,7 @@ export function startArrivalsPolling() {
     } catch {
       // Network hiccup or timeout: keep showing what's held (its age is shown
       // on the card); renders still drop anything past MAX_SHOW_AGE_MS.
+      if (!navigator.onLine) useArrivalsStore.setState({ offline: true });
     } finally {
       inFlight = false;
       if (!useArrivalsStore.getState().settled) useArrivalsStore.setState({ settled: true });
@@ -281,7 +302,11 @@ export function startArrivalsPolling() {
   // back is exactly when they want fresh times. The same goes for coming
   // back online and for a page restored from the back/forward cache.
   document.addEventListener("visibilitychange", () => (document.hidden ? stop() : resume()));
-  window.addEventListener("online", resume);
+  window.addEventListener("online", () => {
+    useArrivalsStore.setState({ offline: false });
+    resume();
+  });
+  window.addEventListener("offline", () => useArrivalsStore.setState({ offline: true }));
   window.addEventListener("pageshow", (e) => {
     if (e.persisted) resume();
   });
