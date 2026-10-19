@@ -13,7 +13,7 @@ const ROOT = path.join(import.meta.dirname, "..");
 const svg = readFileSync(path.join(ROOT, "public/icons/icon.svg"), "utf8");
 const SIZES = { "icon-192.png": 192, "icon-512.png": 512, "apple-touch-icon.png": 180 };
 
-const browser = await chromium.launch();
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
 const page = await browser.newPage();
 for (const [name, size] of Object.entries(SIZES)) {
   await page.setViewportSize({ width: size, height: size });
