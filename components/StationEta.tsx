@@ -4,6 +4,7 @@ import { useArrivals } from "@/lib/use-arrivals";
 import {
   arrivalClockTime,
   minutesLabel,
+  trainEtaMinutes,
   upcomingTrains,
   updatedAgoLabel,
 } from "@/lib/format-eta";
@@ -38,7 +39,7 @@ function PlatformTimes({
       </p>
       <ul className="mt-0.5 flex flex-col">
         {trains.map(({ train, left }, i) => {
-          const clockTime = arrivalClockTime(timestamp, train.eta_precise ?? train.eta_minutes, lang);
+          const clockTime = arrivalClockTime(timestamp, trainEtaMinutes(train), lang);
           const soon = left !== null && left <= 1;
           return (
             <li key={`${train.train_no}-${i}`} className="flex items-baseline gap-1.5 leading-snug">
