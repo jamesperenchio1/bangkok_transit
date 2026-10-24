@@ -104,6 +104,8 @@ npm run lint           # warnings fail
 npm run typecheck
 npm test               # Vitest unit tests (tests/)
 npm run test:e2e       # Playwright against the production build via wrangler dev
+npm run sim            # AI user-swarm sweep against out/ (exits 1 on major+ findings)
+npm run sim:acceptance # the harness's own 5 determinism tests
 npm start              # build + serve out/ the way production does
 npm run check:live     # production health check
 cd cloudflare/poller && npm install && npm run typecheck && npm test && npm run smoke
@@ -113,3 +115,29 @@ CI (`.github/workflows/ci.yml`) runs all of the above on every push/PR.
 Deploys are Cloudflare Workers Builds on push to `main` (site from the repo
 root, poller from `cloudflare/poller`). `live-check.yml` checks production
 every 30 minutes.
+
+## Swarm harness (`scripts/sim/`)
+
+`npm run sim` boots the built `out/` export on a local static server and drives
+it with several simulated riders (persona + scenario pairs in
+`scripts/sim/personas.mjs`) in real headless Chromium. It exists to find bugs a
+human click-through misses, without any per-user server cost.
+
+- Checks are deterministic and named (`build.asset-hash`, `sw.no-stale`,
+  `search.finds-station`, …). Each one records a finding whether it passes or
+  fails; only `blocker` and `major` failures exit non-zero, by default. Use
+  `--fail-on=any` to gate on everything or `--no-fail-on-findings` to never gate.
+- Output goes to `sim-artifacts/<timestamp>/` (`report.json`, `findings.jsonl`,
+  `report.md`, `screenshots/`), which is gitignored. `--out=DIR` picks the
+  directory; `--personas=a,b` and `--seed=X` make a run reproducible.
+- Acceptance criteria for the harness itself are in
+  `npm run sim:acceptance` (identical finding ids for the same seed, valid
+  `report.json`, a blocker exiting 1 with no flag, screenshots resolving to real
+  files, and a parseable workflow). It builds nothing — run `npm run build`
+  first.
+- Headless Chromium has no WebGL2 by default, which makes MapLibre show the
+  error boundary instead of the map. `run()` launches with
+  `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`; keep
+  those flags if you touch the launch options.
+- `--repro` is recorded in the log only; Phase 1 does not check out the reported
+  commit. The findings' `repro.command` is the runnable form.

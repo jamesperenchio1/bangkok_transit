@@ -27,6 +27,10 @@ const eslintConfig = defineConfig([
     ".wrangler/**",
     "cloudflare/**/.wrangler/**",
     "cloudflare/**/worker-configuration.d.ts",
+    "venv-scrape/**",
+    ".venv/**",
+    "venv/**",
+    ".claude/worktrees/**",
   ]),
 ]);
 

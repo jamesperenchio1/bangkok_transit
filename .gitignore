@@ -53,3 +53,6 @@ next-env.d.ts
 # playwright
 /playwright-report/
 /test-results/
+
+# simulation harness output
+/sim-artifacts/
