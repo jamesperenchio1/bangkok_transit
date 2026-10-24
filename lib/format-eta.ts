@@ -16,11 +16,36 @@ const bangkokClocks: Record<Lang, Intl.DateTimeFormat> = {
  * fetch timestamp plus the reported ETA - not from the client's clock,
  * so a cached read still shows the time that data actually implied.
  */
-export function arrivalClockTime(fromIso: string, etaMinutes: number | undefined, lang: Lang): string | null {
-  if (etaMinutes === undefined || etaMinutes === null) return null;
+export function arrivalClockTime(
+  fromIso: string,
+  etaMinutes: number | null | undefined,
+  lang: Lang,
+): string | null {
+  if (etaMinutes === undefined || etaMinutes === null || !Number.isFinite(etaMinutes)) return null;
   const from = parseUtc(fromIso);
   if (Number.isNaN(from)) return null;
   return bangkokClocks[lang].format(new Date(from + etaMinutes * 60_000));
+}
+
+/**
+ * The upstream is undocumented, so a train's ETA field can be missing or the
+ * wrong type. Coerce what is usable and ignore the rest: a malformed ETA must
+ * never blank the station card - a NaN that reaches Intl.DateTimeFormat
+ * throws "Invalid time value", which takes the popup's whole React root down
+ * with it (an empty card, no Start/Destination buttons).
+ */
+export function trainEtaMinutes(train: {
+  eta_minutes?: unknown;
+  eta_precise?: unknown;
+}): number | null {
+  for (const v of [train.eta_precise, train.eta_minutes]) {
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "string" && v.trim() !== "") {
+      const n = Number(v);
+      if (Number.isFinite(n)) return n;
+    }
+  }
+  return null;
 }
 
 function parseUtc(iso: string): number {
@@ -48,8 +73,8 @@ export function trainCountdown(
   train: { eta_minutes?: number; eta_precise?: number },
   now: number,
 ): { minutes: number; departed: boolean } | null {
-  const eta = train.eta_precise ?? train.eta_minutes;
-  if (eta === undefined || eta === null) return null;
+  const eta = trainEtaMinutes(train);
+  if (eta === null) return null;
   const from = parseUtc(fromIso);
   if (Number.isNaN(from)) return null;
   const msLeft = from + eta * 60_000 - now;
