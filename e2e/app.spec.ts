@@ -81,7 +81,7 @@ test.describe("routes", () => {
     const sheet = page.locator("[aria-hidden=false]");
     await expect(sheet.getByText("Chatuchak Park")).toBeVisible();
     await expect(sheet.getByText(/Walk \d+ m from the previous station/)).toBeVisible();
-    await expect(sheet.getByText(/6 stops · no changes · \d+ m walk/)).toBeVisible();
+    await expect(sheet.getByText(/6 stops · 1 change · \d+ m walk/)).toBeVisible();
   });
 
   test("swaps and clears the route", async ({ page }) => {

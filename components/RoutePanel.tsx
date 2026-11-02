@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { X, MapPin, ArrowRight } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { X, MapPin, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import { useArrivals } from "@/lib/use-arrivals";
 import {
   arrivalClockTime,
@@ -32,13 +32,34 @@ function GoogleMapsLink({ href }: { href: string }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex w-fit items-center gap-1.5 rounded-full border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+      className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-700 underline underline-offset-2 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white"
     >
       <MapPin size={14} aria-hidden="true" />
       {t.googleMaps}
     </a>
   );
 }
+
+// A walking transfer that ends in a ride is a change the rider has to make, but
+// the graph only counts line swaps. Counting it keeps "no changes" from
+// contradicting a "64 m walk" on the same line.
+function effectiveChanges(path: PathResult) {
+  let extra = 0;
+  path.legs.forEach((leg, i) => {
+    if (
+      leg.mode === "walk" &&
+      (leg.walkMeters ?? 0) > 0 &&
+      path.legs.slice(i).some((later) => later.mode === "ride")
+    ) {
+      extra += 1;
+    }
+  });
+  return path.changes + extra;
+}
+
+// Remembered for the session: a rider who expanded the stops once usually
+// wants them expanded on the next trip too.
+let showAllStops = false;
 
 export type RoutePanelState = { mode: "route"; start: Station; destination: Station; path: PathResult | null };
 
@@ -54,6 +75,8 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePan
   const { lang, t } = useT();
   const headingRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
+  const [expanded, setExpanded] = useState(showAllStops);
+  const listId = useId();
   // Latest onClose without re-running the focus effect on every parent render.
   const onCloseRef = useRef(onClose);
   useEffect(() => {
@@ -80,163 +103,264 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePan
 
   const from = state ? stationName(state.start, lang) : "";
   const to = state ? stationName(state.destination, lang) : "";
+  const changes = state?.path ? effectiveChanges(state.path) : 0;
   const summary = state?.path
-    ? [t.stops(state.path.stops), t.changes(state.path.changes), t.aboutMinutes(state.path.minutes)].join(", ")
+    ? [t.stops(state.path.stops), t.changes(changes), t.aboutMinutes(state.path.minutes)].join(", ")
     : state
       ? t.noRoute
       : "";
 
+  const legs = state?.path?.legs ?? [];
+  const lastIndex = legs.length - 1;
+  // Long trips hide the uneventful middle, but always keep the first stop
+  // after boarding and the stop before the destination so the route still
+  // reads as a journey rather than a list.
+  const collapsible = !!state?.path && state.path.stops > 8 && lastIndex > 3;
+  const hidden = legs.map(() => false);
+  if (collapsible && !expanded) {
+    for (let i = 2; i <= lastIndex - 2; i++) {
+      const leg = legs[i];
+      if (leg.mode === "walk" || leg.isChange) continue;
+      hidden[i] = true;
+    }
+  }
+
   return (
     <>
-    {/* Always mounted so assistive tech reliably announces the change. */}
-    <p className="sr-only" role="status" lang={lang}>
-      {state ? t.routeFound(from, to, summary) : ""}
-    </p>
-    <div
-      role="dialog"
-      aria-modal="false"
-      aria-label={open ? t.routeDialog(from, to) : undefined}
-      className={`fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border-t border-neutral-200 bg-white shadow-2xl transition-transform duration-200 dark:border-neutral-800 dark:bg-neutral-900 ${
-        open ? "translate-y-0" : "translate-y-full"
-      }`}
-      style={{ maxHeight: "70vh" }}
-      aria-hidden={!open}
-    >
-      {state?.mode === "route" && (
-        <div className="flex max-h-[70vh] flex-col overflow-y-auto p-4">
-          <div className="mb-3 flex items-start justify-between gap-2">
-            <div ref={headingRef} tabIndex={-1} lang={lang} className="flex items-center gap-2 text-sm font-semibold outline-none">
-              <span>{from}</span>
-              <ArrowRight size={14} className="shrink-0 text-neutral-600 dark:text-neutral-400" aria-label={t.destination} role="img" />
-              <span>{to}</span>
+      {/* Always mounted so assistive tech reliably announces the change. */}
+      <p className="sr-only" role="status" lang={lang}>
+        {state ? t.routeFound(from, to, summary) : ""}
+      </p>
+      <div
+        role="dialog"
+        aria-modal="false"
+        aria-label={open ? t.routeDialog(from, to) : undefined}
+        className={`fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border-t border-neutral-200 bg-white shadow-2xl transition-transform duration-200 dark:border-neutral-800 dark:bg-neutral-900 ${
+          open ? "translate-y-0" : "translate-y-full"
+        }`}
+        style={{ maxHeight: "70vh" }}
+        aria-hidden={!open}
+      >
+        {state?.mode === "route" && (
+          <div className="flex max-h-[70vh] flex-col overflow-y-auto">
+            <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white/95 px-4 pt-3 pb-2.5 backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95">
+              <div className="flex items-start justify-between gap-2">
+                <div ref={headingRef} tabIndex={-1} className="min-w-0 outline-none">
+                  <p
+                    className="flex items-center gap-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-400"
+                    lang={lang}
+                  >
+                    <span className="truncate" title={from}>{from}</span>
+                    <ArrowRight
+                      size={12}
+                      className="shrink-0"
+                      aria-label={t.destination}
+                      role="img"
+                    />
+                    <span className="truncate" title={to}>{to}</span>
+                  </p>
+                  {state.path && (
+                    <p className="mt-0.5 text-2xl font-semibold tracking-tight">
+                      {t.aboutMinutes(state.path.minutes)}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={onClose}
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                  aria-label={t.close}
+                >
+                  <X size={20} aria-hidden="true" />
+                </button>
+              </div>
+              {state.path && <RouteSummary path={state.path} changes={changes} />}
             </div>
-            <button
-              onClick={onClose}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-              aria-label={t.close}
-            >
-              <X size={20} aria-hidden="true" />
-            </button>
-          </div>
 
-          {state.path && <RouteSummary path={state.path} />}
+            {state.path && (
+              <div className="px-4 pt-2">
+                <StopAlertControl alert={stopAlert} />
+              </div>
+            )}
 
-          <div className="mb-3">
-            <GoogleMapsLink
-              href={directionsUrl(userPosition ?? state.start, state.destination)}
-            />
-          </div>
+            {!state.path && (
+              <p className="px-4 py-6 text-center text-sm text-neutral-600 dark:text-neutral-400">
+                {t.noRoute}
+              </p>
+            )}
 
-          {state.path && <StopAlertControl alert={stopAlert} />}
+            {state.path && (
+              <ul id={listId} className="flex flex-col px-4 pt-1">
+                {legs.map((leg, i) => {
+                  const isLast = i === lastIndex;
+                  const nextLeg = legs[i + 1];
+                  // Connector colors: the line ridden into this station, and out of it.
+                  // A walking transfer has no line, so it's drawn dashed and grey.
+                  const incomingColor = leg.mode === "ride" && leg.line ? LINE_COLORS[leg.line] : null;
+                  const outgoingColor = nextLeg?.mode === "ride" && nextLeg.line ? LINE_COLORS[nextLeg.line] : null;
+                  const dotColor = incomingColor ?? outgoingColor ?? LINE_COLORS[leg.station.lines[0].line];
+                  // For a change badge: the next line actually ridden, past any walk.
+                  const nextRide = legs.slice(i + 1).find((l) => l.mode === "ride");
+                  const nextLineColor = nextRide?.line ? LINE_COLORS[nextRide.line] : null;
 
-          {!state.path && (
-            <p className="py-4 text-center text-sm text-neutral-600 dark:text-neutral-400">
-              {t.noRoute}
-            </p>
-          )}
+                  // A hidden run is drawn once, at its first station, as one tappable row.
+                  if (hidden[i]) {
+                    if (hidden[i - 1]) return null;
+                    let count = 0;
+                    while (i + count < legs.length && hidden[i + count]) count += 1;
+                    return (
+                      <li key={`collapsed-${i}`} className="flex items-stretch gap-3">
+                        <div className="relative w-4 shrink-0">
+                          <span className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-l-2 border-dotted border-neutral-300 dark:border-neutral-600" />
+                        </div>
+                        <div className="flex-1 py-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              showAllStops = true;
+                              setExpanded(true);
+                            }}
+                            aria-controls={listId}
+                            aria-expanded={false}
+                            className="inline-flex min-h-11 items-center gap-1 rounded-full border border-neutral-300 px-3 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                          >
+                            <ChevronDown size={14} aria-hidden="true" />
+                            {t.showStops(count)}
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  }
 
-          {state.path && (
-            <ul className="flex flex-col">
-              {state.path.legs.map((leg, i, legs) => {
-                const isLast = i === legs.length - 1;
-                const nextLeg = legs[i + 1];
-                // Connector colors: the line ridden into this station, and out of it.
-                // A walking transfer has no line, so it's drawn dashed and grey.
-                const incomingColor = leg.mode === "ride" && leg.line ? LINE_COLORS[leg.line] : null;
-                const outgoingColor = nextLeg?.mode === "ride" && nextLeg.line ? LINE_COLORS[nextLeg.line] : null;
-                const dotColor = incomingColor ?? outgoingColor ?? LINE_COLORS[leg.station.lines[0].line];
-                // For a change badge: the next line actually ridden, past any walk.
-                const nextRide = legs.slice(i + 1).find((l) => l.mode === "ride");
-                const nextLineColor = nextRide?.line ? LINE_COLORS[nextRide.line] : null;
-
-                return (
-                  <li key={`${leg.station.code}-${i}`} className="flex items-stretch gap-3">
-                    <div className="relative w-4 shrink-0">
-                      {i > 0 &&
-                        (leg.mode === "walk" ? (
-                          <span className="absolute top-0 left-1/2 h-1/2 -translate-x-1/2 border-l-2 border-dotted border-neutral-400" />
-                        ) : (
-                          incomingColor && (
-                            <span
-                              className="absolute top-0 left-1/2 h-1/2 w-0.5 -translate-x-1/2"
-                              style={{ backgroundColor: incomingColor }}
-                            />
-                          )
-                        ))}
-                      {!isLast &&
-                        (nextLeg.mode === "walk" ? (
-                          <span className="absolute bottom-0 left-1/2 h-1/2 -translate-x-1/2 border-l-2 border-dotted border-neutral-400" />
-                        ) : (
-                          outgoingColor && (
-                            <span
-                              className="absolute bottom-0 left-1/2 h-1/2 w-0.5 -translate-x-1/2"
-                              style={{ backgroundColor: outgoingColor }}
-                            />
-                          )
-                        ))}
-                      <span
-                        className="absolute top-1/2 left-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white dark:ring-neutral-900"
-                        style={{ backgroundColor: dotColor }}
-                      />
-                    </div>
-                    <div className="flex-1 py-1.5">
-                      <p className="flex items-center text-sm font-medium">
-                        {stationName(leg.station, lang)}
-                        {leg.isChange && (
-                          <span className="ml-1.5 inline-flex items-center gap-1" title={t.changeLine}>
-                            <span className="sr-only">
-                              {nextRide?.line ? t.changeLineTo(LINE_NAMES[nextRide.line]) : t.changeLine}
-                            </span>
-                            <span
-                              className="h-2.5 w-2.5 rounded-full ring-1 ring-white dark:ring-neutral-900"
-                              style={{ backgroundColor: incomingColor ?? "#999" }}
-                            />
-                            <ArrowRight size={10} className="text-neutral-600 dark:text-neutral-400" aria-hidden="true" />
-                            <span
-                              className="h-2.5 w-2.5 rounded-full ring-1 ring-white dark:ring-neutral-900"
-                              style={{ backgroundColor: nextLineColor ?? "#999" }}
-                            />
-                          </span>
-                        )}
-                      </p>
-                      {leg.mode === "walk" && leg.walkMeters !== undefined && (
-                        <p className="text-xs text-neutral-600 dark:text-neutral-400">{t.walked(leg.walkMeters)}</p>
-                      )}
-                      {leg.boardToward && (
-                        <p className="text-xs text-neutral-600 dark:text-neutral-300">
-                          {nextLeg?.line && (
-                            // The line by name, so it never depends on colour alone.
-                            <span lang="en" className="font-medium">{LINE_NAMES[nextLeg.line]} · </span>
-                          )}
-                          {t.boardToward(stationName(leg.boardToward, lang))}
-                        </p>
-                      )}
-                      {leg.boardToward && leg.station.hasLiveArrivals && nextLeg?.line && (
-                        // Live times for the platform this route boards from.
-                        <LiveEta
-                          station={leg.station}
-                          directionKey={terminusInDirection(nextLeg.line, leg.station.code, nextLeg.station.code)}
+                  const isDestination = isLast;
+                  return (
+                    <li key={`${leg.station.code}-${i}`} className="flex items-stretch gap-3">
+                      <div className="relative w-4 shrink-0">
+                        {i > 0 &&
+                          (leg.mode === "walk" ? (
+                            <span className="absolute top-0 left-1/2 h-1/2 -translate-x-1/2 border-l-2 border-dotted border-neutral-400" />
+                          ) : (
+                            incomingColor && (
+                              <span
+                                className="absolute top-0 left-1/2 h-1/2 w-0.5 -translate-x-1/2"
+                                style={{ backgroundColor: incomingColor }}
+                              />
+                            )
+                          ))}
+                        {!isLast &&
+                          (nextLeg.mode === "walk" ? (
+                            <span className="absolute bottom-0 left-1/2 h-1/2 -translate-x-1/2 border-l-2 border-dotted border-neutral-400" />
+                          ) : (
+                            outgoingColor && (
+                              <span
+                                className="absolute bottom-0 left-1/2 h-1/2 w-0.5 -translate-x-1/2"
+                                style={{ backgroundColor: outgoingColor }}
+                              />
+                            )
+                          ))}
+                        <span
+                          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white dark:ring-neutral-900 ${
+                            isDestination ? "h-3.5 w-3.5" : "h-2.5 w-2.5"
+                          }`}
+                          style={{ backgroundColor: dotColor }}
                         />
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      )}
-    </div>
-  </>
+                      </div>
+                      <div className={`flex-1 py-1.5 ${isDestination ? "pb-3" : ""}`}>
+                        <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm font-medium">
+                          <span className={isDestination ? "font-semibold" : undefined}>
+                            {stationName(leg.station, lang)}
+                          </span>
+                          <span className="rounded bg-neutral-100 px-1 py-px font-mono text-[10px] font-semibold tracking-wide text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
+                            {leg.station.code}
+                          </span>
+                          {i === 0 && (
+                            <span className="rounded-full bg-green-700 px-1.5 py-px text-[10px] font-semibold text-white">
+                              {t.boardHere}
+                            </span>
+                          )}
+                          {isDestination && (
+                            <span className="rounded-full bg-green-700 px-1.5 py-px text-[10px] font-semibold text-white">
+                              {t.getOffHere}
+                            </span>
+                          )}
+                          {leg.isChange && (
+                            <span className="inline-flex items-center gap-1" title={t.changeLine}>
+                              <span className="sr-only">
+                                {nextRide?.line ? t.changeLineTo(LINE_NAMES[nextRide.line]) : t.changeLine}
+                              </span>
+                              <span
+                                className="h-2.5 w-2.5 rounded-full ring-1 ring-white dark:ring-neutral-900"
+                                style={{ backgroundColor: incomingColor ?? "#999" }}
+                              />
+                              <ArrowRight size={10} className="text-neutral-600 dark:text-neutral-400" aria-hidden="true" />
+                              <span
+                                className="h-2.5 w-2.5 rounded-full ring-1 ring-white dark:ring-neutral-900"
+                                style={{ backgroundColor: nextLineColor ?? "#999" }}
+                              />
+                            </span>
+                          )}
+                        </p>
+                        {leg.mode === "walk" && leg.walkMeters !== undefined && (
+                          <p className="text-xs text-neutral-600 dark:text-neutral-400">{t.walked(leg.walkMeters)}</p>
+                        )}
+                        {leg.boardToward && (
+                          <p className="text-xs text-neutral-600 dark:text-neutral-300">
+                            {nextLeg?.line && (
+                              // The line by name, so it never depends on colour alone.
+                              <span lang="en" className="font-medium">{LINE_NAMES[nextLeg.line]} · </span>
+                            )}
+                            {t.boardToward(stationName(leg.boardToward, lang))}
+                          </p>
+                        )}
+                        {leg.boardToward && leg.station.hasLiveArrivals && nextLeg?.line && (
+                          // Live times for the platform this route boards from.
+                          <LiveEta
+                            station={leg.station}
+                            directionKey={terminusInDirection(nextLeg.line, leg.station.code, leg.station.code)}
+                          />
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            {state.path && collapsible && expanded && (
+              <div className="px-4 pb-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    showAllStops = false;
+                    setExpanded(false);
+                  }}
+                  aria-controls={listId}
+                  aria-expanded
+                  className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-neutral-700 underline underline-offset-2 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white"
+                >
+                  <ChevronUp size={14} aria-hidden="true" />
+                  {t.hideStops}
+                </button>
+              </div>
+            )}
+
+            <div className="mt-1 border-t border-neutral-200 px-4 py-2.5 dark:border-neutral-800">
+              <GoogleMapsLink href={directionsUrl(userPosition ?? state.start, state.destination)} />
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
-function RouteSummary({ path }: { path: PathResult }) {
+function RouteSummary({ path, changes }: { path: PathResult; changes: number }) {
   const { t } = useT();
-  const parts = [t.stops(path.stops), t.changes(path.changes)];
+  const parts = [t.stops(path.stops), t.changes(changes)];
   if (path.walkMeters > 0) parts.push(t.walk(path.walkMeters));
   parts.push(t.aboutMinutes(path.minutes));
-  return <p className="-mt-2 mb-3 text-xs text-neutral-600 dark:text-neutral-300">{parts.join(" · ")}</p>;
+  return (
+    <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-300">{parts.join(" · ")}</p>
+  );
 }
 
 function LiveEta({ station, directionKey }: { station: Station; directionKey?: string }) {

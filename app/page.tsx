@@ -55,7 +55,8 @@ function LangToggle() {
           key={l}
           onClick={() => setLang(l)}
           aria-pressed={lang === l}
-          className={`min-h-10 min-w-10 rounded-full px-2 py-1 ${
+          style={{ minWidth: 44, minHeight: 44 }}
+          className={`rounded-full px-2 py-1 ${
             lang === l
               ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
               : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
@@ -97,6 +98,9 @@ export default function Home() {
   const [destination, setDestination] = useState<Station | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [focusStation, setFocusStation] = useState<Station | null>(null);
+  // The map chunk is the biggest download; until it lands the header is the
+  // only thing on screen, so a thin indeterminate bar explains the wait.
+  const [mapReady, setMapReady] = useState(false);
   const { position, error: geoError } = useGeolocation();
   const { lang, t } = useT();
 
@@ -104,6 +108,19 @@ export default function Home() {
     startArrivalsPolling();
     restoreLang();
     scheduleOfflineWarm();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    // Always resolve through a promise: on the server (and in tests) the module
+    // is null, and setting state straight from the effect body would cascade a
+    // render before hydration.
+    void Promise.resolve(transitMapModule).then(() => {
+      if (!cancelled) setMapReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // The route lives in the URL (?from=N15&to=CEN) so a reload, a PWA
@@ -208,55 +225,55 @@ export default function Home() {
       >
         {t.skipToMap}
       </a>
-      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 px-4 py-3 dark:border-neutral-800">
-        <div className="min-w-0 flex-1 basis-48">
-          <h1 className="text-base font-semibold">{t.appTitle}</h1>
-          <p className="truncate text-xs text-neutral-600 dark:text-neutral-400">{subtitle}</p>
-          {(start || destination) && (
-            <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <span className="inline-flex max-w-[40vw] items-center gap-1 rounded-full bg-green-700 py-0 pl-2 pr-0.5 text-[11px] font-medium text-white">
-                <span className="shrink-0">{t.start}:</span>
-                <span className="truncate" lang={start ? lang : undefined}>{start ? stationName(start, lang) : "—"}</span>
-                {start && (
-                  <button onClick={() => setStart(null)} aria-label={t.clearStart} className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
-                    <X size={12} aria-hidden="true" />
-                  </button>
-                )}
-              </span>
-              <button
-                onClick={swapRoute}
-                aria-label={t.swap}
-                title={t.swap}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-              >
-                <ArrowLeftRight size={14} aria-hidden="true" />
-              </button>
-              <span className="inline-flex max-w-[40vw] items-center gap-1 rounded-full border border-green-700 py-0 pl-2 pr-0.5 text-[11px] font-medium text-green-800 dark:border-green-500 dark:text-green-400">
-                <span className="shrink-0">{t.destination}:</span>
-                <span className="truncate" lang={destination ? lang : undefined}>{destination ? stationName(destination, lang) : "—"}</span>
-                {destination && (
-                  <button
-                    onClick={() => {
-                      setDestination(null);
-                      setSheetOpen(false);
-                    }}
-                    aria-label={t.clearDestination}
-                    className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
-                  >
-                    <X size={12} aria-hidden="true" />
-                  </button>
-                )}
-              </span>
-            </div>
+      <header className="flex h-14 shrink-0 items-center gap-1 border-b border-neutral-200 px-2 dark:border-neutral-800">
+        <div className="min-w-0 flex-1 px-1">
+          <h1 className="truncate text-[15px] font-semibold leading-tight">{t.appTitle}</h1>
+          {hasRoute && start && destination ? (
+            <p className="truncate text-[11px] leading-tight text-neutral-600 dark:text-neutral-400">
+              <span lang={lang} title={stationName(start, lang)}>{stationName(start, lang)}</span>
+              <span aria-hidden="true"> → </span>
+              <span lang={lang} title={stationName(destination, lang)}>{stationName(destination, lang)}</span>
+              {path && <span> · {t.aboutMinutes(path.minutes)}</span>}
+            </p>
+          ) : start || destination ? (
+            <p className="truncate text-[11px] leading-tight text-neutral-600 dark:text-neutral-400">
+              {start && !destination ? (
+                <>
+                  <span className="font-medium text-neutral-800 dark:text-neutral-200">{t.start}:</span>{" "}
+                  <span lang={lang}>{stationName(start, lang)}</span>
+                  <span> · {t.hintStartSet}</span>
+                </>
+              ) : (
+                <>
+                  <span className="font-medium text-neutral-800 dark:text-neutral-200">{t.destination}:</span>{" "}
+                  <span lang={lang}>{stationName(destination!, lang)}</span>
+                  <span> · {t.hintDestSet}</span>
+                </>
+              )}
+            </p>
+          ) : (
+            <p className="truncate text-[11px] leading-tight text-neutral-600 dark:text-neutral-400">{subtitle}</p>
           )}
         </div>
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          {(start || destination) && (
+        <div className="flex shrink-0 items-center gap-1">
+          {hasRoute && (
+            <button
+              onClick={swapRoute}
+              aria-label={t.swap}
+              title={t.swap}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+            >
+              <ArrowLeftRight size={16} aria-hidden="true" />
+            </button>
+          )}
+          {hasRoute && (
             <button
               onClick={clearRoute}
-              className="min-h-11 rounded-full border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              aria-label={t.clear}
+              title={t.clear}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-neutral-600 hover:bg-red-50 hover:text-red-700 dark:text-neutral-400 dark:hover:bg-red-950 dark:hover:text-red-400"
             >
-              {t.clear}
+              <X size={16} aria-hidden="true" />
             </button>
           )}
           <LangToggle />
@@ -276,6 +293,15 @@ export default function Home() {
       )}
 
       <main id="map" tabIndex={-1} aria-label={t.mapRegion} className="relative isolate flex-1 overflow-hidden outline-none">
+        {!mapReady && (
+          <div
+            role="progressbar"
+            aria-label={t.loadingMap}
+            className="pointer-events-none absolute inset-x-0 top-0 z-[1001] h-0.5 overflow-hidden bg-neutral-200 dark:bg-neutral-800"
+          >
+            <div className="h-full w-1/3 animate-[progress-slide_1.1s_ease-in-out_infinite] bg-green-700" />
+          </div>
+        )}
         <TransitMap
           onSelectStation={handleSelectStation}
           onSetStart={handleSetStart}

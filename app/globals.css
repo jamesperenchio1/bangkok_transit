@@ -3,24 +3,52 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --surface: #ffffff;
+  --surface-muted: #f5f5f5;
+  --border: #e5e5e5;
+  --brand: #15803d;
+  --brand-strong: #166534;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.06);
+  --shadow-2: 0 4px 12px rgb(0 0 0 / 0.08);
+  --shadow-3: 0 8px 28px rgb(0 0 0 / 0.14);
+  --radius-control: 0.75rem;
+  --radius-sheet: 1rem;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration: 200ms;
+  /* System stack: zero bytes, and the Thai fallback renders far better than
+     Arial (which most phones substitute with a mismatched face). */
+  --font-app:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Thai",
+    "Helvetica Neue", Arial, sans-serif;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --font-sans: var(--font-app);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --surface: #171717;
+    --surface-muted: #262626;
+    --border: #333333;
+    --brand: #22c55e;
+    --brand-strong: #16a34a;
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-2: 0 4px 12px rgb(0 0 0 / 0.5);
+    --shadow-3: 0 8px 28px rgb(0 0 0 / 0.6);
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-app);
+  /* Times and counts change constantly; tabular figures stop them jittering. */
+  font-variant-numeric: tabular-nums;
 }
 
 svg circle {
@@ -38,6 +66,10 @@ svg circle {
 .maplibregl-popup-content {
   background: var(--background) !important;
   color: var(--foreground) !important;
+  /* Roomier card; the right inset clears the enlarged close target. */
+  padding: 14px 46px 14px 16px !important;
+  border-radius: var(--radius-sheet);
+  box-shadow: var(--shadow-3) !important;
 }
 
 .maplibregl-popup-tip {
@@ -47,8 +79,37 @@ svg circle {
   border-right-color: var(--background) !important;
 }
 
+/* MapLibre's default close target is ~24px, well under the 44px minimum the
+   rest of the app keeps (WCAG 2.5.8). The card is a primary touch surface,
+   so enlarge it and centre the glyph. */
 .maplibregl-popup-close-button {
   color: var(--foreground) !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 44px !important;
+  height: 44px !important;
+  top: 2px !important;
+  right: 2px !important;
+  padding: 0 !important;
+  border-radius: 9999px;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.maplibregl-popup-close-button:hover {
+  background: var(--surface-muted);
+}
+
+/* Indeterminate map-load bar: a third of the track sliding across, so the
+   wait reads as "working" without implying a percentage we cannot know. */
+@keyframes progress-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
 }
 
 /* Keyboard focus must always be visible (WCAG 2.4.7); inputs and buttons
