@@ -14,6 +14,8 @@ import { startServer } from "./server.mjs";
 import { docFor } from "./fixtures.mjs";
 import { personas, say } from "./personas.mjs";
 import { makeFinding, severityAtLeast } from "./findings.mjs";
+import { runCoverage } from "./checks/index.mjs";
+import { budgets } from "./budgets.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(__dirname, "../..");
@@ -116,6 +118,17 @@ async function makeSession(browser, persona, cfg, reporter) {
     },
     findings: [],
     shots: [],
+    // A stuck locator used to hang until the whole scenario's budget expired,
+    // which reported "FAILED" with no idea what stalled. This turns a slow
+    // step into a named finding and lets the rest of the checks run.
+    async step(name, fn, ms = 30000) {
+      try {
+        return await withTimeout(Promise.resolve().then(fn), ms, name);
+      } catch (e) {
+        this.check(`step.${name}`, false, { severity: "major", data: { error: e.message } });
+        return null;
+      }
+    },
     check(name, ok, { severity = "major", data = null, steps = null } = {}) {
       const finding = makeFinding({
         persona: this.persona.id,
@@ -545,13 +558,8 @@ async function scenarioFirstTimer(session) {
   }
 
   // Uncaught exceptions are the ones that kill a React root; console noise from
-  // a failed fetch is already covered by the arrivals checks.
-  const pageErrors = session.errors.filter((e) => e.startsWith("pageerror:"));
-  session.check("console.clean", pageErrors.length === 0, {
-    severity: "major",
-    data: { pageErrors: pageErrors.slice(0, 5) },
-  });
-
+  // a failed fetch is already covered by the arrivals checks. `runCoverage`
+  // records console.clean for every persona, so it is not duplicated here.
   await shot(session, "final");
 }
 
@@ -841,7 +849,7 @@ export async function run(options = {}) {
   const startedAt = Date.now();
   console.log(`\n=== Bangkok Transit: real-user simulation ===`);
   console.log(`target: ${cfg.baseURL}`);
-  console.log(`personas: ${personas.length}   concurrency: ${cfg.concurrency}   soak: ${fmtDuration(cfg.soakMs)}`);
+  console.log(`personas: ${(cfg.only ? personas.filter((p) => cfg.only.includes(p.id)) : personas).length}   concurrency: ${cfg.concurrency}   soak: ${fmtDuration(cfg.soakMs)}`);
   console.log(`artifacts: ${cfg.artifactsDir}\n`);
 
   // The default headless shell has no WebGL2 at all -> MapLibre throws
@@ -871,6 +879,11 @@ export async function run(options = {}) {
         const op = SCENARIOS[persona.op];
         if (!op) throw new Error(`unknown op ${persona.op}`);
         await withTimeout(op(session), Math.max(120000, cfg.soakMs + 90000), persona.id);
+        // Phase-2 coverage runs for every persona, not just the first-timer:
+        // layout, tap targets, the route sheet, and console health are cheap
+        // enough to check on each one, while the heavy audits (axe, perf,
+        // network, visual) are gated to the personas that own them.
+        await runCoverage(session, options.budgets ?? budgets);
         reporter.say(persona, "done");
         if (session.errors.length) {
           reporter.fact(persona, "console-errors", { count: session.errors.length, sample: session.errors.slice(0, 3) });

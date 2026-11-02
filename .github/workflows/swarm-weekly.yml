@@ -1,0 +1,40 @@
+name: Swarm (strict)
+
+# The everyday Swarm workflow gates on `major` only, so `minor` and
+# `cosmetic` findings can pile up unnoticed. This weekly run re-runs the same
+# sweep with `--fail-on=any` so the long tail gets a red build at least once a
+# week instead of being ignored forever.
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch: {}
+
+concurrency:
+  group: swarm-strict
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run sim -- --fail-on=any
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sim-artifacts-strict
+          path: sim-artifacts/
+          if-no-files-found: warn
+          retention-days: 30
