@@ -1,7 +1,7 @@
 "use client";
 
-import { useId } from "react";
-import { Bell, BellRing, X } from "lucide-react";
+import { useId, useState } from "react";
+import { Bell, BellRing, ChevronDown, ChevronUp, X } from "lucide-react";
 import type { StopAlert } from "@/lib/use-stop-alert";
 import type { StationsBefore } from "@/lib/stop-alert";
 import { useT } from "@/lib/i18n";
@@ -11,34 +11,54 @@ export function StopAlertControl({ alert }: { alert: StopAlert }) {
   const { t } = useT();
   const id = useId();
   const { settings, update } = alert;
+  // Collapsed by default: the route itself is the reason the sheet is open, so
+  // alert options stay one tap away instead of pushing the legs down.
+  const [open, setOpen] = useState(false);
 
   return (
-    <section aria-label={t.alertOptions} className="mb-3 rounded-xl border border-neutral-200 p-3 dark:border-neutral-700">
-      <button
-        type="button"
-        role="switch"
-        aria-checked={settings.enabled}
-        onClick={() => update({ enabled: !settings.enabled })}
-        className="flex min-h-11 w-full items-center gap-2 text-left text-sm font-medium"
-      >
-        {settings.enabled ? <BellRing size={18} aria-hidden="true" /> : <Bell size={18} aria-hidden="true" />}
-        <span className="flex-1">{t.alertToggle}</span>
-        <span
-          aria-hidden="true"
-          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
-            settings.enabled ? "bg-green-700" : "bg-neutral-400 dark:bg-neutral-600"
-          }`}
+    <section aria-label={t.alertOptions} className="rounded-xl border border-neutral-200 dark:border-neutral-700">
+      <div className="flex items-center gap-1 pr-1">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={settings.enabled}
+          onClick={() => update({ enabled: !settings.enabled })}
+          className="flex min-h-11 flex-1 items-center gap-2 px-3 text-left text-sm font-medium"
         >
+          {settings.enabled ? <BellRing size={18} aria-hidden="true" /> : <Bell size={18} aria-hidden="true" />}
+          <span className="flex-1">{t.alertToggle}</span>
           <span
-            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
-              settings.enabled ? "left-[22px]" : "left-0.5"
+            aria-hidden="true"
+            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+              settings.enabled ? "bg-green-700" : "bg-neutral-400 dark:bg-neutral-600"
             }`}
-          />
-        </span>
-      </button>
+          >
+            <span
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
+                settings.enabled ? "left-[22px]" : "left-0.5"
+              }`}
+            />
+          </span>
+        </button>
+        {settings.enabled && (
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            aria-controls={`${id}-options`}
+            aria-label={t.alertOptions}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+          >
+            {open ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+          </button>
+        )}
+      </div>
 
-      {settings.enabled && (
-        <div className="mt-2 flex flex-col gap-2 text-sm">
+      {settings.enabled && open && (
+        <div
+          id={`${id}-options`}
+          className="flex flex-col gap-2 border-t border-neutral-200 px-3 py-2 text-sm dark:border-neutral-700"
+        >
           <label htmlFor={`${id}-when`} className="flex flex-col gap-1">
             <span className="text-xs font-medium text-neutral-600 dark:text-neutral-300">{t.alertWhen}</span>
             <select

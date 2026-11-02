@@ -742,6 +742,19 @@ function openPopup(
     .setDOMContent(container)
     .addTo(map);
 
+  // MapLibre sizes its close button from the glyph (~7×20). Set the 44 px
+  // target inline so its own stylesheet cannot win the cascade, matching the
+  // WCAG 2.5.8 minimum used everywhere else.
+  const closeButton = popup.getElement()?.querySelector<HTMLElement>(".maplibregl-popup-close-button");
+  if (closeButton) {
+    closeButton.style.width = "44px";
+    closeButton.style.height = "44px";
+    closeButton.style.display = "flex";
+    closeButton.style.alignItems = "center";
+    closeButton.style.justifyContent = "center";
+    closeButton.style.padding = "0";
+  }
+
   popup.on("close", () => {
     // Deferred: a close can now be triggered from inside a React effect (the
     // focus effect replacing this card), where a synchronous unmount of
