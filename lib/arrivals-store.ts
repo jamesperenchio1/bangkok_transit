@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { ageMs, isShowable, isValidArrivals, type Arrivals } from "./bts";
 import { ARRIVALS_URL } from "./arrivals-url";
-import type { ArrivalsDocument, UpstreamState } from "./arrivals-document";
+import { carryOverPlatforms, type ArrivalsDocument, type UpstreamState } from "./arrivals-document";
 
 /**
  * One shared arrivals store for the whole app, fed by the one shared
@@ -160,7 +160,10 @@ export function mergeReadings(held: ArrivalsMap, incoming: Record<string, unknow
   for (const [code, data] of Object.entries(incoming)) {
     if (!isValidArrivals(data) || !isShowable(data.timestamp, now)) continue;
     const current = next[code];
-    if (!current || ageMs(data.timestamp, now) <= ageMs(current.timestamp, now)) next[code] = data;
+    if (!current || ageMs(data.timestamp, now) <= ageMs(current.timestamp, now)) {
+      // Newer wins, but not by erasing trains the older reading listed.
+      next[code] = carryOverPlatforms(current, data, now);
+    }
   }
   return next;
 }

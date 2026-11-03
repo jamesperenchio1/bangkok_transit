@@ -89,3 +89,47 @@ describe("buildArrivalsDocument", () => {
     expect(res.document.total).toBe(1);
   });
 });
+
+describe("carryOverPlatforms", () => {
+  function withTrains(code: string, agoMs: number, etas: number[], platform = "1"): Arrivals {
+    const r = reading(code, agoMs);
+    r.platforms = [
+      { ...r.platforms[0], platform, trains: etas.map((e, i) => ({ train_no: `T${i}`, destination: "x", destination_key: "x", eta_minutes: e, status: "" })) },
+    ];
+    return r;
+  }
+
+  it("keeps older trains, re-timed, when the newer reading lists none", () => {
+    const old = withTrains("A", 60_000, [5, 12]);
+    const empty = withTrains("A", 0, []);
+    const merged = mergeArrivals({ A: old }, { A: empty }, NOW);
+    const p = merged.A.platforms[0];
+    expect(p.trains.map((t) => Math.round(t.eta_minutes!))).toEqual([4, 11]);
+    expect(p.carried_from).toBe(old.timestamp);
+    expect(merged.A.timestamp).toBe(empty.timestamp);
+  });
+
+  it("drops carried trains that have already left, and shows only what is known", () => {
+    const old = withTrains("A", 5 * 60_000, [1, 9]);
+    const merged = mergeArrivals({ A: old }, { A: withTrains("A", 0, []) }, NOW);
+    expect(merged.A.platforms[0].trains).toHaveLength(1);
+  });
+
+  it("keeps a direction upstream left out, next to a fresh one", () => {
+    const old = withTrains("A", 60_000, [5]);
+    old.platforms.push({ ...old.platforms[0], platform: "2", trains: [{ ...old.platforms[0].trains[0], eta_minutes: 8 }] });
+    const merged = mergeArrivals({ A: old }, { A: withTrains("A", 0, [2], "1") }, NOW);
+    const byPlatform = Object.fromEntries(merged.A.platforms.map((p) => [p.platform, p]));
+    expect(byPlatform["1"].carried_from).toBeUndefined();
+    expect(byPlatform["2"].trains).toHaveLength(1);
+    expect(byPlatform["2"].carried_from).toBeDefined();
+  });
+
+  it("does not override a real 'not running' answer, or fresher trains", () => {
+    const old = withTrains("A", 60_000, [5]);
+    const closed = { ...withTrains("A", 0, []), service_active: false };
+    expect(mergeArrivals({ A: old }, { A: closed }, NOW).A).toBe(closed);
+    const live = withTrains("A", 0, [3]);
+    expect(mergeArrivals({ A: old }, { A: live }, NOW).A).toBe(live);
+  });
+});

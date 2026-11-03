@@ -24,6 +24,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // Lets env(safe-area-inset-*) report the notch / home indicator so the header and bottom controls can clear them.
+  viewportFit: "cover",
   themeColor: "#76b729",
 };
 
