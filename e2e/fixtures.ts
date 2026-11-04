@@ -20,6 +20,10 @@ export function arrivalsFor(code: string, etas: number[] = [2, 6, 11]): Arrivals
           destination: "Kheha",
           destination_key: "E23",
           eta_minutes: eta,
+          // Half a minute of headroom: the card floors the countdown, so
+          // an exact "2 min" would tick to "1 min" the moment the page
+          // spends a millisecond rendering it.
+          eta_precise: eta + 0.5,
           status: "",
         })),
       },
@@ -34,6 +38,7 @@ export function arrivalsFor(code: string, etas: number[] = [2, 6, 11]): Arrivals
           destination: "Khu Khot",
           destination_key: "N24",
           eta_minutes: eta + 1,
+          eta_precise: eta + 1.5,
           status: "",
         })),
       },
@@ -44,6 +49,18 @@ export function arrivalsFor(code: string, etas: number[] = [2, 6, 11]): Arrivals
     server_time: now.toISOString(),
     timestamp: now.toISOString().replace("Z", ""),
   };
+}
+
+/** A reading `ageMs` old whose ETAs are relative to that older moment (as upstream's are). */
+export function agedArrivals(code: string, ageMs: number, etas: number[] = [12, 20]): Arrivals {
+  const at = new Date(Date.now() - ageMs);
+  return { ...arrivalsFor(code, etas), server_time: at.toISOString(), timestamp: at.toISOString().replace("Z", "") };
+}
+
+/** The live document with one station's reading swapped for `reading`. */
+export function documentWith(reading: Arrivals, status?: UpstreamStatus): ArrivalsDocument {
+  const base = liveDocument();
+  return { ...base, arrivals: { ...base.arrivals, [reading.station.code]: reading }, ...(status && { status }) };
 }
 
 const okStatus: UpstreamStatus = { state: "ok", since: new Date().toISOString(), lastSuccessAt: null, incidents: [] };
@@ -65,6 +82,33 @@ export function downDocument(): ArrivalsDocument {
     complete: true,
     status: { state: "down", since, lastSuccessAt: null, incidents: [{ start: since, end: null }] },
   };
+}
+
+/** Makes the live document unreachable (a network failure, not an error status). */
+export async function failArrivals(page: Page) {
+  await page.route("**/arrivals.json", (route) => route.abort("failed"));
+}
+
+/** Opens a station's card by searching for it (no pixel-perfect map taps) and returns the card. */
+export async function openStationCard(page: Page, query: string) {
+  await page.getByRole("button", { name: /Search stations|ค้นหา/ }).click();
+  await page.getByRole("combobox").fill(query);
+  await page.getByRole("option").first().click();
+  const card = page.locator(".maplibregl-popup");
+  await expect(card).toBeVisible();
+  return card;
+}
+
+/**
+ * Drops the console errors the browser itself logs when a request fails
+ * (`Failed to load resource`, MapLibre's tile errors) from `problems`, from
+ * index `from` on. For tests that deliberately cut the network: those lines
+ * are the scenario, not a defect. Page errors and CSP violations are never
+ * dropped, so a real bug during the outage still fails the test.
+ */
+export function forgiveNetworkErrors(problems: string[], from = 0) {
+  const kept = problems.filter((p, i) => i < from || !p.startsWith("console:") || p.startsWith("console: CSP violation"));
+  problems.splice(0, problems.length, ...kept);
 }
 
 /** Serves `doc` wherever the app fetches the live arrivals document. */

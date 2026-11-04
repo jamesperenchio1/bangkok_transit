@@ -1,17 +1,19 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
-import { expect, liveDocument, mapReady, serveArrivals, test } from "./fixtures";
+import { agedArrivals, documentWith, expect, liveDocument, mapReady, openStationCard, serveArrivals, test } from "./fixtures";
 
 // The basemap is third-party raster/vector content drawn on a canvas and the
-// MapLibre attribution/controls are its own widgets; audit our own UI.
+// canvas is not ours; everything else, MapLibre's own controls included,
+// is audited because a rider has to operate it.
 async function audit(page: Page) {
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .exclude(".maplibregl-canvas")
-    .exclude(".maplibregl-ctrl")
     .analyze();
   expect(
-    results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`),
+    results.violations.map(
+      (v) => `${v.id}: ${v.nodes.map((n) => `${n.target.join(" ")} ${n.html.slice(0, 120)} ${n.any[0]?.message ?? ""}`).join(" | ")}`,
+    ),
     "axe violations",
   ).toEqual([]);
 }
@@ -50,7 +52,7 @@ test.describe("accessibility", () => {
     const input = page.getByRole("combobox");
     await expect(input).toBeFocused();
     await input.fill("siam");
-    await expect(page.getByRole("status").filter({ hasText: /found/ })).toHaveText(/\d+ stations? found/);
+    await expect(page.getByRole("status").filter({ hasText: /\d+ stations? found/ })).toBeVisible();
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Escape");
     await expect(input).toBeHidden();
@@ -59,13 +61,34 @@ test.describe("accessibility", () => {
 
   test("the station list is a keyboard route to every station", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Browse all stations" }).click();
+    const opener = page.getByRole("button", { name: "Browse all stations" });
+    await opener.focus();
+    await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: "All stations by line" });
     await expect(dialog).toBeVisible();
     await audit(page);
-    await dialog.getByRole("button", { name: /Siam/ }).first().click();
+    // Reach a station with Tab alone, and choose it with Enter.
+    await page.keyboard.press("Tab");
+    await expect(dialog.locator(":focus")).toBeVisible();
+    await dialog.getByRole("button", { name: /Siam/ }).first().focus();
+    await page.keyboard.press("Enter");
     await expect(dialog).toBeHidden();
     await expect(page.locator(".maplibregl-popup").getByText("Siam")).toBeVisible();
+  });
+
+  test("an open station card has no axe violations, live or last-known", async ({ page }) => {
+    await page.goto("/");
+    const card = await openStationCard(page, "siam");
+    await expect(card.getByText(/Updated/)).toBeVisible();
+    await audit(page);
+  });
+
+  test("a last-known station card (amber text) keeps its contrast", async ({ page }) => {
+    await serveArrivals(page, () => documentWith(agedArrivals("CEN", 5 * 60_000)));
+    await page.goto("/");
+    const card = await openStationCard(page, "siam");
+    await expect(card.getByText(/last known/)).toBeVisible();
+    await audit(page);
   });
 
   test("route sheet is a labelled dialog, announces the route, closes on Escape", async ({ page }) => {
