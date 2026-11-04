@@ -31,3 +31,15 @@
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 /icons/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+# Crawl files and social images: refreshed daily, served as-is.
+/robots.txt
+  Cache-Control: public, max-age=3600
+/sitemap.xml
+  Cache-Control: public, max-age=3600
+/llms.txt
+  Cache-Control: public, max-age=3600
+/llms-full.txt
+  Cache-Control: public, max-age=3600
+/og/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
