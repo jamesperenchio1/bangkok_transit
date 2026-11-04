@@ -12,10 +12,14 @@ import stations from "@/data/stations.json";
  */
 
 const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
-const DONE_KEY = "bts:map-warm:v1";
+// v2: the warm-up now also covers zoom 9, the zoom the map opens at. Without it
+// the opening view's tiles were cached only if the service worker already
+// controlled the page during the first visit, so offline could open on stations
+// over an empty basemap. Bumping re-runs it for installs that did the v1 pass.
+const DONE_KEY = "bts:map-warm:v2";
 const CONCURRENCY = 4;
-/** Whole-network overview zooms, then street-level zoom only around stations. */
-const OVERVIEW_ZOOMS = [10, 11, 12, 13];
+/** Whole-network overview zooms (9 is where the map opens), then street-level zoom only around stations. */
+const OVERVIEW_ZOOMS = [9, 10, 11, 12, 13];
 const DETAIL_ZOOM = 14;
 /** Glyph ranges for Latin (0-255) and Thai (3584-3839) labels. */
 const GLYPH_RANGES = ["0-255", "3584-3839"];

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect, liveDocument, mapReady, serveArrivals, test } from "./fixtures";
+import { expect, forgiveNetworkErrors, liveDocument, mapReady, serveArrivals, test } from "./fixtures";
 
 /**
  * "Works with no internet" is the app's main promise, and a slow connection
@@ -10,7 +10,7 @@ import { expect, liveDocument, mapReady, serveArrivals, test } from "./fixtures"
 
 type MapLike = {
   getLayer(id: string): unknown;
-  getStyle(): { layers: { id: string }[] };
+  getStyle(): { layers: { id: string; source?: string }[] };
   loaded(): boolean;
   queryRenderedFeatures(o: { layers: string[] }): unknown[];
 };
@@ -22,11 +22,18 @@ const stationsDrawn = (page: Page) =>
 const usingFallbackBasemap = (page: Page) =>
   page.evaluate(() => (window as unknown as { __map: MapLike }).__map.getStyle().layers.some((l) => l.id === "fallback-background"));
 
-/** Console noise the browser logs for requests that fail on purpose; never CSP violations or page errors. */
-function forgiveNetworkErrors(problems: string[]) {
-  const kept = problems.filter((p) => !p.startsWith("console:") || p.startsWith("console: CSP violation"));
-  problems.splice(0, problems.length, ...kept);
-}
+/** The map's own GeoJSON sources (TransitMap.tsx); every other layer is the third-party basemap. */
+const OUR_SOURCES = ["transit-lines", "highlighted-route", "stations", "gps-position", "gps-accuracy"];
+/** How many basemap features (roads, water, buildings...) are actually on screen right now. */
+const basemapFeaturesDrawn = (page: Page) =>
+  page.evaluate((ours) => {
+    const m = (window as unknown as { __map?: MapLike }).__map;
+    if (!m) return 0;
+    const layers = m.getStyle().layers.filter((l) => l.source && !ours.includes(l.source)).map((l) => l.id);
+    return layers.length ? m.queryRenderedFeatures({ layers }).length : 0;
+  }, OUR_SOURCES);
+/** lib/offline-warm.ts (DONE_KEY) writes this once every style, font and tile request has finished. */
+const warmUpDone = (page: Page) => page.evaluate(() => !!window.localStorage.getItem("bts:map-warm:v2"));
 
 const cachedUrls = (page: Page) =>
   page.evaluate(async () => {
@@ -55,30 +62,36 @@ test.describe("one visit is enough", () => {
     await page.evaluate(() => navigator.serviceWorker.ready);
     await expect.poll(async () => (await cachedUrls(page)).some((u) => u.includes("maplibre-gl-worker.mjs"))).toBe(true);
 
+    // Only what the browser logs from here on is the outage; an error during
+    // the online visit above is a real failure and must still fail the test.
+    const cutAt = problems.length;
     await context.setOffline(true);
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Bangkok Transit" })).toBeVisible();
     await expect.poll(() => stationsDrawn(page), { timeout: 30_000 }).toBeGreaterThan(10);
-    forgiveNetworkErrors(problems);
+    forgiveNetworkErrors(problems, cutAt);
   });
 
   test("the basemap is cached by the first-visit warm-up, so the next offline open has it", async ({ page, context, problems }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop", "the warm-up fetches hundreds of tiles; once is enough");
-    test.setTimeout(150_000);
+    test.setTimeout(240_000);
     await page.goto("/");
     await mapReady(page);
     // lib/offline-warm.ts starts ~8 s after load and stores the style, fonts
-    // and the network's tiles through the service worker.
-    await expect
-      .poll(async () => (await cachedUrls(page)).filter((u) => u.includes("tiles.openfreemap.org") && /\.pbf$/.test(u)).length, { timeout: 100_000 })
-      .toBeGreaterThan(5);
+    // and the network's tiles through the service worker. Wait for it to
+    // report that it finished, not for an arbitrary number of tiles.
+    await expect.poll(() => warmUpDone(page), { timeout: 180_000, intervals: [1000] }).toBe(true);
     await expect.poll(async () => (await cachedUrls(page)).some((u) => u.includes("/styles/liberty"))).toBe(true);
 
+    const cutAt = problems.length;
     await context.setOffline(true);
     await page.reload();
     await expect.poll(() => stationsDrawn(page), { timeout: 30_000 }).toBeGreaterThan(10);
     expect(await usingFallbackBasemap(page), "real basemap, not the blank fallback").toBe(false);
-    forgiveNetworkErrors(problems);
+    // A cached style alone still loads when its tiles are missing, so also
+    // require real streets/water to be rendered from the cached tiles.
+    await expect.poll(() => basemapFeaturesDrawn(page), { timeout: 30_000, message: "basemap features drawn offline" }).toBeGreaterThan(0);
+    forgiveNetworkErrors(problems, cutAt);
   });
 });
 

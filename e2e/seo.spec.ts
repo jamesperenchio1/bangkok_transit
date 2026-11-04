@@ -46,6 +46,19 @@ test.describe("search & AI discoverability", () => {
     await expect(page.getByRole("link", { name: /Plan a route from Siam/ })).toHaveAttribute("href", "/?from=CEN");
   });
 
+  test("a branched line is listed branch by branch, not as one run", async ({ page }) => {
+    await page.goto("/lines/mrt-pink-line");
+    await expect(page.getByRole("heading", { level: 3 })).toHaveCount(2);
+    // The spur starts at its junction (Muang Thong Thani) and never follows Min Buri.
+    const spur = page.locator("section", { has: page.getByRole("heading", { level: 3, name: /^Muang Thong Thani to / }) });
+    await expect(spur.getByRole("listitem")).toHaveCount(3);
+    await expect(spur.getByRole("listitem").first()).toContainText("PK10");
+    await expect(spur).not.toContainText("Min Buri");
+    // A single-run line keeps its plain ordered list.
+    await page.goto("/lines/bts-sukhumvit-line");
+    await expect(page.getByRole("heading", { level: 3 })).toHaveCount(0);
+  });
+
   test("a route page explains the trip", async ({ page }) => {
     await page.goto("/routes/siam-cen-to-asok-e4");
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Siam to Asok");

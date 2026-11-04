@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { stations } from "@/data/stations";
 import {
-  LINES, absoluteUrl, describeRoute, lineStations, routePairs, stationLd, stationPath, stationSlug, stationsBySlug,
+  LINES, absoluteUrl, describeRoute, lineBranches, lineStations, neighbours, routePairs, stationLd, stationPath, stationSlug,
+  stationsBySlug,
 } from "@/lib/seo";
 import { findPath } from "@/lib/transit-graph";
 import { llmsFullTxt, llmsTxt } from "@/lib/llms";
@@ -23,6 +24,32 @@ describe("seo data", () => {
       list.forEach((s) => onLines.add(s.code));
     }
     expect(onLines.size).toBe(stations.length);
+  });
+
+  it("never presents separate branches as one continuous run", () => {
+    // Pink runs PK01-PK30 plus a spur PK10 -> MT01 -> MT02; SRT Red fans out
+    // of RD04. A single flat list put PK30 next to MT01 and skipped the RD04
+    // junction, an order no train follows.
+    const adjacent = new Map<string, Set<string>>();
+    for (const l of LINES) {
+      for (const branch of lineBranches(l.key)) {
+        branch.forEach((s, i) => {
+          if (i === 0) return;
+          expect(neighbours(s.code).some((n) => n.line.key === l.key && n.station.code === branch[i - 1].code),
+            `${l.key}: ${branch[i - 1].code} -> ${s.code}`).toBe(true);
+        });
+      }
+      adjacent.set(l.key, new Set(lineBranches(l.key).flat().map((s) => s.code)));
+      // Every station of the line appears in at least one branch.
+      expect([...adjacent.get(l.key)!].sort()).toEqual(lineStations(l.key).map((s) => s.code).sort());
+    }
+    const pink = lineBranches("pink").map((b) => b.map((s) => s.code));
+    expect(pink).toHaveLength(2);
+    expect(pink[1][0]).toBe("PK10");
+    expect(pink[1]).toContain("MT01");
+    expect(pink[0]).not.toContain("MT01");
+    for (const branch of lineBranches("srtRed")) expect(branch[0].code).toBe("RD04");
+    expect(lineBranches("sukhumvit")).toHaveLength(1);
   });
 
   it("builds route pages that all resolve to a path with steps", () => {

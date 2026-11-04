@@ -92,6 +92,20 @@ export function lineStations(key: LineKey): Station[] {
   return out;
 }
 
+/**
+ * A line's stations as runs a train can actually follow. A line with branches
+ * (Pink's Muang Thong Thani spur, SRT Red out of Bang Sue) returns one run per
+ * branch, each starting at the shared junction, so the junction appears in
+ * every branch that uses it. A single-segment line returns one run, with a
+ * loop's repeated stop listed once (as `lineStations` does).
+ */
+export function lineBranches(key: LineKey): Station[][] {
+  if (sequences[key].length === 1) return [lineStations(key)];
+  return sequences[key].map((segment) =>
+    segment.map((code) => stationsByCode.get(code)).filter((s): s is Station => !!s),
+  );
+}
+
 /** The ends of each segment: the "toward X" names riders see on platforms. */
 export function lineTermini(key: LineKey): Station[] {
   const seen = new Set<string>();
@@ -286,12 +300,14 @@ export function stationLd(s: Station): Json {
   };
 }
 
-export function lineLd(line: LineInfo, list: Station[]): Json {
+export function lineLd(line: LineInfo, list: Station[], branched = false): Json {
   return {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: `${line.nameEn} stations`,
     numberOfItems: list.length,
+    // Positions in a branched line's flat list don't mean "the next stop".
+    itemListOrder: branched ? "https://schema.org/ItemListUnordered" : "https://schema.org/ItemListOrderAscending",
     itemListElement: list.map((s, i) => ({
       "@type": "ListItem",
       position: i + 1,
