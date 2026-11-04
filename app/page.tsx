@@ -285,7 +285,7 @@ export default function Home() {
         </div>
       )}
 
-      <main id="map" tabIndex={-1} aria-label={t.mapRegion} className="relative isolate flex-1 overflow-hidden outline-none">
+      <main id="map" tabIndex={-1} aria-label={t.mapRegion} className="relative isolate flex-1 overflow-hidden overflow-clip outline-none">
         {!mapReady && (
           <div
             role="progressbar"

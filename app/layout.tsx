@@ -80,7 +80,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
 
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="h-full flex flex-col overflow-hidden overscroll-none">
+      <body className="h-full flex flex-col overflow-hidden overflow-clip overscroll-none">
         {children}
         <JsonLd data={siteLd()} />
       </body>
