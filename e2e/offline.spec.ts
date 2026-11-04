@@ -1,4 +1,4 @@
-import { expect, liveDocument, mapReady, serveArrivals, test } from "./fixtures";
+import { expect, forgiveNetworkErrors, liveDocument, mapReady, serveArrivals, test } from "./fixtures";
 
 /**
  * With no connection the app must still open, from the service worker's
@@ -15,6 +15,7 @@ test("opens and routes offline after one visit", async ({ page, context, problem
   await page.reload();
   await page.waitForFunction(() => !!navigator.serviceWorker.controller);
 
+  const beforeOffline = problems.length;
   await context.setOffline(true);
   // A shared route link, never opened before: the shell is precached and
   // query strings are ignored, so it still loads.
@@ -32,6 +33,8 @@ test("opens and routes offline after one visit", async ({ page, context, problem
   await context.setOffline(false);
   await expect(page.getByText("Offline — live times paused")).toBeHidden();
 
-  // Failed tile/asset loads while offline are expected, not defects.
-  problems.splice(0, problems.length, ...problems.filter((p) => !/Failed to load resource|ERR_INTERNET_DISCONNECTED|Failed to fetch|^console: tq$/.test(p)));
+  // Going offline makes requests fail and the browser/MapLibre log each one:
+  // that is the scenario, not a defect. Only console noise after this point
+  // is forgiven; a page error or CSP violation still fails the test.
+  forgiveNetworkErrors(problems, beforeOffline);
 });

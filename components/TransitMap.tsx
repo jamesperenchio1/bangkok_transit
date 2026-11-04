@@ -694,17 +694,23 @@ export function TransitMap({
     else map.once("style.load", apply);
   }, [lang]);
 
-  // Fly to a station on demand (a search result or "nearest station") and
-  // open its card, same as tapping it.
+  // Bring a station into view on demand (a search result, "nearest station")
+  // and open its card, same as tapping it. The camera moves as little as it
+  // can: a rider who has framed the map the way they want must not be
+  // thrown into a street-level zoom on every pick.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !focusStation) return;
     const apply = () => {
-      map.flyTo({
-        center: [focusStation.lon, focusStation.lat],
-        zoom: Math.max(map.getZoom(), 14),
-        duration: motionMs(600),
-      });
+      const { startCode, destinationCode } = latest.current;
+      // The other end of a route in progress, if any: picking a destination
+      // must keep the start in view (and vice versa), not replace it.
+      const otherCode = [startCode, destinationCode].find((c) => c && c !== focusStation.code);
+      const other = otherCode ? stations.find((s) => s.code === otherCode) : undefined;
+      // Room for the card above the marker, and for the header/pills.
+      const padding = { top: 200, bottom: 90, left: 40, right: 40 };
+      const move = focusCamera(map, focusStation, other, padding);
+      if (move) map.stop().easeTo({ ...move, duration: motionMs(600) });
       openPopup(map, popupsRef, focusStation, latest);
     };
     if (loadedRef.current) apply();
@@ -748,6 +754,47 @@ function PopupStationName({ station }: { station: Station }) {
   );
 }
 
+/**
+ * Where the camera should go to show `target` (and `other`, the far end of a
+ * route in progress) - or null when everything is already comfortably on
+ * screen, in which case the map stays exactly where the rider left it.
+ *
+ * - Already visible: no move.
+ * - Both ends of a route: fit them together (never closer than ZOOM_CAP).
+ * - Just one: centre it, zooming in only as far as ZOOM_FLOOR when the rider
+ *   is zoomed further out than that, never past what they already chose.
+ */
+const ZOOM_FLOOR = 13;
+const ZOOM_CAP = 15;
+function focusCamera(
+  map: maplibregl.Map,
+  target: Station,
+  other: Station | undefined,
+  padding: { top: number; bottom: number; left: number; right: number },
+): { center: [number, number]; zoom: number } | null {
+  const { width, height } = map.getCanvas().getBoundingClientRect();
+  const visible = (s: Station) => {
+    const p = map.project([s.lon, s.lat]);
+    return p.x >= padding.left && p.x <= width - padding.right && p.y >= padding.top && p.y <= height - padding.bottom;
+  };
+  const points = other ? [target, other] : [target];
+  if (points.every(visible)) return null;
+  if (other) {
+    const cam = map.cameraForBounds(
+      [
+        [Math.min(target.lon, other.lon), Math.min(target.lat, other.lat)],
+        [Math.max(target.lon, other.lon), Math.max(target.lat, other.lat)],
+      ],
+      { padding, maxZoom: ZOOM_CAP },
+    );
+    if (cam?.center && cam.zoom !== undefined) {
+      const c = maplibregl.LngLat.convert(cam.center);
+      return { center: [c.lng, c.lat], zoom: cam.zoom };
+    }
+  }
+  return { center: [target.lon, target.lat], zoom: Math.max(map.getZoom(), ZOOM_FLOOR) };
+}
+
 function openPopup(
   map: maplibregl.Map,
   popupsRef: RefObject<Map<string, { popup: maplibregl.Popup; root: Root; render: () => void }>>,
@@ -765,7 +812,17 @@ function openPopup(
 
   const container = document.createElement("div");
   const root = createRoot(container);
-  const popup = new maplibregl.Popup({ offset: 12, maxWidth: "min(300px, calc(100vw - 24px))", closeButton: true })
+  // focusAfterOpen is off because MapLibre's own focus() scrolls the page to
+  // reveal the button while the camera is still flying and the card is still
+  // off-screen (WebKit scrolls even `overflow: hidden` ancestors), leaving the
+  // whole app shifted sideways. It is focused below without scrolling, which
+  // keeps the keyboard behaviour.
+  const popup = new maplibregl.Popup({
+    offset: 12,
+    maxWidth: "min(300px, calc(100vw - 24px))",
+    closeButton: true,
+    focusAfterOpen: false,
+  })
     .setLngLat([station.lon, station.lat])
     .setDOMContent(container)
     .addTo(map);
@@ -781,6 +838,7 @@ function openPopup(
     closeButton.style.alignItems = "center";
     closeButton.style.justifyContent = "center";
     closeButton.style.padding = "0";
+    closeButton.focus({ preventScroll: true });
   }
 
   popup.on("close", () => {

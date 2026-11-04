@@ -12,9 +12,9 @@
     "smoke": "node scripts/smoke.mjs"
   },
   "devDependencies": {
-    "@cloudflare/vitest-plugin": "^1.4.3",
+    "@cloudflare/vitest-plugin": "^1.5.1",
     "typescript": "^5",
     "vitest": "^4.1.11",
-    "wrangler": "^4.151.0"
+    "wrangler": "^4.157.0"
   }
 }
