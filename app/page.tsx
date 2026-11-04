@@ -40,32 +40,24 @@ function nearestStation(lat: number, lon: number): { station: Station; meters: n
   return { station: best, meters: bestMeters };
 }
 
-/** Small EN/TH segmented switch for the header. */
+/**
+ * One button that shows the language you'd switch *to*. Two 44px segments
+ * took a third of a phone's header width; this keeps the 44px target at a
+ * quarter of that and leaves room for the hint line.
+ */
 function LangToggle() {
   const lang = useLangStore((s) => s.lang);
   const setLang = useLangStore((s) => s.setLang);
+  const next = lang === "en" ? "th" : "en";
   return (
-    <div
-      role="group"
-      aria-label="Language / ภาษา"
-      className="flex rounded-full border border-neutral-300 p-0.5 text-[11px] font-semibold dark:border-neutral-700"
+    <button
+      data-lang-toggle
+      onClick={() => setLang(next)}
+      aria-label={`Switch language / เปลี่ยนภาษา: ${next.toUpperCase()}`}
+      className="inline-flex h-11 min-w-11 items-center justify-center rounded-full border border-neutral-300 px-2.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
     >
-      {(["en", "th"] as const).map((l) => (
-        <button
-          key={l}
-          onClick={() => setLang(l)}
-          aria-pressed={lang === l}
-          style={{ minWidth: 44, minHeight: 44 }}
-          className={`rounded-full px-2 py-1 ${
-            lang === l
-              ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
-              : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
-          }`}
-        >
-          {l.toUpperCase()}
-        </button>
-      ))}
-    </div>
+      <span aria-hidden="true">{next.toUpperCase()}</span>
+    </button>
   );
 }
 
@@ -225,18 +217,18 @@ export default function Home() {
       >
         {t.skipToMap}
       </a>
-      <header className="flex h-14 shrink-0 items-center gap-1 border-b border-neutral-200 px-2 dark:border-neutral-800">
+      <header className="flex min-h-14 shrink-0 items-center gap-1 border-b border-neutral-200 py-1 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] pt-[max(0.25rem,env(safe-area-inset-top))] dark:border-neutral-800">
         <div className="min-w-0 flex-1 px-1">
           <h1 className="truncate text-[15px] font-semibold leading-tight">{t.appTitle}</h1>
           {hasRoute && start && destination ? (
-            <p className="truncate text-[11px] leading-tight text-neutral-600 dark:text-neutral-400">
+            <p className="line-clamp-2 text-[11px] leading-tight text-neutral-600 dark:text-neutral-400">
               <span lang={lang} title={stationName(start, lang)}>{stationName(start, lang)}</span>
               <span aria-hidden="true"> → </span>
               <span lang={lang} title={stationName(destination, lang)}>{stationName(destination, lang)}</span>
               {path && <span> · {t.aboutMinutes(path.minutes)}</span>}
             </p>
           ) : start || destination ? (
-            <p className="truncate text-[11px] leading-tight text-neutral-600 dark:text-neutral-400">
+            <p className="line-clamp-2 text-[11px] leading-tight text-neutral-600 dark:text-neutral-400">
               {start && !destination ? (
                 <>
                   <span className="font-medium text-neutral-800 dark:text-neutral-200">{t.start}:</span>{" "}
@@ -252,7 +244,7 @@ export default function Home() {
               )}
             </p>
           ) : (
-            <p className="truncate text-[11px] leading-tight text-neutral-600 dark:text-neutral-400">{subtitle}</p>
+            <p className="line-clamp-2 text-[11px] leading-tight text-neutral-600 dark:text-neutral-400">{subtitle}</p>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-1">
@@ -317,7 +309,7 @@ export default function Home() {
         {nearest && !hasRoute && (
           <button
             onClick={() => handleSearchSelect(nearest.station)}
-            className="absolute inset-x-0 bottom-10 z-[1000] mx-auto flex min-h-11 w-fit max-w-[90%] items-center gap-1.5 rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 shadow-lg hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
+            className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+2.5rem)] z-[1000] mx-auto flex min-h-11 w-fit max-w-[90%] items-center gap-1.5 rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 shadow-lg hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
           >
             <Navigation size={14} className="shrink-0 text-blue-700 dark:text-blue-400" aria-hidden="true" />
             <span className="truncate">
@@ -332,7 +324,7 @@ export default function Home() {
         {hasRoute && !sheetOpen && (
           <button
             onClick={() => setSheetOpen(true)}
-            className="absolute inset-x-0 bottom-10 z-[1000] mx-auto flex min-h-11 w-fit items-center gap-1.5 rounded-full bg-green-700 px-4 py-2 text-sm font-medium text-white shadow-lg hover:bg-green-800"
+            className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+2.5rem)] z-[1000] mx-auto flex min-h-11 w-fit items-center gap-1.5 rounded-full bg-green-700 px-4 py-2 text-sm font-medium text-white shadow-lg hover:bg-green-800"
           >
             {t.viewRoute} <ArrowRight size={15} aria-hidden="true" />
           </button>

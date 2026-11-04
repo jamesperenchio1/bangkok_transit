@@ -54,6 +54,12 @@ export interface ArrivalPlatform {
   /** Terminus station code for this platform's direction. */
   direction_key: string;
   trains: ArrivalTrain[];
+  /**
+   * Display-only, added by us (never by upstream): set when these trains were
+   * carried over from an older reading because the newest one listed none for
+   * this direction. ISO timestamp of the reading they really come from.
+   */
+  carried_from?: string;
 }
 
 export interface Arrivals {

@@ -135,14 +135,14 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePan
         role="dialog"
         aria-modal="false"
         aria-label={open ? t.routeDialog(from, to) : undefined}
-        className={`fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border-t border-neutral-200 bg-white shadow-2xl transition-transform duration-200 dark:border-neutral-800 dark:bg-neutral-900 ${
+        className={`fixed inset-x-0 bottom-0 z-50 rounded-t-2xl pb-[env(safe-area-inset-bottom)] border-t border-neutral-200 bg-white shadow-2xl transition-transform duration-200 dark:border-neutral-800 dark:bg-neutral-900 ${
           open ? "translate-y-0" : "translate-y-full"
         }`}
-        style={{ maxHeight: "70vh" }}
+        style={{ maxHeight: "70dvh" }}
         aria-hidden={!open}
       >
         {state?.mode === "route" && (
-          <div className="flex max-h-[70vh] flex-col overflow-y-auto">
+          <div className="flex max-h-[70dvh] flex-col overflow-y-auto">
             <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white/95 px-4 pt-3 pb-2.5 backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95">
               <div className="flex items-start justify-between gap-2">
                 <div ref={headingRef} tabIndex={-1} className="min-w-0 outline-none">

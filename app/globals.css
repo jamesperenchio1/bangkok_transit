@@ -72,6 +72,19 @@ svg circle {
   box-shadow: var(--shadow-3) !important;
 }
 
+/* Phones: keep the card inside the screen and give the two time columns
+   a little more room (the side inset only has to clear the close button). */
+@media (max-width: 480px) {
+  .maplibregl-popup-content {
+    max-width: calc(100vw - 24px);
+    padding: 12px 44px 12px 12px !important;
+  }
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
 .maplibregl-popup-tip {
   border-top-color: var(--background) !important;
   border-bottom-color: var(--background) !important;

@@ -26,10 +26,12 @@ function PlatformTimes({
   platform,
   trains,
   timestamp,
+  now,
 }: {
   platform: ArrivalPlatform;
   trains: UpcomingTrain[];
   timestamp: string;
+  now: number;
 }) {
   const { lang, t } = useT();
   return (
@@ -37,6 +39,13 @@ function PlatformTimes({
       <p className="truncate text-xs font-medium text-neutral-600 dark:text-neutral-300">
         → {directionLabel(platform.direction, lang)}
       </p>
+      {platform.carried_from ? (
+        // These trains come from an older reading than the rest of the card:
+        // still the best we know, so shown - with how old they really are.
+        <p className="text-[11px] leading-tight text-amber-800 dark:text-amber-300">
+          {t.asOf(updatedAgoLabel(platform.carried_from, now, t))}
+        </p>
+      ) : null}
       <ul className="mt-0.5 flex flex-col">
         {trains.map(({ train, left }, i) => {
           const clockTime = arrivalClockTime(timestamp, trainEtaMinutes(train), lang);
@@ -140,6 +149,7 @@ export function StationEta({ station }: { station: Station }) {
             platform={platform}
             trains={trains}
             timestamp={data.timestamp}
+            now={now}
           />
         ))}
       </div>

@@ -737,7 +737,7 @@ function openPopup(
 
   const container = document.createElement("div");
   const root = createRoot(container);
-  const popup = new maplibregl.Popup({ offset: 12, maxWidth: "300px", closeButton: true })
+  const popup = new maplibregl.Popup({ offset: 12, maxWidth: "min(300px, calc(100vw - 24px))", closeButton: true })
     .setLngLat([station.lon, station.lat])
     .setDOMContent(container)
     .addTo(map);

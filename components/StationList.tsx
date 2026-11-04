@@ -68,9 +68,9 @@ export function StationList({ onSelectStation }: StationListProps) {
           if (e.target === ref.current) setOpen(false); // backdrop click
         }}
         aria-labelledby="station-list-title"
-        className="m-auto max-h-[80vh] w-[min(92vw,28rem)] overflow-hidden rounded-2xl border border-neutral-200 bg-white p-0 text-neutral-900 shadow-2xl backdrop:bg-black/50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+        className="m-auto max-h-[80dvh] w-[min(92vw,28rem)] overflow-hidden rounded-2xl border border-neutral-200 bg-white p-0 text-neutral-900 shadow-2xl backdrop:bg-black/50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
       >
-        <div className="flex max-h-[80vh] flex-col">
+        <div className="flex max-h-[80dvh] flex-col">
           <div className="flex items-center justify-between gap-2 border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
             <h2 id="station-list-title" className="text-base font-semibold">
               {t.stationListTitle}

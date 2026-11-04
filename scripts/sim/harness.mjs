@@ -511,7 +511,7 @@ async function scenarioFirstTimer(session) {
     data: { stops: route.stops },
   });
 
-  const langBtn = page.locator('button[aria-label="Language / ภาษา"]');
+  const langBtn = page.locator('button[data-lang-toggle]');
   let thOk = true;
   if (await langBtn.count()) {
     await langBtn.first().click();

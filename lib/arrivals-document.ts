@@ -1,4 +1,12 @@
-import { ageMs, isFresh, isShowable, isValidArrivals, MAX_SHOW_AGE_MS, type Arrivals } from "./bts";
+import {
+  ageMs,
+  isFresh,
+  isShowable,
+  isValidArrivals,
+  MAX_SHOW_AGE_MS,
+  type ArrivalPlatform,
+  type Arrivals,
+} from "./bts";
 
 /**
  * The one shared arrivals document every client reads
@@ -80,10 +88,87 @@ export const EDGE_DOWN_SECONDS = 30;
  */
 export const EDGE_STALE_IF_ERROR_SECONDS = 300;
 
+function parseUtc(iso: string): number {
+  return Date.parse(iso.endsWith("Z") ? iso : `${iso}Z`);
+}
+
+/**
+ * Same grace as lib/format-eta.ts (PLATFORM_GRACE_MS) - not imported from
+ * there because that module's types reach into browser-only code, and this
+ * one must typecheck in the Worker.
+ */
+const DEPARTED_GRACE_MS = 60_000;
+
+function etaOf(train: { eta_minutes?: unknown; eta_precise?: unknown }): number | null {
+  for (const v of [train.eta_precise, train.eta_minutes]) {
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+  }
+  return null;
+}
+
+/** Trains not yet gone per their own ETA against `now` (no ETA: kept, as in the UI). */
+function stillComing(train: { eta_minutes?: unknown; eta_precise?: unknown }, readingTs: number, now: number): boolean {
+  const eta = etaOf(train);
+  return eta === null || readingTs + eta * 60_000 - now >= -DEPARTED_GRACE_MS;
+}
+
+/**
+ * `previous`'s trains for one platform, re-expressed against `fresh`'s
+ * timestamp (ETAs are minutes from the reading's own time) with the ones
+ * that have already left dropped. Empty when nothing usable remains.
+ */
+function rebasedTrains(previous: ArrivalPlatform, fromTs: number, toTs: number, now: number) {
+  const shiftMin = (toTs - fromTs) / 60_000;
+  return previous.trains
+    .map((train) => {
+      const eta = etaOf(train);
+      if (eta === null) return null;
+      const rebased = { ...train, eta_minutes: (typeof train.eta_minutes === "number" ? train.eta_minutes : eta) - shiftMin };
+      if (typeof train.eta_precise === "number") rebased.eta_precise = train.eta_precise - shiftMin;
+      return rebased;
+    })
+    .filter((train): train is NonNullable<typeof train> => train !== null)
+    .filter((train) => stillComing(train, toTs, now));
+}
+
+/**
+ * Never let a newer but emptier reading erase what we already knew. Upstream
+ * sometimes answers with a platform that lists no trains (or leaves a
+ * direction out) a minute after listing some; the older trains are still the
+ * best information we have, so they stay - re-timed to the new reading and
+ * marked `carried_from` so the UI can say how old they are. A genuine "not
+ * running" answer always wins, and nothing outlives MAX_SHOW_AGE_MS because
+ * the caller still drops old readings.
+ */
+export function carryOverPlatforms(previous: Arrivals | undefined, fresh: Arrivals, now = Date.now()): Arrivals {
+  if (!previous || fresh.service_active === false) return fresh;
+  const prevTs = parseUtc(previous.timestamp);
+  const freshTs = parseUtc(fresh.timestamp);
+  if (Number.isNaN(prevTs) || Number.isNaN(freshTs) || prevTs >= freshTs) return fresh;
+  if (!isShowable(previous.timestamp, now)) return fresh;
+
+  const key = (p: ArrivalPlatform) => p.platform || p.direction_key;
+  const platforms = fresh.platforms.map((p) => p);
+  let changed = false;
+  for (const old of previous.platforms) {
+    const index = platforms.findIndex((p) => key(p) === key(old));
+    const current = index >= 0 ? platforms[index] : undefined;
+    if (current && current.trains.some((t) => stillComing(t, freshTs, now))) continue;
+    const trains = rebasedTrains(old, prevTs, freshTs, now);
+    if (trains.length === 0) continue;
+    const carried = { ...old, trains, carried_from: old.carried_from ?? previous.timestamp };
+    if (index >= 0) platforms[index] = carried;
+    else platforms.push(carried);
+    changed = true;
+  }
+  return changed ? { ...fresh, platforms } : fresh;
+}
+
 /**
  * Previous readings carried over, then this poll's on top. A station whose
  * call failed keeps its last reading (shown with its age) until it passes
- * MAX_SHOW_AGE_MS, rather than blanking.
+ * MAX_SHOW_AGE_MS, rather than blanking; one whose call succeeded but listed
+ * fewer trains keeps the ones it dropped (see carryOverPlatforms).
  */
 export function mergeArrivals(
   previous: Record<string, Arrivals>,
@@ -94,7 +179,8 @@ export function mergeArrivals(
   for (const [code, data] of Object.entries(previous)) {
     if (isValidArrivals(data) && isShowable(data.timestamp, now)) out[code] = data;
   }
-  return Object.assign(out, fresh);
+  for (const [code, data] of Object.entries(fresh)) out[code] = carryOverPlatforms(out[code], data, now);
+  return out;
 }
 
 /**
