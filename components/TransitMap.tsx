@@ -24,6 +24,18 @@ const STATION_BOUNDS: [[number, number], [number, number]] = [
 // downloads while the page hydrates - keep the two URLs identical.
 const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 
+/**
+ * What the map shows when the basemap style cannot be loaded: a plain ground
+ * colour. Glyphs still point at the basemap's font server, so station names
+ * appear whenever it is reachable (or its fonts are cached).
+ */
+const FALLBACK_STYLE: maplibregl.StyleSpecification = {
+  version: 8,
+  glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+  sources: {},
+  layers: [{ id: "fallback-background", type: "background", paint: { "background-color": "#f2efe9" } }],
+};
+
 /** Camera animations collapse to instant jumps for people who ask for less motion. */
 const motionMs = (ms: number) =>
   typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : ms;
@@ -321,12 +333,28 @@ export function TransitMap({
     // style is fetched once, here.
     map.setStyle(STYLE_URL, { transformStyle });
     mapRef.current = map;
+    // If the basemap style itself can't be fetched (offline, never cached, or
+    // the host is down), draw the network on a plain background rather than
+    // showing nothing: the lines and stations are ours and need none of it.
+    let styleReady = false;
+    let fellBack = false;
+    map.on("error", (e) => {
+      const failed = (e.error as { url?: string } | undefined)?.url;
+      if (styleReady || fellBack || !failed?.startsWith(STYLE_URL)) return;
+      fellBack = true;
+      map.setStyle(FALLBACK_STYLE);
+    });
     // Exposed for debugging and the e2e suite, which asserts on rendered
     // features rather than pixels.
     (window as { __map?: maplibregl.Map }).__map = map;
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
 
-    map.on("load", () => {
+    // Our own layers go on at `style.load`, not `load`. `load` waits for the
+    // basemap's first tiles and fonts - on a slow connection the transit
+    // network would stay invisible for as long as the third-party basemap
+    // takes, though nothing here depends on it. The basemap fills in beneath.
+    map.once("style.load", () => {
+      styleReady = true;
       // Starts empty and fills in once the line-geometry fetch (kicked off
       // below, in parallel with the map/style itself) resolves, rather than
       // blocking the rest of this handler (fitBounds, click handlers, other
@@ -566,7 +594,7 @@ export function TransitMap({
       map.setPaintProperty(LINES_LAYER, "line-opacity", isRouting ? 0.6 : 0.9);
     };
     if (loadedRef.current) apply();
-    else map.once("load", apply);
+    else map.once("style.load", apply);
   }, [isRouting]);
 
   // Highlighted route geometry. Needs the fetched line-geometry data (see
@@ -581,7 +609,7 @@ export function TransitMap({
         source?.setData(path ? routeGeoJSON(path, segmentsByLine) : { type: "FeatureCollection", features: [] });
       };
       if (loadedRef.current) apply();
-      else map.once("load", apply);
+      else map.once("style.load", apply);
     };
     if (!path) {
       applyWith({});
@@ -618,7 +646,7 @@ export function TransitMap({
       );
     };
     if (loadedRef.current) apply();
-    else map.once("load", apply);
+    else map.once("style.load", apply);
   }, [path, sheetOpen]);
 
   // Station marker styling (start/destination/on-path/dimmed).
@@ -630,7 +658,7 @@ export function TransitMap({
       source?.setData(stationsGeoJSON(pathCodes, startCode, destinationCode, isRouting));
     };
     if (loadedRef.current) apply();
-    else map.once("load", apply);
+    else map.once("style.load", apply);
   }, [pathCodes, startCode, destinationCode, isRouting]);
 
   // Keep any open popup's Start/Destination checkmarks in sync if route
@@ -648,7 +676,7 @@ export function TransitMap({
       map.getSource<maplibregl.GeoJSONSource>(GPS_ACCURACY_SOURCE)?.setData(gpsAccuracyGeoJSON(userPosition));
     };
     if (loadedRef.current) apply();
-    else map.once("load", apply);
+    else map.once("style.load", apply);
   }, [userPosition]);
 
   // Station and basemap labels follow the EN/TH toggle. (The initial
@@ -663,7 +691,7 @@ export function TransitMap({
       }
     };
     if (loadedRef.current) apply();
-    else map.once("load", apply);
+    else map.once("style.load", apply);
   }, [lang]);
 
   // Fly to a station on demand (a search result or "nearest station") and
@@ -680,7 +708,7 @@ export function TransitMap({
       openPopup(map, popupsRef, focusStation, latest);
     };
     if (loadedRef.current) apply();
-    else map.once("load", apply);
+    else map.once("style.load", apply);
   }, [focusStation]);
 
   return (
