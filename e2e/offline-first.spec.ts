@@ -12,6 +12,7 @@ type MapLike = {
   getLayer(id: string): unknown;
   getStyle(): { layers: { id: string; source?: string }[] };
   loaded(): boolean;
+  listImages(): string[];
   queryRenderedFeatures(o: { layers: string[] }): unknown[];
 };
 const stationsDrawn = (page: Page) =>
@@ -107,6 +108,24 @@ test.describe("when the basemap is slow or missing", () => {
     await page.getByRole("option").first().click();
     await expect(page.locator(".maplibregl-popup").getByText("Siam")).toBeVisible();
     forgiveNetworkErrors(problems);
+  });
+
+  test("the basemap's icon sprite is only requested once the network is already drawn", async ({ page, context }) => {
+    // The sprite is a 117 KB image of road shields and POI icons. Fetched
+    // alongside the files the first draw needs, on a slow link it takes bandwidth
+    // from them (measured: ~0.6 s on slow 4G, ~2 s on 3G). So it must wait for
+    // the network to be on screen, and the icons must still arrive afterwards.
+    let drawnWhenRequested: number | null = null;
+    await context.route(/tiles\.openfreemap\.org\/sprites\//, async (route) => {
+      drawnWhenRequested ??= await stationsDrawn(page);
+      await route.continue().catch(() => {});
+    });
+    await page.goto("/");
+    await expect.poll(() => stationsDrawn(page), { timeout: 30_000 }).toBeGreaterThan(10);
+    const spriteIcons = () =>
+      page.evaluate(() => (window as unknown as { __map: MapLike }).__map.listImages().filter((n) => !n.startsWith("destination-ring")).length);
+    await expect.poll(spriteIcons, { timeout: 30_000, message: "sprite icons arrive afterwards" }).toBeGreaterThan(5);
+    expect(drawnWhenRequested, "stations already drawn when the sprite was first requested").toBeGreaterThan(10);
   });
 
   test("the network is drawn without waiting for the basemap's tiles and fonts", async ({ page, context }) => {

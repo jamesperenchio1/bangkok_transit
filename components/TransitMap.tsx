@@ -62,13 +62,23 @@ function basemapLabelField(lang: Lang): maplibregl.ExpressionSpecification {
     : ["coalesce", ["get", "name:latin"], ["get", "name_en"], ["get", "name"]];
 }
 
+// The basemap's icon sprite (road shields, POI icons), held back from the style
+// and attached once our network is on screen - see `deferSprite` below.
+let deferredSprite: maplibregl.SpriteSpecification | undefined;
+
 function transformStyle(
   _previous: maplibregl.StyleSpecification | undefined,
   next: maplibregl.StyleSpecification,
 ): maplibregl.StyleSpecification {
   const lang = useLangStore.getState().lang;
+  // Taken out of the style so MapLibre doesn't fetch the 117 KB sprite image
+  // alongside the files the first draw needs; on a slow link that download
+  // costs the network ~0.6 s (4G) to ~2 s (3G) of bandwidth. It arrives after
+  // the first draw instead, and the basemap's icons appear a moment later.
+  const { sprite, ...style } = next;
+  if (sprite) deferredSprite = sprite;
   return {
-    ...next,
+    ...style,
     layers: next.layers
       .filter((layer) => !DROPPED_STYLE_LAYERS.has(layer.id))
       .map((layer) => {
@@ -347,6 +357,19 @@ export function TransitMap({
     // Exposed for debugging and the e2e suite, which asserts on rendered
     // features rather than pixels.
     (window as { __map?: maplibregl.Map }).__map = map;
+
+    // Attach the basemap's sprite once the stations have been drawn: wait for
+    // their source to finish loading, then for the next frame to render.
+    const deferSprite = (e: maplibregl.MapSourceDataEvent) => {
+      if (e.sourceId !== STATIONS_SOURCE || !e.isSourceLoaded) return;
+      map.off("sourcedata", deferSprite);
+      map.once("render", () => {
+        if (mapRef.current !== map || !deferredSprite) return;
+        if (typeof deferredSprite === "string") map.setSprite(deferredSprite);
+        else for (const { id, url } of deferredSprite) map.addSprite(id, url);
+      });
+    };
+    map.on("sourcedata", deferSprite);
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
 
     // Our own layers go on at `style.load`, not `load`. `load` waits for the
