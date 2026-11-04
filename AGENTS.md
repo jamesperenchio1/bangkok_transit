@@ -50,6 +50,7 @@ live BTS arrivals, live at bangkok-transit.com. Read `README.md` first, then
 - `cloudflare/poller/` — separate Worker: `src/index.ts` (the
   `ArrivalsPoller` Durable Object + cron watchdog), `src/schedule.ts` (pure
   scheduling/health logic). Own `package.json`, tests in `test/`.
+- `app/(content)/`, `lib/seo.ts`, `lib/llms.ts` — static SEO pages (lines, stations, routes), sitemap/robots/llms.txt; see `docs/architecture.md#seo-and-ai-discoverability`. New pages need unique title/description via `pageMeta()`.
 - `data/` — `stations.json`, `line-sequences.json`, `interchanges.json`
   (hand-maintained; see `scripts/README.md` for how to add stations).
 

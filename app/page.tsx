@@ -7,6 +7,7 @@ import { stations, stationsByCode, type Station } from "@/data/stations";
 import { RoutePanel, type RoutePanelState } from "@/components/RoutePanel";
 import { StationSearch } from "@/components/StationSearch";
 import { StationList } from "@/components/StationList";
+import { SeoContent } from "@/components/SeoContent";
 import { StopAlertBanner } from "@/components/StopAlertControl";
 import { useStopAlert } from "@/lib/use-stop-alert";
 import { findPath } from "@/lib/transit-graph";
@@ -337,6 +338,7 @@ export default function Home() {
         stopAlert={stopAlert}
         onClose={() => setSheetOpen(false)}
       />
+      <SeoContent />
     </div>
   );
 }
