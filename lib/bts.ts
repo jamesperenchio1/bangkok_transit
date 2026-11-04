@@ -126,6 +126,7 @@ export function isValidArrivals(data: unknown): data is Arrivals {
       Array.isArray(p.trains) &&
       p.trains.length <= MAX_TRAINS_PER_PLATFORM &&
       isBoundedString(p.direction) &&
+      (p.carried_from === undefined || isBoundedString(p.carried_from)) &&
       p.trains.every((t) => t && typeof t === "object" && isBoundedString(t.destination)),
   );
 }

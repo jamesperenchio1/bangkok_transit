@@ -3,7 +3,7 @@ import { evictDurableObject, runDurableObjectAlarm, runInDurableObject } from "c
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ArrivalsDocument } from "../../../lib/arrivals-document";
 import { BATCH, DOCUMENT_KEY, PROBE } from "../src/schedule";
-import { mockUpstream, ok, status } from "./helpers";
+import { arrivalsFor, mockUpstream, ok, status } from "./helpers";
 
 /**
  * The real ArrivalsPoller Durable Object, run in workerd with a local R2
@@ -118,6 +118,34 @@ describe("ArrivalsPoller", () => {
     expect(doc.status?.state).toBe("ok");
     expect(doc.status?.incidents[0].end).not.toBeNull();
     expect(doc.status?.lastSuccessAt).not.toBeNull();
+  });
+
+  it("keeps a direction's older trains when a later reading lists none for it", async () => {
+    mockUpstream(ok);
+    const stub = freshPoller();
+    await arm(stub);
+    await runDurableObjectAlarm(stub);
+    await runDurableObjectAlarm(stub); // every station now has one reading, with a train
+
+    vi.restoreAllMocks();
+    // Upstream now answers for Siam with a platform that lists nothing - a
+    // minute later, so it is the newer reading.
+    mockUpstream((code) => {
+      if (code !== "CEN") return ok(code);
+      const empty = arrivalsFor(code, Date.now() + 60_000);
+      empty.platforms[0].trains = [];
+      return Response.json(empty);
+    });
+    await runDurableObjectAlarm(stub);
+    await runDurableObjectAlarm(stub); // a full cycle: Siam is polled again
+
+    const siam = (await published()).doc.arrivals.CEN;
+    const platform = siam.platforms[0];
+    expect(platform.trains).toHaveLength(1);
+    // Re-timed to the newer reading (3 min from the old one -> ~2 from the new).
+    expect(platform.trains[0].eta_minutes).toBeCloseTo(2, 0);
+    expect(platform.carried_from).toBeTruthy();
+    expect(siam.timestamp > platform.carried_from!).toBe(true);
   });
 
   it("doesn't rewrite the document when nothing changed", async () => {
