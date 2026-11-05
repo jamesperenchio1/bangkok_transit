@@ -90,7 +90,7 @@ Pure target selection (`alertTargets`, `dueTarget`) is separate from the browser
 
 - Nodes are station codes. Ride edges come from `data/line-sequences.json`, where each line is one or more **segments** — branches share a station (SRT Light/Dark Red at Krung Thep Aphiwat, Pink's Muang Thong Thani spur at PK10), and MRT Blue is one segment that visits Tha Phra twice (trains run Lak Song → Tha Phra → round the loop → Tha Phra). A line's termini are just its segments' ends, which is also what the boarding direction and the live-arrivals platform matching use.
 - Walk edges come from `data/interchanges.json` (16 curated pairs). Same-building interchanges (Siam, Tao Poon) are a single node carrying several lines.
-- Dijkstra over *(station, how you arrived, line)* states, so a change of line can be charged properly. Cost is estimated minutes: per hop 0.5 min dwell + distance at 40 km/h with a 1.15 track-detour factor; 5 min per change; 3 min + 75 m/min per walk.
+- Dijkstra over *(station, how you arrived, line)* states, so a change of line can be charged properly. Cost is estimated minutes: per hop the scheduled running time + stop time from `data/hop-times.json` (OTP's GTFS feed, built by `scripts/build-hop-times.ts`; BTS, Gold, MRT Blue/Purple, ARL, SRT Dark Red), or for lines without usable feed times (Yellow, Pink, SRT Light Red) 0.5 min dwell + distance at 40 km/h with a 1.15 track-detour factor; 5 min per change; 3 min + 75 m/min per walk.
 
 ## Cost model
 
