@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { alertDeviceProjects } from "./e2e/alert-devices";
 
 /**
  * End-to-end tests against the real production build, served the way
@@ -6,8 +7,13 @@ import { defineConfig, devices } from "@playwright/test";
  * out/ as Workers static assets with public/_headers applied - so the CSP
  * and caching headers are exercised too). The live arrivals document is
  * replaced per test with a fixture (e2e/fixtures.ts); map tiles are real.
+ *
+ * Two kinds of project: `desktop` and `mobile` run the whole suite once, and
+ * the `alert:*` projects (e2e/alert-devices.ts) run only the phone-by-phone
+ * station-alert spec: iPhones first, then Android, then desktop.
  */
 const PORT = 8788;
+const ALERT_DEVICES = /alert-devices\.spec\.ts$/;
 
 export default defineConfig({
   testDir: "e2e",
@@ -27,8 +33,10 @@ export default defineConfig({
     timezoneId: "Asia/Bangkok",
   },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"] } },
-    { name: "mobile", use: { ...devices["Pixel 7"] } },
+    // Phones first: projects run in this order, so a phone failure shows first.
+    ...alertDeviceProjects,
+    { name: "mobile", testIgnore: ALERT_DEVICES, use: { ...devices["Pixel 7"] } },
+    { name: "desktop", testIgnore: ALERT_DEVICES, use: { ...devices["Desktop Chrome"] } },
   ],
   webServer: {
     command: `npx wrangler dev --port ${PORT}`,

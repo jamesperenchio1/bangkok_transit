@@ -14,8 +14,24 @@ let audio: AudioContext | null = null;
  */
 export function unlockAudio(): void {
   try {
-    audio ??= new AudioContext();
+    // iOS treats Web Audio as "ambient" and mutes it when the ringer switch is
+    // on silent. An alert has to be heard, so ask for a playback session
+    // (Safari 16.4+; elsewhere the property doesn't exist).
+    const session = (navigator as { audioSession?: { type: string } }).audioSession;
+    if (session) session.type = "playback";
+  } catch {
+    // not supported
+  }
+  try {
+    // iOS can close the context behind our back (e.g. after a phone call), and
+    // a closed one never plays again.
+    if (!audio || audio.state === "closed") audio = new AudioContext();
     void audio.resume();
+    // Older iOS only unlocks output once something has played inside the tap.
+    const silence = audio.createBufferSource();
+    silence.buffer = audio.createBuffer(1, 1, 22050);
+    silence.connect(audio.destination);
+    silence.start(0);
   } catch {
     // no Web Audio: vibration and the on-screen alert still work
   }
@@ -25,6 +41,13 @@ export function unlockAudio(): void {
 export function playDing(): void {
   if (!audio) return;
   const ctx = audio;
+  // A suspended context has a frozen clock: wait until it's running so the
+  // notes aren't scheduled against a time that never advances.
+  if (ctx.state === "running") ring(ctx);
+  else void ctx.resume().then(() => ring(ctx), () => {});
+}
+
+function ring(ctx: AudioContext): void {
   const start = ctx.currentTime + 0.02;
   const notes: [number, number][] = [
     [988, 0],

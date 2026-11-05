@@ -92,6 +92,12 @@ fix names/order against an authoritative source and let the tests guard it.
   only the Durable Object class and the default handler - workerd rejects
   the Worker if any other named export isn't a class/handler. `npm run
   smoke` (also in CI) boots the real Worker and catches this.
+- Station-alert audio (`lib/alert-output.ts`) must work on iPhone first, then
+  Android: the AudioContext is unlocked inside a tap, scheduling waits for a
+  `running` context, and a closed one is replaced. Any change there must pass
+  `npm run test:alert` (add a device to `e2e/alert-devices.ts`, a capability
+  case to `tests/alert-output.test.ts`) and the real-phone checklist in
+  `docs/operations.md`. iPhones have no Vibration API; don't "fix" that.
 - Timers in the poller must be cancellable (`deadlineAfter` in `lib/bts.ts`),
   not `AbortSignal.timeout()` — a pending timer keeps the Durable Object
   busy and billed.
@@ -105,6 +111,7 @@ npm run lint           # warnings fail
 npm run typecheck
 npm test               # Vitest unit tests (tests/)
 npm run test:e2e       # Playwright against the production build via wrangler dev
+npm run test:alert     # only the station-alert phone matrix (needs: npx playwright install webkit)
 npm run sim            # AI user-swarm sweep against out/ (exits 1 on major+ findings)
 npm run sim:acceptance # the harness's own 5 determinism tests
 npm start              # build + serve out/ the way production does

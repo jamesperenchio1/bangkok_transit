@@ -13,11 +13,11 @@
 - **Costs don't grow with users.** Live arrivals are polled once, centrally, by a single Cloudflare Durable Object and published as one JSON file behind the CDN. A thousand riders cost the same as one — everything fits Cloudflare's free tier with wide margins ([cost model](docs/architecture.md#cost-model)).
 - **Honest live data.** Countdowns run on the server's clock (corrected from `Date`/`Age` headers), so a phone with a wrong clock still counts down right. If updates stall, the last-known times stay up with their age in amber instead of vanishing; if the source API is down, the app says so.
 - **Works offline.** After one visit the app shell, route data and the rail-network basemap are cached on the device (service worker precache + a one-time background map warm-up), so it opens instantly with no connection and routing, search, the map and station cards all keep working. Only live times pause, with an "Offline" notice.
-- **"Your station" alert.** Turn on *Alert me near my stop* in the route sheet to get a chime, vibration and on-screen/screen-reader alert N stops before (0–3) and at your destination, optionally at line changes. It runs entirely on-device from GPS, so it works offline (keep the screen on; GPS is weak underground).
+- **"Your station" alert.** Turn on *Alert me near my stop* in the route sheet to get a chime, vibration and on-screen/screen-reader alert N stops before (0–3) and at your destination, optionally at line changes. It runs entirely on-device from GPS, so it works offline (keep the screen on; GPS is weak underground). The chime is requested as a playback sound so the iPhone silent switch does not mute it; iPhones have no web vibration API, so there it is sound and on-screen only.
 - **Accessible.** WCAG 2.2 AA target: zoomable page, skip link and landmarks, a keyboard/screen-reader station list as an alternative to the map canvas, an ARIA combobox search, a labelled route dialog with announcements, contrast-checked colours, 44 px targets, reduced-motion support, text (not colour alone) for lines, and axe checks in the e2e suite.
 - **Real routing.** 193 stations, branches and the MRT Blue loop modelled explicitly, curated walking interchanges, Dijkstra over (station, line) states with a minutes-based cost model.
 - **Resilient backend.** The poller backs off when the upstream is down, keeps an outage history, skips writes when nothing changed, and is restarted by a cron watchdog if its alarm chain ever stops.
-- **Tested end to end.** Unit tests for routing, data invariants and the client's clock/merge logic; the poller is tested inside the real Workers runtime; Playwright drives the production build on desktop and mobile and fails on any console error or CSP violation. A scheduled job checks production every 30 minutes.
+- **Tested end to end.** Unit tests for routing, data invariants and the client's clock/merge logic; the poller is tested inside the real Workers runtime; Playwright drives the production build on desktop and mobile, runs the station alert on more than 25 phone profiles (real WebKit for every iPhone, Chromium for Android), and fails on any console error or CSP violation. A scheduled job checks production every 30 minutes.
 
 ## Architecture
 
@@ -57,7 +57,8 @@ npm run dev              # http://localhost:3000 (Turbopack, no service worker)
 | `npm run lint` | ESLint, warnings fail |
 | `npm run typecheck` | Generates Next's route types, then `tsc` |
 | `npm test` | Unit tests (Vitest) |
-| `npm run test:e2e` | Playwright against the production build, desktop + mobile |
+| `npm run test:e2e` | Playwright against the production build: desktop, mobile, and the phone-by-phone station-alert matrix |
+| `npm run test:alert` | Only the alert matrix: iPhone Safari/Chrome, the iPhone range, Android, then desktop |
 | `npm run check:live` | Health check of production (site headers, live data, CDN caching) |
 
 The poller lives in [`cloudflare/poller`](cloudflare/poller) with its own `package.json`:
