@@ -279,6 +279,15 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
           <StationSearch onSelectStation={handleSearchSelect} />
         </div>
       </header>
+      {/* Operator line colours as a hairline under the header: brand, not data. */}
+      <div
+        aria-hidden="true"
+        className="h-[3px] shrink-0"
+        style={{
+          background:
+            "linear-gradient(90deg,#76b729 0 16.6%,#00a651 0 33.3%,#1e4d9b 0 50%,#7b3f98 0 66.6%,#e0679a 0 83.3%,#c8102e 0)",
+        }}
+      />
 
       <OfflineBanner />
       <StopAlertBanner alert={stopAlert} />

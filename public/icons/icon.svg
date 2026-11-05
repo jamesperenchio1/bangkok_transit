@@ -1,33 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- A tiny transit map: line colours follow the operators' (BTS Sukhumvit,
-       MRT Blue, Purple, Gold, Pink...) meeting at a Siam-style interchange.
-       Full-bleed background so the same art works as a maskable icon; all the
-       linework sits inside the central 80% safe zone. -->
+  <!-- Wordmark monogram: "BT" with the operators' line colours as a stripe.
+       Letters are drawn as heavy strokes (no font dependency) so they stay
+       legible at 16 px in a browser tab. Full-bleed background so the same
+       art works as a maskable icon; everything sits inside the central 80%
+       safe zone. -->
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#1c2a5e"/>
-      <stop offset="1" stop-color="#0b1233"/>
+      <stop offset="0" stop-color="#1d3a7a"/>
+      <stop offset="1" stop-color="#0a1230"/>
     </linearGradient>
   </defs>
   <rect width="512" height="512" fill="url(#bg)"/>
-  <g fill="none" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M96 150 H190 L256 216 V300 L316 360 H416" stroke="#1e5bd8"/>
-    <path d="M96 362 H196 L256 302 V216 L326 146 H416" stroke="#9b3fc4"/>
-    <path d="M256 92 V420" stroke="#00a88f"/>
-    <path d="M92 256 H420" stroke="#7ac62b"/>
+  <g fill="none" stroke="#ffffff" stroke-width="52" stroke-linejoin="round">
+    <!-- B -->
+    <path d="M112 124 V372"/>
+    <path d="M86 150 H186 a46 46 0 0 1 0 92 H86"/>
+    <path d="M86 242 H196 a52 52 0 0 1 0 104 H86"/>
+    <!-- T -->
+    <path d="M322 150 H446"/>
+    <path d="M384 124 V372"/>
   </g>
-  <!-- stations -->
-  <g fill="#ffffff">
-    <circle cx="150" cy="256" r="11"/>
-    <circle cx="362" cy="256" r="11"/>
-    <circle cx="256" cy="150" r="11"/>
-    <circle cx="256" cy="362" r="11"/>
-    <circle cx="416" cy="150" r="11"/>
-    <circle cx="416" cy="362" r="11"/>
-    <circle cx="96" cy="150" r="11"/>
-    <circle cx="96" cy="362" r="11"/>
+  <!-- line-colour stripe -->
+  <g>
+    <rect x="86" y="404" width="60" height="22" fill="#76b729"/>
+    <rect x="146" y="404" width="60" height="22" fill="#00a651"/>
+    <rect x="206" y="404" width="60" height="22" fill="#3b82f6"/>
+    <rect x="266" y="404" width="60" height="22" fill="#b05fd6"/>
+    <rect x="326" y="404" width="60" height="22" fill="#e0679a"/>
+    <rect x="386" y="404" width="60" height="22" fill="#e0243a"/>
   </g>
-  <!-- interchange -->
-  <circle cx="256" cy="256" r="38" fill="#ffffff"/>
-  <circle cx="256" cy="256" r="20" fill="#0b1233"/>
 </svg>
