@@ -33,8 +33,9 @@ jobs:
       - run: npm test
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Install Playwright Chromium and WebKit
+        # WebKit is the engine of every iPhone browser; the alert:* projects need it.
+        run: npx playwright install --with-deps chromium webkit
       - name: End-to-end tests (builds the site and serves it with wrangler)
         run: npm run test:e2e
       - uses: actions/upload-artifact@v4

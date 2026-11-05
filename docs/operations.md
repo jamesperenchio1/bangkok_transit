@@ -58,10 +58,29 @@ Poller logs (`console.warn("upstream failures")`, state transitions) are in the 
 | `check-live`: not edge-cached | `cf-cache-status` on `live.` | Restore the Cache Rule. |
 | A deploy broke the site | Workers → `bangkok-transit` → Deployments | Roll back to the previous version there, then fix forward. |
 
+## Real-phone check: station alert sound and vibration
+
+The automated matrix (`npm run test:alert`) proves the code unlocks, resumes and schedules the chime correctly on every phone profile, but a headless browser can't hear it. Before announcing a change to `lib/alert-output.ts`, `lib/use-stop-alert.ts` or the alert controls, try it on real phones (open the app, plan a route, switch on *Alert me near my stop*, expand the options, tap *Test sound*):
+
+| Phone | Expect |
+| --- | --- |
+| iPhone, Safari, ringer switch on silent | Chime plays (the playback session overrides the switch). No vibration - iPhones don't offer it to web pages. |
+| iPhone, Safari, ringer on | Chime plays at media volume. |
+| iPhone, Chrome | Same as Safari. |
+| iPhone, after locking and unlocking the screen, then tapping *Test sound* | Chime plays (suspended context resumes). |
+| Android, Chrome, ringer on | Chime plays and the phone vibrates. |
+| Android, Chrome, on vibrate/silent | Vibrates; chime follows media volume. |
+| Android, Samsung Internet | Chime plays and the phone vibrates. |
+| Any phone, media volume at zero | Nothing audible - the on-screen alert still shows; this is expected. |
+
+If a phone is silent, first check media volume (not ringer volume), then Bluetooth routing, then open a page in the same browser that plays audio to rule out the device.
+
 ## Local
 
 ```bash
 npm start                                   # build + serve out/ like production (port 8787)
 cd cloudflare/poller && npm run dev         # poller with a local R2; GET /__scheduled fires the cron
 NEXT_PUBLIC_ARRIVALS_URL=http://localhost:8800/arrivals.json npm run dev   # site against a local document
+npx playwright install chromium webkit      # once: the alert matrix needs WebKit for iPhones
+npm run test:alert -- --workers=3            # every phone profile; add --project=alert:iphone15-safari to run one
 ```
