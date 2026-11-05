@@ -1,6 +1,7 @@
 import { stationsByCode, type LineKey, type Station } from "@/data/stations";
 import lineSequences from "@/data/line-sequences.json";
 import interchanges from "@/data/interchanges.json";
+import hopTimes from "@/data/hop-times.json";
 import { haversineMeters } from "@/lib/line-geometry";
 
 /**
@@ -22,6 +23,10 @@ import { haversineMeters } from "@/lib/line-geometry";
  *
  * Both files are checked by tests (tests/data.test.ts): every code exists,
  * every station is on a line, and every interchange is a short walk.
+ *
+ * Ride times come from data/hop-times.json where it has them (scheduled
+ * running time per hop from OTP's open GTFS feed, see
+ * scripts/build-hop-times.ts), and from a distance/speed formula otherwise.
  */
 
 export type LegMode = "start" | "ride" | "walk";
@@ -57,13 +62,19 @@ export interface PathResult {
 }
 
 type Edge =
-  | { kind: "ride"; to: string; line: LineKey; meters: number }
+  | { kind: "ride"; to: string; line: LineKey; minutes: number }
   | { kind: "walk"; to: string; meters: number };
 
 /**
  * Cost model, in estimated minutes. Rough by design - good enough to prefer
  * the sensible route (an express Airport Rail Link hop over six BTS stops, a
  * single change over two) and to show an honest "~25 min".
+ *
+ * Riding one hop costs the scheduled running time from data/hop-times.json
+ * plus that line's stop time. Lines or hops the table lacks (Yellow and Pink,
+ * whose feed times are placeholders, and SRT Light Red) use the formula below
+ * instead: one average speed for every line, which is why it's only a
+ * fallback.
  */
 const TRAIN_KMH = 40; // average between stations, including acceleration
 const TRACK_DETOUR = 1.15; // track length vs. straight line between stations
@@ -74,6 +85,13 @@ const WALK_M_PER_MIN = 75;
 
 function rideMinutes(meters: number): number {
   return DWELL_MIN + ((meters * TRACK_DETOUR) / 1000 / TRAIN_KMH) * 60;
+}
+
+/** Scheduled minutes for one hop (running time + stop time), or undefined if the feed has none. */
+function scheduledRideMinutes(line: LineKey, a: string, b: string): number | undefined {
+  const table = (hopTimes.lines as Record<string, { dwell: number; hops: Record<string, number> } | undefined>)[line];
+  const run = table?.hops[a < b ? `${a}|${b}` : `${b}|${a}`];
+  return run === undefined ? undefined : run + table!.dwell;
 }
 
 function walkMinutes(meters: number): number {
@@ -120,9 +138,10 @@ function buildGraph(): Map<string, Edge[]> {
   for (const [line, segments] of Object.entries(sequences) as [LineKey, string[][]][]) {
     for (const segment of segments) {
       for (let i = 0; i < segment.length - 1; i++) {
-        const meters = distance(segment[i], segment[i + 1]);
-        add(segment[i], { kind: "ride", to: segment[i + 1], line, meters });
-        add(segment[i + 1], { kind: "ride", to: segment[i], line, meters });
+        const minutes =
+          scheduledRideMinutes(line, segment[i], segment[i + 1]) ?? rideMinutes(distance(segment[i], segment[i + 1]));
+        add(segment[i], { kind: "ride", to: segment[i + 1], line, minutes });
+        add(segment[i + 1], { kind: "ride", to: segment[i], line, minutes });
       }
     }
   }
@@ -188,7 +207,7 @@ export function findPath(fromCode: string, toCode: string): PathResult | null {
       } else {
         const changing = state.mode === "ride" && state.line !== edge.line;
         next = { code: edge.to, mode: "ride", line: edge.line };
-        edgeCost = rideMinutes(edge.meters) + (changing ? CHANGE_MIN : 0);
+        edgeCost = edge.minutes + (changing ? CHANGE_MIN : 0);
       }
       const nextCost = cost + edgeCost;
       const key = stateKey(next);

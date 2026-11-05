@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { liveStations, stations, stationsByCode, type LineKey } from "@/data/stations";
 import lineSequences from "@/data/line-sequences.json";
 import interchanges from "@/data/interchanges.json";
+import hopTimes from "@/data/hop-times.json";
 import { haversineMeters } from "@/lib/line-geometry";
 import { LINE_COLORS } from "@/lib/line-colors";
 
@@ -121,6 +122,49 @@ describe("interchanges", () => {
         const [a, b] = [stations[i].code, stations[j].code];
         if (shareLine(a, b) || meters(a, b) > 300) continue;
         expect(listed.has(`${a}-${b}`), `${a}-${b} is ${Math.round(meters(a, b))} m apart`).toBe(true);
+      }
+    }
+  });
+});
+
+describe("hop times", () => {
+  const tables = hopTimes.lines as Record<string, { dwell: number; hops: Record<string, number> }>;
+  const hopKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+  const adjacent = (line: LineKey) =>
+    new Set(sequences[line].flatMap((seg) => seg.slice(0, -1).map((c, i) => hopKey(c, seg[i + 1]))));
+
+  // Yellow and Pink are placeholders in the feed (uniform times), Light Red is
+  // too small to judge; they must stay on the distance formula.
+  const SCHEDULED: LineKey[] = ["sukhumvit", "silom", "gold", "blue", "purple", "arl", "srtRed"];
+
+  it("only covers lines with trustworthy feed times", () => {
+    expect(Object.keys(tables).sort()).toEqual([...SCHEDULED].sort());
+  });
+
+  it("names only hops that are adjacent in line-sequences.json", () => {
+    for (const [line, table] of Object.entries(tables)) {
+      const valid = adjacent(line as LineKey);
+      for (const key of Object.keys(table.hops)) expect(valid.has(key), `${line} ${key}`).toBe(true);
+    }
+  });
+
+  it("has a time for every hop of the lines it covers (except SRT Light Red)", () => {
+    const lightRed = new Set(sequences.srtRed[0].slice(0, -1).map((c, i) => hopKey(c, sequences.srtRed[0][i + 1])));
+    for (const line of SCHEDULED) {
+      for (const key of adjacent(line)) {
+        if (line === "srtRed" && lightRed.has(key)) continue;
+        expect(tables[line].hops[key], `${line} ${key}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("has plausible running and stop times", () => {
+    for (const [line, table] of Object.entries(tables)) {
+      expect(table.dwell, line).toBeGreaterThanOrEqual(0.25);
+      expect(table.dwell, line).toBeLessThanOrEqual(2);
+      for (const [key, minutes] of Object.entries(table.hops)) {
+        expect(minutes, `${line} ${key}`).toBeGreaterThanOrEqual(0.5);
+        expect(minutes, `${line} ${key}`).toBeLessThanOrEqual(6);
       }
     }
   });

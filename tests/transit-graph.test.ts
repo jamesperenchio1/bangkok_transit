@@ -69,6 +69,25 @@ describe("findPath", () => {
     expect(path!.minutes).toBeLessThan(130);
   });
 
+  it("takes ride times from the scheduled hop table where it has them", () => {
+    // Feed: Silom end to end is ~30 min; the distance formula alone gives ~27.
+    const silom = findPath("W1", "S12");
+    expect(silom!.minutes).toBeGreaterThanOrEqual(30);
+    expect(silom!.minutes).toBeLessThanOrEqual(32);
+    // Feed: the Airport Rail Link takes ~35 min; the formula would say ~50.
+    const arl = findPath("A01", "A08");
+    expect(arl!.minutes).toBeGreaterThanOrEqual(35);
+    expect(arl!.minutes).toBeLessThanOrEqual(38);
+  });
+
+  it("falls back to the distance formula for lines the feed can't time", () => {
+    // Pink's feed times are placeholders (28 min for ~35 km), so the router
+    // must not use them: a full-line ride stays well above that.
+    expect(findPath("PK01", "PK30")!.minutes).toBeGreaterThan(50);
+    // Yellow's are a flat 3 min a hop (72 min); the formula says ~60.
+    expect(findPath("YL01", "YL23")!.minutes).toBeLessThan(70);
+  });
+
   it("returns null for unknown or identical stations", () => {
     expect(findPath("N8", "N8")).toBeNull();
     expect(findPath("N8", "NOPE")).toBeNull();

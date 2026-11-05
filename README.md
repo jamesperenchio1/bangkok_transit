@@ -84,3 +84,5 @@ To point the site at a local copy of the live document, set `NEXT_PUBLIC_ARRIVAL
 `data/stations.json` (193 stations), `data/line-sequences.json` (per-line stop order as segments) and `data/interchanges.json` (walking transfers) are hand-maintained and guarded by `tests/data.test.ts`. Track geometry comes from the Bangkok Metropolitan Administration's public GIS service; see [`scripts/README.md`](scripts/README.md).
 
 Live arrivals cover BTS Sukhumvit and Silom (61 stations) — the only lines with a live feed.
+
+Ride times in route estimates come from `data/hop-times.json`: scheduled minutes between adjacent stations for BTS Sukhumvit, Silom and Gold, MRT Blue and Purple, the Airport Rail Link and SRT Dark Red, derived from the open GTFS feed of the Office of Transport and Traffic Policy and Planning (สนข./OTP, Ministry of Transport; [Namtang](https://namtang-api.otp.go.th/opendata), CC-BY 4.0). These are timetable figures, not live data. Yellow, Pink and SRT Light Red fall back to a distance/speed formula because their feed times are placeholders or too sparse to use. Regenerate with `scripts/build-hop-times.ts`.
