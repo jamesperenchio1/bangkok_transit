@@ -1,6 +1,6 @@
 # Bangkok Transit
 
-**[bangkok-transit.com](https://bangkok-transit.com)** — a fast, installable map of every operating rail line in Bangkok (BTS, MRT Blue/Purple/Yellow/Pink, Gold, Airport Rail Link, SRT Red). Tap two stations to get a route with changes, walking transfers, the direction to board and a time estimate; BTS stations show live train arrivals. English and Thai.
+**[bangkok-transit.com](https://bangkok-transit.com)** — a fast, installable map of every operating rail line in Bangkok (BTS, MRT Blue/Purple/Yellow/Pink, Gold, Airport Rail Link, SRT Red). Tap two stations to get a route with changes, walking transfers, the direction to board and a time estimate; BTS stations show live train arrivals, and BTS trains are drawn moving along the map. English and Thai.
 
 <p>
   <img src="docs/screenshot-station.png" width="270" alt="Siam station card with live arrivals in both directions">

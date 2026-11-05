@@ -86,6 +86,16 @@ Everything except live times is local data, so the app is offline-first:
 
 Pure target selection (`alertTargets`, `dueTarget`) is separate from the browser outputs. The destination always rings, plus optionally the station 1–3 rode stops before it and line changes; a fix within ~300–500 m (widened to its accuracy, ignored past 1 km) triggers a target once. Outputs are a synthesised Web Audio chime (no asset, no CSP change; unlocked by the tap that enables alerts), `navigator.vibrate`, an assertive on-screen alert, a service-worker notification if permitted, and a screen wake lock while a trip is watched. Nothing leaves the device.
 
+## Live train positions (`lib/live-trains.ts`, `components/live-trains-layer.ts`)
+
+The map draws BTS Sukhumvit and Silom trains moving along the track. The feed has no positions, only "train 087 is due at Siam in 5.9 min", but the same `train_no` is listed at every station ahead of it. Each sighting is a (station, arrival time = reading timestamp + ETA) pair; the train stands at each station for the line's dwell time (`data/hop-times.json`), then eases to the next one by the next sighting's time; a station the feed skips is still stopped at, with the time shared by running times. The hop before its first sighting takes its running time from the same file. `estimateTrains` is pure (no map, no DOM); the layer converts each estimate to a point on the real curved track (`trackBetween`) about four times a second. Trains are drawn as one neutral four-car top-down icon rotated to the track's bearing (not tinted by line, so it doesn't vanish into its own track); tapping one (44 px target, station taps win) opens a card with its number, direction and next stop that follows it.
+
+- **No extra cost.** It reads the arrivals the client already holds, so there is no new request, API route or server work. It is client CPU only (~60 stations, tens of trains).
+- **Estimates, not GPS.** Positions are inferred, so they can be off by part of a hop, and a train that no station nearby lists is not drawn.
+- **Honest data.** Only readings younger than `FRESH_FOR_MS` are used - extrapolating last-known times would show trains where they no longer are. A train is dropped 45 s after its last sighting, and one whose preceding stations are missing from the feed (a failed poll) is not drawn until it is within a minute of the first station that knows about it.
+- **Turnarounds.** A train reaching a terminus is listed as arriving on one platform and leaving on the other; it is drawn once, as the arriving train until that has played out.
+- **BTS only.** No other line has a live feed. Nothing is drawn for them rather than faking it from the timetable.
+
 ## Routing (`lib/transit-graph.ts`)
 
 - Nodes are station codes. Ride edges come from `data/line-sequences.json`, where each line is one or more **segments** — branches share a station (SRT Light/Dark Red at Krung Thep Aphiwat, Pink's Muang Thong Thani spur at PK10), and MRT Blue is one segment that visits Tha Phra twice (trains run Lak Song → Tha Phra → round the loop → Tha Phra). A line's termini are just its segments' ends, which is also what the boarding direction and the live-arrivals platform matching use.
