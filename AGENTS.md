@@ -119,7 +119,7 @@ npm run check:live     # production health check
 cd cloudflare/poller && npm install && npm run typecheck && npm test && npm run smoke
 ```
 
-CI (`.github/workflows/ci.yml`) runs all of the above on every push/PR.
+CI (`.github/workflows/ci.yml`) runs all of the above on every push/PR. The e2e suite runs as four parallel shards inside Playwright's browser image (tag taken from the lockfile), and a final `Site` job aggregates the site jobs; keep that job's name, it's the check PRs wait on. All runners are GitHub-hosted, so CI stays free.
 Deploys are Cloudflare Workers Builds on push to `main` (site from the repo
 root, poller from `cloudflare/poller`). `live-check.yml` checks production
 every 30 minutes.

@@ -2,6 +2,12 @@
 # Workers-runtime tests, and the end-to-end suite against the production
 # build. Deployment itself is Cloudflare Workers Builds (on push to main),
 # so no Cloudflare credentials live in GitHub.
+#
+# The site's checks run as parallel jobs so a pull request waits on the slowest
+# one, not the sum: `checks` (no browsers) alongside four `e2e` shards. The
+# end-to-end suite is ~380 tests, mostly the station-alert matrix across 29
+# phone profiles, rendered in software GL - one serial job took 13-17 minutes
+# for the tests alone. All runners are GitHub-hosted (free for a public repo).
 name: CI
 
 on:
@@ -17,10 +23,23 @@ permissions:
   contents: read
 
 jobs:
-  site:
-    name: Site
+  # The Playwright version the lockfile pins, so the browser image below is
+  # always the matching one (a mismatch fails with "Executable doesn't exist").
+  meta:
+    name: Playwright version
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 2
+    outputs:
+      playwright: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        run: echo "version=$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")" >> "$GITHUB_OUTPUT"
+
+  checks:
+    name: Lint, types and unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,17 +52,54 @@ jobs:
       - run: npm test
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
-      - name: Install Playwright Chromium and WebKit
-        # WebKit is the engine of every iPhone browser; the alert:* projects need it.
-        run: npx playwright install --with-deps chromium webkit
-      - name: End-to-end tests (builds the site and serves it with wrangler)
-        run: npm run test:e2e
+
+  e2e:
+    name: End-to-end (shard ${{ matrix.shard }}/4)
+    needs: meta
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Playwright's own image: Chromium, WebKit (the engine of every iPhone
+    # browser; the alert:* projects need it) and their system libraries are
+    # already installed, so there is no slow `playwright install --with-deps`
+    # (apt from a mirror that has timed out the whole job).
+    container:
+      image: mcr.microsoft.com/playwright:v${{ needs.meta.outputs.playwright }}-noble
+      options: --ipc=host
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      # Builds the site and serves it with wrangler, per shard (in parallel).
+      - name: End-to-end tests
+        run: npm run test:e2e -- --shard=${{ matrix.shard }}/4
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: playwright-report/
           retention-days: 14
+
+  # One stable "Site" check for the whole site pipeline, so the name that pull
+  # requests and branch protection already know doesn't change.
+  site:
+    name: Site
+    needs: [checks, e2e]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Every site job passed
+        run: |
+          echo "checks: ${{ needs.checks.result }}"
+          echo "e2e:    ${{ needs.e2e.result }}"
+          test "${{ needs.checks.result }}" = "success" && test "${{ needs.e2e.result }}" = "success"
 
   poller:
     name: Poller

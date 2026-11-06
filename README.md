@@ -75,7 +75,7 @@ To point the site at a local copy of the live document, set `NEXT_PUBLIC_ARRIVAL
 
 ## CI/CD
 
-- **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) on every push and PR: lint, typecheck, unit tests, production dependency audit and the Playwright suite for the site; typecheck, Workers-runtime tests, a dry-run bundle and an audit for the poller.
+- **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) on every push and PR: lint, typecheck, unit tests and a production dependency audit for the site, alongside the Playwright suite split across four parallel shards in Playwright's own browser image (a single `Site` check reports the result); typecheck, Workers-runtime tests, a dry-run bundle and an audit for the poller.
 - **CD** is Cloudflare Workers Builds: a push to `main` builds and deploys the site (repo root) and the poller (`cloudflare/poller`). No Cloudflare credentials are stored in GitHub.
 - **Monitoring** ([`.github/workflows/live-check.yml`](.github/workflows/live-check.yml)) runs `scripts/check-live.mjs` against production every 30 minutes; a failure emails the repo owner.
 
