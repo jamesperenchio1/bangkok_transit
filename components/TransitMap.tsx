@@ -10,6 +10,8 @@ import { fetchLineGeometry, fullLineSegments, trackBetween, type LineSegments } 
 import type { GeoPosition } from "@/lib/use-geolocation";
 import type { PathResult } from "@/lib/transit-graph";
 import { StationActions } from "@/components/StationActions";
+import { distanceLabel, nearestStation } from "@/lib/nearest-station";
+import type { Place } from "@/lib/place-search";
 import { setTrainsDimmed, setTrainsVisible, startLiveTrainsWhenIdle } from "@/components/live-trains-layer";
 import { LINE_COLORS, readableTextColor } from "@/lib/line-colors";
 import { stationName, useLangStore, useT, type Lang } from "@/lib/i18n";
@@ -123,6 +125,8 @@ export interface TransitMapProps {
   userPosition: GeoPosition | null;
   /** Set (e.g. from a search result) to fly the map to a station on demand. */
   focusStation: Station | null;
+  /** Set (from a place search result) to show a place and its nearest station. */
+  focusPlace: Place | null;
   /** Whether the route sheet covers the bottom of the screen (up to 70vh). */
   sheetOpen: boolean;
 }
@@ -306,6 +310,7 @@ export function TransitMap({
   path,
   userPosition,
   focusStation,
+  focusPlace,
   sheetOpen,
 }: TransitMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -812,6 +817,23 @@ export function TransitMap({
     else map.once("style.load", apply);
   }, [focusStation]);
 
+  // A place picked from search: a pin, and a card naming its nearest station
+  // with the usual Start / Destination buttons, so "go to the mall" is one tap.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !focusPlace) return;
+    const apply = () => {
+      const move = {
+        center: [focusPlace.lon, focusPlace.lat] as [number, number],
+        zoom: useSettingsStore.getState().settings.autoZoom ? Math.max(map.getZoom(), 15) : map.getZoom(),
+      };
+      map.stop().easeTo({ ...move, duration: motionMs(600) });
+      openPlacePopup(map, popupsRef, focusPlace, latest);
+    };
+    if (loadedRef.current) apply();
+    else map.once("style.load", apply);
+  }, [focusPlace]);
+
   return (
     <div className="relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" />
@@ -981,5 +1003,112 @@ function openPopup(
     );
   };
   popupsRef.current.set(station.code, { popup, root, render });
+  render();
+}
+
+const PLACE_KEY = "__place";
+
+function PlaceCard({
+  place,
+  latest,
+  close,
+}: {
+  place: Place;
+  latest: RefObject<{
+    onSetStart: (s: Station) => void;
+    onSetDestination: (s: Station) => void;
+    startCode: string | null;
+    destinationCode: string | null;
+  }>;
+  close: () => void;
+}) {
+  const { lang, t } = useT();
+  const { station, meters } = nearestStation(place.lat, place.lon);
+  const color = stationLineColor(station);
+  return (
+    <div className="flex flex-col gap-2 py-0.5">
+      <div className="pr-8">
+        <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{place.name}</p>
+        {(place.kind || place.detail) && (
+          <p className="text-xs text-neutral-600 dark:text-neutral-400">
+            {[place.kind, place.detail].filter(Boolean).join(" · ")}
+          </p>
+        )}
+      </div>
+      <p className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-700 dark:text-neutral-300">
+        {t.placeNearest}:
+        <span
+          className="shrink-0 rounded px-1.5 py-0.5 font-semibold"
+          style={{ backgroundColor: color, color: readableTextColor(color) }}
+        >
+          {station.code}
+        </span>
+        <span lang={lang}>{stationName(station, lang)}</span>
+        <span>· {t.placeAway(distanceLabel(meters))}</span>
+      </p>
+      <StationActions
+        station={station}
+        startCode={latest.current.startCode}
+        destinationCode={latest.current.destinationCode}
+        onSetStart={(s) => {
+          latest.current.onSetStart(s);
+          close();
+        }}
+        onSetDestination={(s) => {
+          latest.current.onSetDestination(s);
+          close();
+        }}
+      />
+    </div>
+  );
+}
+
+function openPlacePopup(
+  map: maplibregl.Map,
+  popupsRef: RefObject<Map<string, { popup: maplibregl.Popup; root: Root; render: () => void }>>,
+  place: Place,
+  latest: RefObject<{
+    onSetStart: (s: Station) => void;
+    onSetDestination: (s: Station) => void;
+    startCode: string | null;
+    destinationCode: string | null;
+  }>,
+) {
+  // One card at a time, same as station cards.
+  popupsRef.current.forEach(({ popup }) => popup.remove());
+
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  const marker = new maplibregl.Marker({ color: "#dc2626" }).setLngLat([place.lon, place.lat]).addTo(map);
+  const popup = new maplibregl.Popup({
+    offset: 36,
+    maxWidth: "min(300px, calc(100vw - 24px))",
+    closeButton: true,
+    focusAfterOpen: false,
+  })
+    .setLngLat([place.lon, place.lat])
+    .setDOMContent(container)
+    .addTo(map);
+
+  const closeButton = popup.getElement()?.querySelector<HTMLElement>(".maplibregl-popup-close-button");
+  if (closeButton) {
+    closeButton.style.width = "44px";
+    closeButton.style.height = "44px";
+    closeButton.style.display = "flex";
+    closeButton.style.alignItems = "center";
+    closeButton.style.justifyContent = "center";
+    closeButton.style.padding = "0";
+    closeButton.focus({ preventScroll: true });
+  }
+
+  popup.on("close", () => {
+    marker.remove();
+    queueMicrotask(() => root.unmount());
+    if (popupsRef.current.get(PLACE_KEY)?.popup === popup) popupsRef.current.delete(PLACE_KEY);
+  });
+
+  const render = () =>
+    root.render(<PlaceCard place={place} latest={latest} close={() => queueMicrotask(() => popup.remove())} />);
+  popupsRef.current.set(PLACE_KEY, { popup, root, render });
   render();
 }

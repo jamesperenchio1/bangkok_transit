@@ -122,6 +122,10 @@ Data: `scripts/scrape-fares.ts` rebuilds `data/fares.json` from public sources (
 - While the box is empty the panel lists every station by line (`lib/station-groups.ts`); typing switches to ranked matches.
 - Settings are a Zustand store persisted to `localStorage` (`bts:settings:v1`), restored in an effect after hydration. They only toggle layer visibility/filters on the existing map, route-planning weights (`findPath` options; the minutes shown never include the preference penalty), root text size and motion. Nothing is sent anywhere, so there is no cost. Defaults equal the pre-settings behaviour.
 
+### Online place search (`lib/place-search.ts`)
+
+Below the station matches, the search box lists places (malls, hospitals, hotels, restaurants, streets, addresses) from Photon (`photon.komoot.io`, a typeahead geocoder over OpenStreetMap), limited to greater Bangkok and biased to the centre. Picking one drops a pin and a card with the nearest station and Start / Destination buttons for it. This is the **one** browser-to-third-party call, and it is deliberate: it needs the network (offline it says so and stations still work), it is debounced (350 ms, min 2 characters), cancelled when stale and cached in memory, the service worker never stores it (`app/sw.ts`, `NetworkOnly`), and it can be switched off in Settings ("Search places online"). Photon's public instance is free under fair use with no SLA; if usage ever outgrows that, move to a self-hosted Photon or a keyed provider behind a cached Worker. It adds no cost to our own infrastructure. Its origin is in the CSP `connect-src` (`public/_headers`; `e2e/platform.spec.ts` pins the list). E2E tests mock it (`servePlaces`) and block the service worker for those specs, since the worker answers cross-origin fetches where Playwright's mocking cannot reach.
+
 ## Cost model
 
 All numbers per day unless stated; limits are Cloudflare's free plan (checked against Cloudflare's pricing docs, October 2026). None of them depends on the number of users.

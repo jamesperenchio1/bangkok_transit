@@ -12,7 +12,7 @@
   # Analytics, whose beacon Cloudflare injects into the page at the edge (so
   # it never appears in the build or in local/e2e runs). The e2e suite
   # fails on any CSP violation, so a new origin can't slip in unnoticed.
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org; font-src 'self' data:; connect-src 'self' https://tiles.openfreemap.org https://live.bangkok-transit.com https://cloudflareinsights.com; worker-src 'self' blob:; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org; font-src 'self' data:; connect-src 'self' https://tiles.openfreemap.org https://photon.komoot.io https://live.bangkok-transit.com https://cloudflareinsights.com; worker-src 'self' blob:; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
 
 # Content-hashed build output never changes under the same name.
 /_next/static/*

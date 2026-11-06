@@ -36,6 +36,14 @@ const liveArrivals: RuntimeCaching = {
   handler: new NetworkOnly(),
 };
 
+// Place search sends what the rider types to a third party. It is fetched live
+// and never stored: a cached copy would keep their queries on the device and
+// answer from stale data. (The page keeps its own in-memory cache.)
+const placeSearch: RuntimeCaching = {
+  matcher: ({ url }) => url.hostname === "photon.komoot.io",
+  handler: new NetworkOnly(),
+};
+
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   // The shell ("/", added in next.config.ts) is precached, so a cold start
@@ -46,7 +54,7 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: [liveArrivals, openFreeMapCache, ...defaultCache],
+  runtimeCaching: [liveArrivals, placeSearch, openFreeMapCache, ...defaultCache],
 });
 
 serwist.addEventListeners();
