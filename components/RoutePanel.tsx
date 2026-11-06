@@ -1,6 +1,7 @@
 "use client";
 
-import { computeFare, OPERATOR_NAMES, type FareResult } from "@/lib/fares";
+import { computeFare, type FareResult } from "@/lib/fares";
+import { useFares } from "@/lib/use-fares";
 import { useEffect, useId, useRef, useState } from "react";
 import { X, MapPin, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import { useArrivals } from "@/lib/use-arrivals";
@@ -74,6 +75,7 @@ export interface RoutePanelProps {
 export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePanelProps) {
   const open = state !== null;
   const { lang, t } = useT();
+  const fares = useFares(!!state?.path);
   const headingRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const [expanded, setExpanded] = useState(showAllStops);
@@ -106,7 +108,7 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePan
   const to = state ? stationName(state.destination, lang) : "";
   const changes = state?.path ? effectiveChanges(state.path) : 0;
   const summary = state?.path
-    ? [t.stops(state.path.stops), t.changes(changes), t.aboutMinutes(state.path.minutes), fareText(t, computeFare(state.path))].join(", ")
+    ? [t.stops(state.path.stops), t.changes(changes), t.aboutMinutes(state.path.minutes), fareText(t, computeFare(state.path, fares))].filter(Boolean).join(", ")
     : state
       ? t.noRoute
       : "";
@@ -361,11 +363,12 @@ export function fareText(t: ReturnType<typeof useT>["t"], fare: FareResult | nul
 }
 
 function RouteSummary({ path, changes }: { path: PathResult; changes: number }) {
-  const { t } = useT();
+  const { lang, t } = useT();
   const parts = [t.stops(path.stops), t.changes(changes)];
   if (path.walkMeters > 0) parts.push(t.walk(path.walkMeters));
   parts.push(t.aboutMinutes(path.minutes));
-  const fare = computeFare(path);
+  const fares = useFares(true);
+  const fare = computeFare(path, fares);
   return (
     <>
       <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-300">{parts.join(" · ")}</p>
@@ -374,7 +377,7 @@ function RouteSummary({ path, changes }: { path: PathResult; changes: number }) 
           <p className="font-semibold">{fareText(t, fare)}</p>
           {fare.segments.length > 1 && (
             <p className="text-xs text-neutral-600 dark:text-neutral-300">
-              {fare.segments.map((s) => t.fareLeg(OPERATOR_NAMES[s.operator], s.fare)).join(" · ")}
+              {fare.segments.map((s) => t.fareLeg(lang === "th" ? s.nameTh : s.name, s.fare)).join(" · ")}
             </p>
           )}
           <p className="text-xs text-neutral-600 dark:text-neutral-300">{t.faresAsOf(fare.asOf)}</p>

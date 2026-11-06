@@ -15,6 +15,7 @@ import { startArrivalsPolling, useArrivalsStore } from "@/lib/arrivals-store";
 import { scheduleOfflineWarm } from "@/lib/offline-warm";
 import { fetchLineGeometry, haversineMeters } from "@/lib/line-geometry";
 import { computeFare } from "@/lib/fares";
+import { useFares } from "@/lib/use-fares";
 import { restoreLang, stationName, useLangStore, useT } from "@/lib/i18n";
 
 // Kicked off as soon as this module evaluates (not when <TransitMap> first
@@ -161,7 +162,8 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
     () => (start && destination ? findPath(start.code, destination.code) : null),
     [start, destination],
   );
-  const fareLine = fareText(t, computeFare(path));
+  const fares = useFares(path !== null);
+  const fareLine = fareText(t, computeFare(path, fares));
 
   const handleSetStart = (station: Station) => {
     setStart(station);

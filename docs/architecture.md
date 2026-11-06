@@ -110,9 +110,11 @@ The map draws BTS Sukhumvit and Silom trains moving along the track. The feed ha
 - Walk edges come from `data/interchanges.json` (16 curated pairs). Same-building interchanges (Siam, Tao Poon) are a single node carrying several lines.
 - Dijkstra over *(station, how you arrived, line)* states, so a change of line can be charged properly. Cost is estimated minutes: per hop the scheduled running time + stop time from `data/hop-times.json` (OTP's GTFS feed, built by `scripts/build-hop-times.ts`; BTS, Gold, MRT Blue/Purple, ARL, SRT Dark Red), or for lines without usable feed times (Yellow, Pink, SRT Light Red) 0.5 min dwell + distance at 40 km/h with a 1.15 track-detour factor; 5 min per change; 3 min + 75 m/min per walk.
 
-## Fares (`lib/fares.ts`, `data/fares.json`)
+## Fares (`lib/fares.ts`, `lib/use-fares.ts`, `data/fares.json`)
 
-Shown in the route sheet once a start and destination give a route. Computed in the browser from the route's legs and a bundled JSON file, so they cost nothing per user. Each operator is charged separately (a walk or operator change starts a new fare; no through-ticket is assumed). An operator without a verified table is `null` in the file and the app says "fare unavailable" for that part, never a guess; the total is then marked partial. `.github/workflows/update-fares.yml` re-scrapes monthly (`scripts/scrape-fares.ts`) and commits to `main` only if the guards and `npm test` pass. Currently only MRT Blue (stations-travelled table) has a wired-in source; add other operators to `SOURCES` as official tables are found.
+Shown in the header and route sheet once a start and destination give a route. Computed in the browser from the route's legs and a bundled JSON file, so they cost nothing per user; the file (~65 KB) is a separate chunk, loaded the first time a route exists (`useFares`). Each fare system is charged separately: BTS (Sukhumvit, Silom and Gold share one table), MRT Blue, Purple, Yellow, Pink, the Airport Rail Link and the SRT Red Line. A walk or a change of system starts a new fare and the per-system fares are summed (no through-ticket or transfer discount is assumed). A pair the data lacks (e.g. N6, never built) shows "fare unavailable" and marks the total partial, never a guess.
+
+Data: `scripts/scrape-fares.ts` rebuilds `data/fares.json` from public sources (see `scripts/README.md`): OTP's Namtang GTFS for BTS, Purple, Yellow, Pink and ARL (station-pair matrices, spot-checked against the operators' Royal Gazette tables), srtet.co.th for Red, and the Gazette table for Blue (the feed lags it). `.github/workflows/update-fares.yml` runs it monthly and commits to `main` only if its guards and `npm test` pass; a failure leaves the data untouched and emails the owner.
 
 ## Cost model
 
