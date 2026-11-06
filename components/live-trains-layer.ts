@@ -4,7 +4,8 @@ import { serverNow, useArrivalsStore } from "@/lib/arrivals-store";
 import { stationName, strings, useLangStore } from "@/lib/i18n";
 import { LINE_NAMES } from "@/lib/line-colors";
 import { haversineMeters, trackBetween, type LatLon, type LineSegments } from "@/lib/line-geometry";
-import { estimateTrains, type TrainEstimate, type TrainLine } from "@/lib/live-trains";
+import { estimateTrains, trainOnRoute, type TrainEstimate, type TrainLine } from "@/lib/live-trains";
+import { useSettingsStore, type Settings } from "@/lib/settings-store";
 
 export const TRAINS_SOURCE = "live-trains";
 export const TRAINS_LAYER = "live-trains-layer";
@@ -98,6 +99,16 @@ function drawTrainIcon(): ImageData | null {
   return ctx.getImageData(0, 0, S * ratio, S * ratio);
 }
 
+const SIZE_FACTOR = { small: 0.75, medium: 1, large: 1.3 } as const;
+
+/** Icon size by zoom, scaled (a zoom expression can only sit at the top level, so the factor goes into the stops). */
+function iconSize(factor: number): maplibregl.ExpressionSpecification {
+  return ["interpolate", ["linear"], ["zoom"], 9, 0.5 * factor, 12, 0.65 * factor, 15, 0.85 * factor, 17, factor];
+}
+
+/** Train features carry `onRoute`; this keeps only the ones that are. */
+const ON_ROUTE: maplibregl.FilterSpecification = ["==", ["get", "onRoute"], true];
+
 /** Layer to add; call once the style has loaded, before the station labels so names stay on top. */
 export function addLiveTrainsLayer(map: maplibregl.Map, beforeId: string): void {
   const image = drawTrainIcon();
@@ -110,7 +121,7 @@ export function addLiveTrainsLayer(map: maplibregl.Map, beforeId: string): void 
       source: TRAINS_SOURCE,
       layout: {
         "icon-image": TRAIN_ICON,
-        "icon-size": ["interpolate", ["linear"], ["zoom"], 9, 0.5, 12, 0.65, 15, 0.85, 17, 1],
+        "icon-size": iconSize(1),
         // Turn with the map, not the screen: a train keeps pointing along its track.
         "icon-rotate": ["get", "bearing"],
         "icon-rotation-alignment": "map",
@@ -128,6 +139,7 @@ export function addLiveTrainsLayer(map: maplibregl.Map, beforeId: string): void 
       type: "symbol",
       source: TRAINS_SOURCE,
       minzoom: 14,
+      filter: ON_ROUTE,
       layout: {
         "text-field": ["get", "label"],
         "text-font": ["Noto Sans Bold"],
@@ -149,6 +161,8 @@ export function addLiveTrainsLayer(map: maplibregl.Map, beforeId: string): void 
       id: TRAINS_HIT_LAYER,
       type: "circle",
       source: TRAINS_SOURCE,
+      // A greyed-out train is not tappable: it is not part of what the rider is looking at.
+      filter: ON_ROUTE,
       paint: { "circle-radius": TAP_RADIUS_PX, "circle-opacity": 0 },
     },
     beforeId,
@@ -157,6 +171,8 @@ export function addLiveTrainsLayer(map: maplibregl.Map, beforeId: string): void 
 
 interface LiveTrainsOptions {
   getSegments: () => LineSegments | null;
+  /** Directed hops of the route being shown, or null when there is none. */
+  getRouteHops?: () => ReadonlySet<string> | null;
   /** A tap on a station marker takes priority over a train beside it. */
   stationHitLayer: string;
 }
@@ -167,7 +183,7 @@ interface LiveTrainsOptions {
  * fetches - and pauses while the tab is hidden. Tapping a train opens a small
  * card that follows it.
  */
-export function startLiveTrains(map: maplibregl.Map, { getSegments, stationHitLayer }: LiveTrainsOptions): () => void {
+export function startLiveTrains(map: maplibregl.Map, { getSegments, getRouteHops, stationHitLayer }: LiveTrainsOptions): () => void {
   const tracks = new Map<string, Track>();
   let drawn = false;
   let latest = new Map<string, { train: TrainEstimate; at: [number, number] }>();
@@ -374,6 +390,7 @@ export function startLiveTrains(map: maplibregl.Map, { getSegments, stationHitLa
   map.on("mouseleave", TRAINS_HIT_LAYER, onLeave);
 
   let drawnAt = new Map<string, DrawnTrain>();
+  let drawnStyle = "";
   function frame() {
     if (document.hidden) return;
     // Until the track geometry arrives, hop paths would fall back to straight
@@ -387,7 +404,13 @@ export function startLiveTrains(map: maplibregl.Map, { getSegments, stationHitLa
     const placedNow = new Map<string, { train: TrainEstimate; at: [number, number] }>();
     const items: { id: string; text: string; at: [number, number] }[] = [];
     const bearings = new Map<string, number>();
+    const hops = getRouteHops?.() ?? null;
+    const others = useSettingsStore.getState().settings.otherTrains;
     for (const train of estimateTrains(useArrivalsStore.getState().map, serverNow())) {
+      const onRoute = trainOnRoute(train, hops);
+      // "Hide": a train that isn't on the route being shown doesn't exist as
+      // far as the map, the tap targets and the screen-reader list go.
+      if (!onRoute && others === "hide") continue;
       const placed = place(train, segments);
       if (!placed) continue;
       placedNow.set(train.id, { train, at: placed.at });
@@ -396,7 +419,7 @@ export function startLiveTrains(map: maplibregl.Map, { getSegments, stationHitLa
       items.push({ id: train.id, text: summary.sentence, at: placed.at });
       features.push({
         type: "Feature",
-        properties: { id: train.id, line: train.line, bearing: placed.bearing, label: summary.label },
+        properties: { id: train.id, line: train.line, bearing: placed.bearing, label: summary.label, onRoute },
         geometry: { type: "Point", coordinates: placed.at },
       });
     }
@@ -424,18 +447,29 @@ export function startLiveTrains(map: maplibregl.Map, { getSegments, stationHitLa
     const placedDrawn = new Map<string, DrawnTrain>(
       [...placedNow].map(([id, v]) => [id, { at: v.at, bearing: bearings.get(id) ?? 0 }]),
     );
-    if (!trainsMoved(map, placedDrawn, drawnAt)) return;
+    // A new route, or a changed setting, re-labels trains without moving them.
+    const styleKey = `${hops ? [...hops].join(",") : ""}|${others}`;
+    const restyled = styleKey !== drawnStyle;
+    drawnStyle = styleKey;
+    if (!restyled && !trainsMoved(map, placedDrawn, drawnAt)) return;
     drawnAt = placedDrawn;
     drawn = features.length > 0;
     source.setData({ type: "FeatureCollection", features });
   }
 
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const timer = setInterval(frame, reduced ? REDUCED_MOTION_FRAME_MS : FRAME_MS);
-  frame();
+  // A timeout chain rather than an interval so the battery-saver setting
+  // takes effect on the next tick without restarting anything.
+  let timer: ReturnType<typeof setTimeout>;
+  const tick = () => {
+    frame();
+    const settings = useSettingsStore.getState().settings;
+    timer = setTimeout(tick, reduced || settings.reduceMotion || settings.trainRate === "saver" ? REDUCED_MOTION_FRAME_MS : FRAME_MS);
+  };
+  tick();
   document.addEventListener("visibilitychange", frame);
   return () => {
-    clearInterval(timer);
+    clearTimeout(timer);
     document.removeEventListener("visibilitychange", frame);
     map.off("click", TRAINS_HIT_LAYER, onTrainClick);
     map.off("mouseenter", TRAINS_HIT_LAYER, onEnter);
@@ -466,9 +500,7 @@ export function startLiveTrainsWhenIdle(
     timeout = null;
     if (cancelled || !map.isStyleLoaded()) return;
     addLiveTrainsLayer(map, beforeId);
-    setTrainsDimmed(map, options.isDimmed());
-    // The rider may have hidden trains in settings before the layer existed.
-    if (options.isVisible && !options.isVisible()) setTrainsVisible(map, false);
+    applyTrainStyle(map, options.isDimmed());
     stop = startLiveTrains(map, options);
   };
   const onIdle = () => {
@@ -488,19 +520,27 @@ export function startLiveTrainsWhenIdle(
   };
 }
 
-/** Trains ease back a little while a route is highlighted (not far: the arrow must stay high-contrast). A no-op until the layer exists. */
-export function setTrainsDimmed(map: maplibregl.Map, dimmed: boolean): void {
-  if (!map.getLayer(TRAINS_LAYER)) return;
-  map.setPaintProperty(TRAINS_LAYER, "icon-opacity", dimmed ? 0.85 : 1);
-}
-
 /**
- * Show or hide the train markers (icon, label and the invisible tap target, so
- * a hidden train can't be tapped). A no-op until the layers exist; the idle
- * starter re-applies the choice when it adds them.
+ * Everything about how the train markers look, from the settings and from
+ * whether a route is on screen: shown or hidden, size, whether the text
+ * beside them shows, and how the trains that are not on the route look
+ * ("dim": light and faint). A no-op until the layers exist; the idle
+ * starter applies it when it adds them.
  */
-export function setTrainsVisible(map: maplibregl.Map, visible: boolean): void {
-  for (const id of [TRAINS_LAYER, TRAINS_LABEL_LAYER, TRAINS_HIT_LAYER]) {
-    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", visible ? "visible" : "none");
-  }
+export function applyTrainStyle(map: maplibregl.Map, routing: boolean): void {
+  if (!map.getLayer(TRAINS_LAYER)) return;
+  const s: Settings = useSettingsStore.getState().settings;
+  const show = s.showTrains ? "visible" : "none";
+  map.setLayoutProperty(TRAINS_LAYER, "visibility", show);
+  map.setLayoutProperty(TRAINS_HIT_LAYER, "visibility", show);
+  map.setLayoutProperty(TRAINS_LABEL_LAYER, "visibility", s.showTrains && s.trainLabels ? "visible" : "none");
+  map.setLayoutProperty(TRAINS_LAYER, "icon-size", iconSize(SIZE_FACTOR[s.trainSize]));
+  // Trains ease back a little while a route is highlighted (not far: the
+  // arrow must stay high-contrast); the ones off the route fade right back.
+  const base = routing ? 0.85 : 1;
+  map.setPaintProperty(
+    TRAINS_LAYER,
+    "icon-opacity",
+    routing && s.otherTrains === "dim" ? ["case", ["==", ["get", "onRoute"], true], base, 0.22] : base,
+  );
 }

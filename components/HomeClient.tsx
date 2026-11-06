@@ -92,20 +92,26 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
   const { lang, t } = useT();
 
   useEffect(() => {
+    // Settings first: polling honours "pause live updates" and the offline
+    // warm-up honours the data-saver choice.
+    restoreSettings();
     startArrivalsPolling();
     restoreLang();
-    // Before the offline warm-up, which honours the data-saver choice.
-    restoreSettings();
     scheduleOfflineWarm();
   }, []);
 
-  // Text size and motion apply to the whole page, so they live on <html>.
-  const { largeText, reduceMotion, fewerChanges, avoidWalking } = useSettingsStore((s) => s.settings);
+  // Theme, text size and motion apply to the whole page, so they live on
+  // <html>. (app/layout.tsx sets the same attributes before first paint, so a
+  // saved dark theme doesn't flash light; this keeps them in step afterwards.)
+  const { textSize, theme, reduceMotion, compactHeader, showFare, fewerChanges, avoidWalking, avoidLines, walkSpeed, changeMinutes } =
+    useSettingsStore((s) => s.settings);
   useEffect(() => {
     const root = document.documentElement;
-    root.style.fontSize = largeText ? "112.5%" : "";
+    root.style.fontSize = textSize === 100 ? "" : `${textSize}%`;
     root.toggleAttribute("data-reduce-motion", reduceMotion);
-  }, [largeText, reduceMotion]);
+    if (theme === "system") root.removeAttribute("data-theme");
+    else root.setAttribute("data-theme", theme);
+  }, [textSize, theme, reduceMotion]);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,11 +162,14 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
   // The route is derived, not staged: as soon as both ends exist the path is
   // highlighted. There is no separate confirm step to get stuck on.
   const path = useMemo(
-    () => (start && destination ? findPath(start.code, destination.code, { fewerChanges, avoidWalking }) : null),
-    [start, destination, fewerChanges, avoidWalking],
+    () =>
+      start && destination
+        ? findPath(start.code, destination.code, { fewerChanges, avoidWalking, avoidLines, walkSpeed, changeMinutes })
+        : null,
+    [start, destination, fewerChanges, avoidWalking, avoidLines, walkSpeed, changeMinutes],
   );
-  const fares = useFares(path !== null);
-  const fareLine = fareText(t, computeFare(path, fares));
+  const fares = useFares(path !== null && showFare);
+  const fareLine = showFare ? fareText(t, computeFare(path, fares)) : "";
 
   const handleSetStart = (station: Station) => {
     setStart(station);
@@ -259,7 +268,9 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
               )}
             </p>
           ) : (
-            <p className="line-clamp-2 text-[11px] leading-tight text-neutral-600 dark:text-neutral-400">{subtitle}</p>
+            !compactHeader && (
+              <p className="line-clamp-2 text-[11px] leading-tight text-neutral-600 dark:text-neutral-400">{subtitle}</p>
+            )
           )}
         </div>
         <div className="flex shrink-0 items-center gap-1">

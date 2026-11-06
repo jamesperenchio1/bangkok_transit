@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import { Bell, BellRing, ChevronDown, ChevronUp, X } from "lucide-react";
 import type { StopAlert } from "@/lib/use-stop-alert";
+import type { ChimeStatus } from "@/lib/alert-output";
 import type { StationsBefore } from "@/lib/stop-alert";
 import { useT } from "@/lib/i18n";
 
@@ -14,6 +15,9 @@ export function StopAlertControl({ alert }: { alert: StopAlert }) {
   // Collapsed by default: the route itself is the reason the sheet is open, so
   // alert options stay one tap away instead of pushing the legs down.
   const [open, setOpen] = useState(false);
+  // What "Test sound" did, said out loud: a silent test on a phone is
+  // indistinguishable from a broken one unless the page reports what happened.
+  const [testResult, setTestResult] = useState<ChimeStatus | null>(null);
 
   return (
     <section aria-label={t.alertOptions} className="rounded-xl border border-neutral-200 dark:border-neutral-700">
@@ -98,11 +102,18 @@ export function StopAlertControl({ alert }: { alert: StopAlert }) {
 
           <button
             type="button"
-            onClick={alert.test}
+            onClick={() => void alert.test().then(setTestResult)}
             className="min-h-11 w-fit rounded-full border border-neutral-300 px-4 text-xs font-medium hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-800"
           >
             {t.alertTest}
           </button>
+          {testResult && (
+            <p role="status" className="text-xs text-neutral-700 dark:text-neutral-300">
+              {testResult.media === "played" || testResult.webAudio === "running"
+                ? t.alertTestPlayed
+                : t.alertTestBlocked}
+            </p>
+          )}
 
           <p className="text-xs text-neutral-600 dark:text-neutral-400">
             {alert.hasPosition ? "" : `${t.waitingLocation} `}

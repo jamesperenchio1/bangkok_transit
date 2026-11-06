@@ -35,38 +35,164 @@ export function unlockAudio(): void {
   } catch {
     // no Web Audio: vibration and the on-screen alert still work
   }
+  unlockMedia();
+}
+
+export interface ChimeOptions {
+  /** 0-1; the chime's loudness before the phone's own volume. */
+  volume?: number;
+  /** How many times the ding-dong repeats. */
+  repeats?: number;
+}
+
+/** What happened when a chime was asked for, so "Test sound" can say so instead of staying silent. */
+export interface ChimeStatus {
+  /** The Web Audio context's state when the chime was scheduled (null: no Web Audio). */
+  webAudio: AudioContextState | null;
+  /** The media-element copy: played, refused by the browser, or not available here. */
+  media: "played" | "blocked" | "unsupported";
+}
+
+const DEFAULTS = { volume: 0.6, repeats: 2 };
+const PAIR_MS = 0.9;
+const NOTES: [number, number][] = [
+  [988, 0],
+  [1319, 0.28],
+];
+
+const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+
+function resolve(options?: ChimeOptions) {
+  return {
+    volume: clamp(options?.volume ?? DEFAULTS.volume, 0.05, 1),
+    repeats: Math.round(clamp(options?.repeats ?? DEFAULTS.repeats, 1, 5)),
+  };
+}
+
+/**
+ * The chime as a WAV file, built in code (no asset to ship, cache or allow in
+ * the CSP beyond `media-src blob:`). Played through an <audio> element it
+ * follows the phone's *media* rules: on an iPhone that means it is heard with
+ * the ringer switch on silent, where Web Audio alone can be muted.
+ */
+export function chimeWav(options?: ChimeOptions): Uint8Array {
+  const { volume, repeats } = resolve(options);
+  const rate = 22_050;
+  const seconds = PAIR_MS * (repeats - 1) + NOTES[NOTES.length - 1][1] + 0.75;
+  const samples = Math.ceil(seconds * rate);
+  const mix = new Float32Array(samples);
+  for (let r = 0; r < repeats; r++) {
+    for (const [freq, offset] of NOTES) {
+      const start = Math.floor((r * PAIR_MS + offset) * rate);
+      const length = Math.floor(0.75 * rate);
+      for (let i = 0; i < length && start + i < samples; i++) {
+        const t = i / rate;
+        // Same envelope as the Web Audio chime: quick attack, exponential fade.
+        const env = t < 0.02 ? t / 0.02 : Math.pow(0.0001 / 0.6, (t - 0.02) / 0.68) * 0.6;
+        mix[start + i] += Math.sin(2 * Math.PI * freq * t) * env;
+      }
+    }
+  }
+  const bytes = new Uint8Array(44 + samples * 2);
+  const view = new DataView(bytes.buffer);
+  const text = (at: number, value: string) => [...value].forEach((c, i) => view.setUint8(at + i, c.charCodeAt(0)));
+  text(0, "RIFF");
+  view.setUint32(4, 36 + samples * 2, true);
+  text(8, "WAVEfmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  text(36, "data");
+  view.setUint32(40, samples * 2, true);
+  for (let i = 0; i < samples; i++) view.setInt16(44 + i * 2, clamp(mix[i] * volume, -1, 1) * 0x7fff, true);
+  return bytes;
+}
+
+let mediaEl: HTMLAudioElement | null = null;
+let mediaKey = "";
+let mediaUrl = "";
+
+/** The <audio> element holding the current chime; rebuilt only when volume/repeats change. */
+function chimeElement(options?: ChimeOptions): HTMLAudioElement | null {
+  if (typeof Audio === "undefined" || typeof URL === "undefined" || !URL.createObjectURL) return null;
+  const { volume, repeats } = resolve(options);
+  const key = `${volume}|${repeats}`;
+  if (!mediaEl) mediaEl = new Audio();
+  if (key !== mediaKey) {
+    if (mediaUrl) URL.revokeObjectURL(mediaUrl);
+    mediaUrl = URL.createObjectURL(new Blob([chimeWav({ volume: volume * 0.8, repeats }) as BlobPart], { type: "audio/wav" }));
+    mediaEl.src = mediaUrl;
+    mediaKey = key;
+  }
+  return mediaEl;
+}
+
+/** Called from the same tap as unlockAudio: lets the element play later, from a GPS update. */
+function unlockMedia(): void {
+  try {
+    const el = chimeElement();
+    if (!el) return;
+    el.muted = true;
+    void el.play().then(
+      () => {
+        el.pause();
+        el.currentTime = 0;
+        el.muted = false;
+      },
+      () => {
+        el.muted = false;
+      },
+    );
+  } catch {
+    // no media playback: Web Audio and vibration still work
+  }
 }
 
 /** A bright two-note "ding-dong", repeated so it's noticed over train noise. */
-export function playDing(): void {
-  if (!audio) return;
-  const ctx = audio;
-  // A suspended context has a frozen clock: wait until it's running so the
-  // notes aren't scheduled against a time that never advances.
-  if (ctx.state === "running") ring(ctx);
-  else void ctx.resume().then(() => ring(ctx), () => {});
+export function playDing(options?: ChimeOptions): Promise<ChimeStatus> {
+  const status: ChimeStatus = { webAudio: audio ? audio.state : null, media: "unsupported" };
+  if (audio) {
+    const ctx = audio;
+    // A suspended context has a frozen clock: wait until it's running so the
+    // notes aren't scheduled against a time that never advances.
+    if (ctx.state === "running") ring(ctx, options);
+    else void ctx.resume().then(() => ring(ctx, options), () => {});
+  }
+  try {
+    const el = chimeElement(options);
+    if (!el) return Promise.resolve(status);
+    el.muted = false;
+    el.currentTime = 0;
+    return el.play().then(
+      () => ({ ...status, media: "played" as const }),
+      () => ({ ...status, media: "blocked" as const }),
+    );
+  } catch {
+    return Promise.resolve(status);
+  }
 }
 
-function ring(ctx: AudioContext): void {
+function ring(ctx: AudioContext, options?: ChimeOptions): void {
+  const { volume, repeats } = resolve(options);
   const start = ctx.currentTime + 0.02;
-  const notes: [number, number][] = [
-    [988, 0],
-    [1319, 0.28],
-    [988, 0.9],
-    [1319, 1.18],
-  ];
-  for (const [freq, offset] of notes) {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = freq;
-    const t = start + offset;
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(0.6, t + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(t);
-    osc.stop(t + 0.75);
+  for (let r = 0; r < repeats; r++) {
+    for (const [freq, offset] of NOTES) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const t = start + r * PAIR_MS + offset;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(volume, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.75);
+    }
   }
 }
 

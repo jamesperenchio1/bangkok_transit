@@ -116,11 +116,15 @@ Shown in the header and route sheet once a start and destination give a route. C
 
 Data: `scripts/scrape-fares.ts` rebuilds `data/fares.json` from public sources (see `scripts/README.md`): OTP's Namtang GTFS for BTS, Purple, Yellow, Pink and ARL (station-pair matrices, spot-checked against the operators' Royal Gazette tables), srtet.co.th for Red, and the Gazette table for Blue (the feed lags it). `.github/workflows/update-fares.yml` runs it monthly and commits to `main` only if its guards and `npm test` pass; a failure leaves the data untouched and emails the owner.
 
-## Search and settings (`components/StationSearch.tsx`, `components/SettingsMenu.tsx`, `lib/settings-store.ts`)
+## Search and settings (`components/StationSearch.tsx`, `components/settings/`, `lib/settings-store.ts`)
 
 - The search input is 16px (`text-base`): iOS Safari zooms the whole page when a focused input is smaller, and page zoom must stay enabled (WCAG 1.4.4), so the font size is the fix, not `maximum-scale`. `e2e/navigation.spec.ts` guards it.
 - While the box is empty the panel lists every station by line (`lib/station-groups.ts`); typing switches to ranked matches.
-- Settings are a Zustand store persisted to `localStorage` (`bts:settings:v1`), restored in an effect after hydration. They only toggle layer visibility/filters on the existing map, route-planning weights (`findPath` options; the minutes shown never include the preference penalty), root text size and motion. Nothing is sent anywhere, so there is no cost. Defaults equal the pre-settings behaviour.
+- **Settings are lazy.** `lib/settings-store.ts` (typed defaults, allowed values/ranges, parse) is the only settings code the main bundle needs, because the map, search and arrivals code read it. The menu itself - `components/SettingsMenu.tsx` is just a button and a dialog frame - downloads `components/settings/SettingsPanel.tsx` when first opened (or on hover), and each section's rows (`components/settings/catalog/*.ts`, plain data with EN/TH text) load only when that section is expanded or searched. To add an option: add the field to `Settings`/`DEFAULT_SETTINGS` (and `CHOICES`/`RANGES` if bounded), a row in a catalog file, and wire it where it takes effect; `tests/settings-store.test.ts` checks defaults against their allowed values.
+- Settings persist in `localStorage` (`bts:settings:v1`), restored in an effect after hydration (theme and text size are also applied by a tiny inline script in `app/layout.tsx` before first paint, so a saved dark theme doesn't flash light). Nothing is sent anywhere, so there is no cost. Defaults equal the pre-settings behaviour, except that while a route is shown, trains that are not on it are hidden (`otherTrains`; "grey out" and "show" are options).
+- Route preferences are `findPath` options (`fewerChanges`, `avoidWalking`, `avoidLines`, `walkSpeed`, `changeMinutes`); the minutes shown never include the preference penalty.
+- Route-only trains: `routeHops` / `trainOnRoute` (`lib/live-trains.ts`) match each train's heading to the route's directed hops; the layer filters or fades by the `onRoute` feature property (`components/live-trains-layer.ts`).
+- **Station alert sound** (`lib/alert-output.ts`) plays the chime twice over: Web Audio, and a generated WAV through an `<audio>` element (`media-src blob:` in the CSP). On an iPhone, Web Audio can be muted by the ringer switch while media playback is not. "Test sound" reports what actually happened instead of staying silent.
 
 ### Online place search (`lib/place-search.ts`)
 

@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { stationName, useLangStore, strings } from "./i18n";
 import { DEFAULT_ALERT_SETTINGS, alertTargets, dueTarget, routeKey, type AlertSettings, type AlertTarget } from "./stop-alert";
-import { holdScreenAwake, notify, playDing, requestNotifications, unlockAudio, vibrate } from "./alert-output";
+import { holdScreenAwake, notify, playDing, requestNotifications, unlockAudio, vibrate, type ChimeStatus } from "./alert-output";
+import { useSettingsStore } from "./settings-store";
 import type { PathResult } from "./transit-graph";
 import type { GeoPosition } from "./use-geolocation";
 
@@ -36,7 +37,7 @@ export interface StopAlert {
   message: string | null;
   dismiss: () => void;
   /** Rings the chime and vibration once, so the rider can check their volume. */
-  test: () => void;
+  test: () => Promise<ChimeStatus>;
   hasPosition: boolean;
 }
 
@@ -51,6 +52,7 @@ export function useStopAlert(path: PathResult | null, position: GeoPosition | nu
   const rung = useRef(new Set<number>());
   const key = useRef("");
   const lang = useLangStore((s) => s.lang);
+  const { alertVolume, alertRepeats, alertKeepAwake: keepAwake, alertNotify } = useSettingsStore((s) => s.settings);
 
   useEffect(() => {
     // Loaded after mount (not in the initial state) so the prerendered
@@ -92,9 +94,9 @@ export function useStopAlert(path: PathResult | null, position: GeoPosition | nu
   }, [settings.enabled]);
 
   useEffect(() => {
-    if (!watching) return;
+    if (!watching || !keepAwake) return;
     return holdScreenAwake();
-  }, [watching]);
+  }, [watching, keepAwake]);
 
   useEffect(() => {
     if (!watching || !path || !position) return;
@@ -104,16 +106,17 @@ export function useStopAlert(path: PathResult | null, position: GeoPosition | nu
     // Reaching a station also settles every earlier one on the route.
     for (const t of targets) if (t.legIndex <= due.legIndex) rung.current.add(t.legIndex);
     setActive(due);
-    if (settings.sound) playDing();
+    if (settings.sound) void playDing({ volume: alertVolume, repeats: alertRepeats });
     if (settings.vibrate) vibrate();
     const text = describe(due, path, lang);
-    void notify(strings[lang].appTitle, text);
-  }, [watching, path, position, settings, lang]);
+    if (alertNotify) void notify(strings[lang].appTitle, text);
+  }, [watching, path, position, settings, lang, alertVolume, alertRepeats, alertNotify]);
 
   const test = useCallback(() => {
     unlockAudio();
-    playDing();
     vibrate();
+    const { alertVolume: volume, alertRepeats: repeats } = useSettingsStore.getState().settings;
+    return playDing({ volume, repeats });
   }, []);
 
   const message = active && path ? describe(active, path, lang) : null;

@@ -12,7 +12,8 @@ import type { PathResult } from "@/lib/transit-graph";
 import { StationActions } from "@/components/StationActions";
 import { distanceLabel, nearestStation } from "@/lib/nearest-station";
 import type { Place } from "@/lib/place-search";
-import { setTrainsDimmed, setTrainsVisible, startLiveTrainsWhenIdle } from "@/components/live-trains-layer";
+import { applyTrainStyle, startLiveTrainsWhenIdle } from "@/components/live-trains-layer";
+import { routeHops } from "@/lib/live-trains";
 import { LINE_COLORS, readableTextColor } from "@/lib/line-colors";
 import { stationName, useLangStore, useT, type Lang } from "@/lib/i18n";
 import { motionDuration, useSettingsStore } from "@/lib/settings-store";
@@ -93,8 +94,13 @@ function transformStyle(
 }
 
 /** Our own station labels: the name in the chosen language, plus the code once zoomed in. */
-function stationLabelField(lang: Lang): maplibregl.ExpressionSpecification {
-  const name = ["get", lang === "th" ? "nameTh" : "nameEn"] as maplibregl.ExpressionSpecification;
+function stationLabelField(lang: Lang, codes = true, both = false): maplibregl.ExpressionSpecification {
+  const nameOf = (l: Lang) => ["get", l === "th" ? "nameTh" : "nameEn"] as maplibregl.ExpressionSpecification;
+  // "Both languages": the second name goes on its own line, smaller.
+  const name: maplibregl.ExpressionSpecification = both
+    ? (["format", nameOf("en"), {}, "\n", {}, nameOf("th"), { "font-scale": 0.85 }] as unknown as maplibregl.ExpressionSpecification)
+    : nameOf(lang);
+  if (!codes) return name;
   return [
     "step",
     ["zoom"],
@@ -103,6 +109,8 @@ function stationLabelField(lang: Lang): maplibregl.ExpressionSpecification {
     ["format", name, {}, "\n", {}, ["get", "code"], { "font-scale": 0.8 }],
   ];
 }
+
+const MARKER_FACTOR = { small: 0.75, medium: 1, large: 1.35 } as const;
 
 // Start/destination marker accent color, shared by the station GeoJSON
 // builder, the destination dashed-ring icon, and the popup content.
@@ -320,6 +328,8 @@ export function TransitMap({
   const geometryRef = useRef<LineSegments | null>(null);
   const stopTrainsRef = useRef<(() => void) | null>(null);
   const dimmedRef = useRef(false);
+  // The hops the planned route rides, for the trains layer (null: no route).
+  const routeHopsRef = useRef<Set<string> | null>(null);
   const popupsRef = useRef(new Map<string, { popup: maplibregl.Popup; root: Root; render: () => void }>());
 
   const pathCodes = useMemo(
@@ -327,8 +337,13 @@ export function TransitMap({
     [path],
   );
   const isRouting = path !== null;
+  const routeHopsSet = useMemo(() => (path ? routeHops(path.legs) : null), [path]);
+  useEffect(() => {
+    routeHopsRef.current = routeHopsSet;
+  }, [routeHopsSet]);
   const { lang, t } = useT();
-  const { showLabels, showTrains, showLocation, hiddenLines } = useSettingsStore((s) => s.settings);
+  const settings = useSettingsStore((s) => s.settings);
+  const { hiddenLines } = settings;
 
   // Keep the latest callbacks/state in refs so the map's own click handler
   // (registered once, at style-load time) always sees current values without
@@ -394,6 +409,11 @@ export function TransitMap({
     };
     map.on("sourcedata", deferSprite);
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
+    map.on("dragstart", (e: { originalEvent?: unknown }) => {
+      if (e.originalEvent && useSettingsStore.getState().settings.followMe) {
+        useSettingsStore.getState().update({ followMe: false });
+      }
+    });
 
     // Our own layers go on at `style.load`, not `load`. `load` waits for the
     // basemap's first tiles and fonts - on a slow connection the transit
@@ -546,7 +566,7 @@ export function TransitMap({
         getSegments: () => geometryRef.current,
         stationHitLayer: STATIONS_HIT_LAYER,
         isDimmed: () => dimmedRef.current,
-        isVisible: () => useSettingsStore.getState().settings.showTrains,
+        getRouteHops: () => routeHopsRef.current,
       });
 
       map.addSource(GPS_SOURCE, {
@@ -643,22 +663,30 @@ export function TransitMap({
     };
   }, []);
 
-  // Base line styling: dim to grey while a route is highlighted.
+  // Lines: grey while a route is highlighted (unless "dim" is off), width
+  // from settings, and only the route's own lines when asked.
+  const routeLineKeys = useMemo(() => (path ? [...new Set(path.legs.map((l) => l.line).filter(Boolean))] : []), [path]);
+  const { dimLines, onlyRouteLines, lineWidth, hiddenLines: hidden } = settings;
   useEffect(() => {
     // Remembered for the trains layer, which is added later (once the map is idle).
     dimmedRef.current = isRouting;
     const map = mapRef.current;
     if (!map) return;
     const apply = () => {
-      map.setPaintProperty(LINES_LAYER, "line-color", isRouting ? "#ccc" : LINE_COLOR_MATCH);
-      map.setPaintProperty(LINES_LAYER, "line-width", isRouting ? 3 : 4);
-      map.setPaintProperty(LINES_LAYER, "line-opacity", isRouting ? 0.6 : 0.9);
-      // Trains sit back while a route is highlighted, like the lines they run on.
-      setTrainsDimmed(map, isRouting);
+      const grey = isRouting && dimLines;
+      map.setPaintProperty(LINES_LAYER, "line-color", grey ? "#ccc" : LINE_COLOR_MATCH);
+      map.setPaintProperty(LINES_LAYER, "line-width", grey ? Math.max(2, lineWidth - 1) : lineWidth);
+      map.setPaintProperty(LINES_LAYER, "line-opacity", grey ? 0.6 : 0.9);
+      // Hidden lines, and (while routing, if asked) every line the route doesn't use.
+      const filters: maplibregl.ExpressionSpecification[] = [];
+      if (hidden.length) filters.push(["!", ["in", ["get", "line"], ["literal", hidden]]]);
+      if (isRouting && onlyRouteLines) filters.push(["in", ["get", "line"], ["literal", routeLineKeys]]);
+      map.setFilter(LINES_LAYER, filters.length ? (["all", ...filters] as maplibregl.FilterSpecification) : null);
+      applyTrainStyle(map, isRouting);
     };
     if (loadedRef.current) apply();
     else map.once("style.load", apply);
-  }, [isRouting]);
+  }, [isRouting, dimLines, onlyRouteLines, lineWidth, hidden, routeLineKeys]);
 
   // Highlighted route geometry. Needs the fetched line-geometry data (see
   // lib/line-geometry.ts) only when there's an actual path to draw; an
@@ -724,31 +752,41 @@ export function TransitMap({
     else map.once("style.load", apply);
   }, [pathCodes, startCode, destinationCode, isRouting, hiddenLines]);
 
-  // Settings: which lines, labels, trains and GPS marker are drawn. The route
-  // highlight is never filtered - hiding a line must not break a planned trip.
+  // Settings: station labels, markers, route width, basemap names, the GPS
+  // marker, trains, gestures and the map's buttons. The route highlight is
+  // never filtered - hiding a line must not break a planned trip.
+  const { showLabels, labelCodes, labelLanguage, labelMinZoom, markerSize, routeWidth, basemapLabels, showLocation, rotateGestures } =
+    settings;
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     const apply = () => {
-      map.setFilter(
-        LINES_LAYER,
-        hiddenLines.length ? ["!", ["in", ["get", "line"], ["literal", hiddenLines]]] : null,
-      );
       map.setLayoutProperty(STATIONS_LABEL_LAYER, "visibility", showLabels ? "visible" : "none");
+      map.setLayerZoomRange(STATIONS_LABEL_LAYER, labelMinZoom, 24);
+      const k = MARKER_FACTOR[markerSize];
+      map.setPaintProperty(STATIONS_LAYER, "circle-radius", ["*", ["get", "radius"], k]);
+      map.setPaintProperty(STATIONS_HIT_LAYER, "circle-radius", ["+", ["*", ["get", "radius"], k], 12]);
+      map.setPaintProperty(ROUTE_LAYER, "line-width", routeWidth);
+      map.setPaintProperty(ROUTE_WALK_LAYER, "line-width", Math.max(2, routeWidth - 2));
+      for (const id of basemapLabelLayers) {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", basemapLabels ? "visible" : "none");
+      }
       for (const id of [GPS_RING_LAYER, GPS_RING_OUTLINE_LAYER, GPS_DOT_LAYER]) {
         map.setLayoutProperty(id, "visibility", showLocation ? "visible" : "none");
       }
-      setTrainsVisible(map, showTrains);
+      applyTrainStyle(map, isRouting);
+      if (rotateGestures) {
+        map.dragRotate.enable();
+        map.touchZoomRotate.enableRotation();
+      } else {
+        map.dragRotate.disable();
+        map.touchZoomRotate.disableRotation();
+        if (map.getBearing() !== 0 || map.getPitch() !== 0) map.easeTo({ bearing: 0, pitch: 0, duration: motionMs(300) });
+      }
     };
     if (loadedRef.current) apply();
     else map.once("style.load", apply);
-  }, [hiddenLines, showLabels, showLocation, showTrains]);
-
-  // Keep any open popup's Start/Destination checkmarks in sync if route
-  // state changes from elsewhere (e.g. search) while it's still open.
-  useEffect(() => {
-    popupsRef.current.forEach(({ render }) => render());
-  }, [startCode, destinationCode]);
+  }, [showLabels, labelMinZoom, markerSize, routeWidth, basemapLabels, showLocation, rotateGestures, settings.showTrains, settings.otherTrains, settings.trainSize, settings.trainLabels, isRouting]);
 
   // GPS position.
   useEffect(() => {
@@ -768,9 +806,10 @@ export function TransitMap({
     const map = mapRef.current;
     if (!map) return;
     const apply = () => {
-      map.setLayoutProperty(STATIONS_LABEL_LAYER, "text-field", stationLabelField(lang));
+      const labelLang: Lang = labelLanguage === "ui" || labelLanguage === "both" ? lang : labelLanguage;
+      map.setLayoutProperty(STATIONS_LABEL_LAYER, "text-field", stationLabelField(labelLang, labelCodes, labelLanguage === "both"));
       for (const id of basemapLabelLayers) {
-        if (map.getLayer(id)) map.setLayoutProperty(id, "text-field", basemapLabelField(lang));
+        if (map.getLayer(id)) map.setLayoutProperty(id, "text-field", basemapLabelField(labelLang));
       }
     };
     // React flushes effects synchronously inside a click, so doing this here
@@ -790,7 +829,16 @@ export function TransitMap({
       clearTimeout(timer);
       map.off("style.load", later);
     };
-  }, [lang]);
+  }, [lang, labelLanguage, labelCodes]);
+
+  // "Follow me": keep the map centred on the rider as they move, at the zoom
+  // they chose. Dragging the map turns it off (they moved it on purpose), as
+  // in other map apps; the Settings switch turns it back on.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !userPosition || !settings.followMe) return;
+    map.easeTo({ center: [userPosition.lon, userPosition.lat], duration: motionMs(500) });
+  }, [userPosition, settings.followMe]);
 
   // Bring a station into view on demand (a search result, "nearest station")
   // and open its card, same as tapping it. The camera moves as little as it
@@ -835,8 +883,9 @@ export function TransitMap({
   }, [focusPlace]);
 
   return (
-    <div className="relative h-full w-full">
+    <div className={`relative h-full w-full ${settings.zoomButtons ? "" : "[&_.maplibregl-ctrl-top-left]:hidden"}`}>
       <div ref={containerRef} className="h-full w-full" />
+      {settings.locateButton && (
       <button
         type="button"
         onClick={() => {
@@ -856,6 +905,7 @@ export function TransitMap({
       >
         <LocateFixed size={18} />
       </button>
+      )}
     </div>
   );
 }

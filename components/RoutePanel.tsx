@@ -1,5 +1,6 @@
 "use client";
 
+import { useSettingsStore } from "@/lib/settings-store";
 import { computeFare, type FareResult } from "@/lib/fares";
 import { useFares } from "@/lib/use-fares";
 import { useEffect, useId, useRef, useState } from "react";
@@ -17,6 +18,7 @@ import { terminusInDirection, type PathResult } from "@/lib/transit-graph";
 import type { GeoPosition } from "@/lib/use-geolocation";
 import { LINE_COLORS, LINE_NAMES } from "@/lib/line-colors";
 import { stationName, useT } from "@/lib/i18n";
+import { distanceLabel } from "@/lib/nearest-station";
 import { StopAlertControl } from "@/components/StopAlertControl";
 import type { StopAlert } from "@/lib/use-stop-alert";
 
@@ -303,7 +305,7 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePan
                           )}
                         </p>
                         {leg.mode === "walk" && leg.walkMeters !== undefined && (
-                          <p className="text-xs text-neutral-600 dark:text-neutral-400">{t.walked(leg.walkMeters)}</p>
+                          <p className="text-xs text-neutral-600 dark:text-neutral-400">{t.walked(distanceLabel(leg.walkMeters, lang))}</p>
                         )}
                         {leg.boardToward && (
                           <p className="text-xs text-neutral-600 dark:text-neutral-300">
@@ -365,10 +367,11 @@ export function fareText(t: ReturnType<typeof useT>["t"], fare: FareResult | nul
 function RouteSummary({ path, changes }: { path: PathResult; changes: number }) {
   const { lang, t } = useT();
   const parts = [t.stops(path.stops), t.changes(changes)];
-  if (path.walkMeters > 0) parts.push(t.walk(path.walkMeters));
+  if (path.walkMeters > 0) parts.push(t.walk(distanceLabel(path.walkMeters, lang)));
   parts.push(t.aboutMinutes(path.minutes));
-  const fares = useFares(true);
-  const fare = computeFare(path, fares);
+  const showFare = useSettingsStore((s) => s.settings.showFare);
+  const fares = useFares(showFare);
+  const fare = showFare ? computeFare(path, fares) : null;
   return (
     <>
       <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-300">{parts.join(" · ")}</p>
@@ -390,6 +393,8 @@ function RouteSummary({ path, changes }: { path: PathResult; changes: number }) 
 function LiveEta({ station, directionKey }: { station: Station; directionKey?: string }) {
   const { data, live, now } = useArrivals(station.code);
   const { lang, t } = useT();
+  const { showLiveTimes, upcomingCount } = useSettingsStore((s) => s.settings);
+  if (!showLiveTimes) return null;
   if (!data) return null;
   // Last-known (not live) data is still shown, with its age, in amber.
   const age = live ? null : (
@@ -415,7 +420,7 @@ function LiveEta({ station, directionKey }: { station: Station; directionKey?: s
   if (!next) return null;
   const clockTime = arrivalClockTime(data.timestamp, trainEtaMinutes(next.train), lang);
   const laterMinutes = upcoming
-    .slice(0, 2)
+    .slice(0, Math.max(0, upcomingCount - 1))
     .map(({ left }) => minutesLabel(left, t))
     .join(", ");
   return (

@@ -17,7 +17,8 @@ const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 // the opening view's tiles were cached only if the service worker already
 // controlled the page during the first visit, so offline could open on stations
 // over an empty basemap. Bumping re-runs it for installs that did the v1 pass.
-const DONE_KEY = "bts:map-warm:v2";
+export const OFFLINE_DONE_KEY = "bts:map-warm:v2";
+const DONE_KEY = OFFLINE_DONE_KEY;
 const CONCURRENCY = 4;
 /** Whole-network overview zooms (9 is where the map opens), then street-level zoom only around stations. */
 const OVERVIEW_ZOOMS = [9, 10, 11, 12, 13];
@@ -185,4 +186,10 @@ export function scheduleOfflineWarm(): void {
     .requestIdleCallback;
   // Well after first paint and the first live-times poll.
   setTimeout(() => (idle ? idle(() => void start(), { timeout: 10_000 }) : void start()), 8_000);
+}
+
+/** "Download the map for offline use now" (Settings): ignores the data-saver / cellular checks, because the rider asked. */
+export async function warmMapNow(): Promise<void> {
+  await requestPersistence();
+  await warm();
 }

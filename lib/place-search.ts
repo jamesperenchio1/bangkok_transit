@@ -114,14 +114,14 @@ export function parsePhoton(json: unknown): Place[] {
   return out;
 }
 
-export async function searchPlaces(query: string, lang: "en" | "th", signal: AbortSignal): Promise<Place[]> {
+export async function searchPlaces(query: string, lang: "en" | "th", signal: AbortSignal, limit = LIMIT): Promise<Place[]> {
   const q = query.trim();
-  const key = `${lang}:${q.toLowerCase()}`;
+  const key = `${lang}:${limit}:${q.toLowerCase()}`;
   const hit = cache.get(key);
   if (hit) return hit;
   const params = new URLSearchParams({
     q,
-    limit: String(LIMIT),
+    limit: String(limit),
     bbox: BBOX,
     lat: String(BIAS.lat),
     lon: String(BIAS.lon),

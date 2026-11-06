@@ -53,6 +53,7 @@ test.describe("place search", () => {
     });
     await page.goto("/");
     await page.getByRole("button", { name: "Settings" }).click();
+    await page.getByRole("button", { name: /^Place search/ }).click();
     await page.getByRole("switch", { name: "Search places online" }).click();
     await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Search stations" }).click();
