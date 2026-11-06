@@ -10,7 +10,7 @@ import { fetchLineGeometry, fullLineSegments, trackBetween, type LineSegments } 
 import type { GeoPosition } from "@/lib/use-geolocation";
 import type { PathResult } from "@/lib/transit-graph";
 import { StationActions } from "@/components/StationActions";
-import { addLiveTrainsLayer, startLiveTrains, TRAINS_LAYER } from "@/components/live-trains-layer";
+import { setTrainsDimmed, startLiveTrainsWhenIdle } from "@/components/live-trains-layer";
 import { LINE_COLORS, readableTextColor } from "@/lib/line-colors";
 import { stationName, useLangStore, useT, type Lang } from "@/lib/i18n";
 
@@ -300,6 +300,7 @@ export function TransitMap({
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const geometryRef = useRef<LineSegments | null>(null);
   const stopTrainsRef = useRef<(() => void) | null>(null);
+  const dimmedRef = useRef(false);
   const popupsRef = useRef(new Map<string, { popup: maplibregl.Popup; root: Root; render: () => void }>());
 
   const pathCodes = useMemo(
@@ -520,10 +521,11 @@ export function TransitMap({
       // Estimated live train positions (BTS only), drawn under the station
       // names so labels stay readable. Fed from the arrivals the app already
       // holds, so it adds no requests (see lib/live-trains.ts).
-      addLiveTrainsLayer(map, STATIONS_LABEL_LAYER);
-      stopTrainsRef.current = startLiveTrains(map, {
+      // Added after the map is idle, not here: the map comes first.
+      stopTrainsRef.current = startLiveTrainsWhenIdle(map, STATIONS_LABEL_LAYER, {
         getSegments: () => geometryRef.current,
         stationHitLayer: STATIONS_HIT_LAYER,
+        isDimmed: () => dimmedRef.current,
       });
 
       map.addSource(GPS_SOURCE, {
@@ -622,6 +624,8 @@ export function TransitMap({
 
   // Base line styling: dim to grey while a route is highlighted.
   useEffect(() => {
+    // Remembered for the trains layer, which is added later (once the map is idle).
+    dimmedRef.current = isRouting;
     const map = mapRef.current;
     if (!map) return;
     const apply = () => {
@@ -629,7 +633,7 @@ export function TransitMap({
       map.setPaintProperty(LINES_LAYER, "line-width", isRouting ? 3 : 4);
       map.setPaintProperty(LINES_LAYER, "line-opacity", isRouting ? 0.6 : 0.9);
       // Trains sit back while a route is highlighted, like the lines they run on.
-      map.setPaintProperty(TRAINS_LAYER, "icon-opacity", isRouting ? 0.5 : 1);
+      setTrainsDimmed(map, isRouting);
     };
     if (loadedRef.current) apply();
     else map.once("style.load", apply);

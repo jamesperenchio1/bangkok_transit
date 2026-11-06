@@ -504,8 +504,8 @@ async function scenarioFirstTimer(session) {
     severity: "major",
     data: { text: route.changesText },
   });
-  // The app has no fare display yet, so this guards the ETA/route maths from
-  // leaking NaN into the panel text at all.
+  // Guards the ETA/route maths - and the fare text - from leaking NaN into
+  // the panel text at all.
   session.check("fare.not-nan", !route.hasNaN, {
     severity: "major",
     data: { stops: route.stops },

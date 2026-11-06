@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { AlertTriangle, ArrowLeftRight, ArrowRight, Navigation, WifiOff, X } from "lucide-react";
 import { stations, stationsByCode, type Station } from "@/data/stations";
-import { RoutePanel, type RoutePanelState } from "@/components/RoutePanel";
+import { fareText, RoutePanel, type RoutePanelState } from "@/components/RoutePanel";
 import { StationSearch } from "@/components/StationSearch";
 import { StationList } from "@/components/StationList";
 import { StopAlertBanner } from "@/components/StopAlertControl";
@@ -14,6 +14,8 @@ import { useGeolocation } from "@/lib/use-geolocation";
 import { startArrivalsPolling, useArrivalsStore } from "@/lib/arrivals-store";
 import { scheduleOfflineWarm } from "@/lib/offline-warm";
 import { fetchLineGeometry, haversineMeters } from "@/lib/line-geometry";
+import { computeFare } from "@/lib/fares";
+import { useFares } from "@/lib/use-fares";
 import { restoreLang, stationName, useLangStore, useT } from "@/lib/i18n";
 
 // Kicked off as soon as this module evaluates (not when <TransitMap> first
@@ -160,6 +162,8 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
     () => (start && destination ? findPath(start.code, destination.code) : null),
     [start, destination],
   );
+  const fares = useFares(path !== null);
+  const fareLine = fareText(t, computeFare(path, fares));
 
   const handleSetStart = (station: Station) => {
     setStart(station);
@@ -232,6 +236,7 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
               <span aria-hidden="true"> → </span>
               <span lang={lang} title={stationName(destination, lang)}>{stationName(destination, lang)}</span>
               {path && <span> · {t.aboutMinutes(path.minutes)}</span>}
+              {path && fareLine && <span data-testid="header-fare"> · {fareLine}</span>}
             </p>
           ) : start || destination ? (
             <p className="line-clamp-2 text-[11px] leading-tight text-neutral-600 dark:text-neutral-400">

@@ -1,0 +1,41 @@
+name: Update fares
+
+# Fares are static data (data/fares.json) so they cost nothing per user. Once a
+# month this re-reads the published tables and commits straight to main if they
+# changed. A bad scrape fails the job without touching the file (see the guards
+# in scripts/scrape-fares.ts), which emails the repo owner.
+on:
+  schedule:
+    - cron: "41 3 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: update-fares
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node --experimental-strip-types scripts/scrape-fares.ts
+      # Never publish data the test suite rejects.
+      - run: npm test
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- data/fares.json; then
+            echo "No fare changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/fares.json
+          git commit -m "chore: monthly fare update"
+          git push origin HEAD:${{ github.event.repository.default_branch }}
