@@ -20,6 +20,25 @@ const REDUCED_MOTION_FRAME_MS = 5_000;
  */
 const TAP_RADIUS_PX = 22;
 
+/** Smaller than this on screen is invisible: not worth a map render. */
+const VISIBLE_MOVE_PX = 0.75;
+
+function trainsMoved(
+  map: maplibregl.Map,
+  now: Map<string, { train: TrainEstimate; at: [number, number] }>,
+  drawn: Map<string, [number, number]>,
+): boolean {
+  if (now.size !== drawn.size) return true;
+  for (const [id, { at }] of now) {
+    const before = drawn.get(id);
+    if (!before) return true;
+    const a = map.project(at);
+    const b = map.project(before);
+    if (Math.hypot(a.x - b.x, a.y - b.y) >= VISIBLE_MOVE_PX) return true;
+  }
+  return false;
+}
+
 const stationsByCode = new Map(stations.map((s) => [s.code, s]));
 const TRAIN_ICON = "live-train";
 
@@ -383,6 +402,7 @@ export function startLiveTrains(map: maplibregl.Map, { getSegments, stationHitLa
   map.on("mouseenter", TRAINS_HIT_LAYER, onEnter);
   map.on("mouseleave", TRAINS_HIT_LAYER, onLeave);
 
+  let drawnAt = new Map<string, [number, number]>();
   function frame() {
     if (document.hidden) return;
     // Until the track geometry arrives, hop paths would fall back to straight
@@ -419,6 +439,13 @@ export function startLiveTrains(map: maplibregl.Map, { getSegments, stationHitLa
 
     // Nothing to draw and nothing drawn: skip the no-op update.
     if (features.length === 0 && !drawn) return;
+    // A setData is a worker round trip plus a full map render. Zoomed out, a
+    // train moves a fraction of a pixel per frame, so most frames would
+    // repaint the map for a change nobody can see - and keep the main thread
+    // busy enough to delay taps. Redraw only when a train has moved at least
+    // VISIBLE_MOVE_PX from where it was last drawn (or the set changed).
+    if (!trainsMoved(map, placedNow, drawnAt)) return;
+    drawnAt = new Map([...placedNow].map(([id, v]) => [id, v.at]));
     drawn = features.length > 0;
     source.setData({ type: "FeatureCollection", features });
   }

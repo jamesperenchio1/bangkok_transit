@@ -728,8 +728,23 @@ export function TransitMap({
         if (map.getLayer(id)) map.setLayoutProperty(id, "text-field", basemapLabelField(lang));
       }
     };
-    if (loadedRef.current) apply();
-    else map.once("style.load", apply);
+    // React flushes effects synchronously inside a click, so doing this here
+    // would hold the toggle's own repaint (the header text) behind relabelling
+    // every basemap label layer. Run it after the next paint instead.
+    let frame = 0;
+    let timer = 0;
+    const later = () => {
+      frame = requestAnimationFrame(() => {
+        timer = window.setTimeout(apply, 0);
+      });
+    };
+    if (loadedRef.current) later();
+    else map.once("style.load", later);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+      map.off("style.load", later);
+    };
   }, [lang]);
 
   // Bring a station into view on demand (a search result, "nearest station")
