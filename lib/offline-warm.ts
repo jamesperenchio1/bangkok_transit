@@ -1,4 +1,5 @@
 import stations from "@/data/stations.json";
+import { useSettingsStore } from "@/lib/settings-store";
 
 /**
  * Pre-fetches the basemap for the rail network once, on an idle moment after
@@ -70,6 +71,7 @@ function detailTiles(): [number, number, number][] {
 }
 
 function shouldSkip(): boolean {
+  if (useSettingsStore.getState().settings.dataSaver) return true;
   const conn = (navigator as Navigator & { connection?: { saveData?: boolean; type?: string; effectiveType?: string } })
     .connection;
   if (conn?.saveData) return true;

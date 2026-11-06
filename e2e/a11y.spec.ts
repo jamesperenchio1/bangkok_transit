@@ -59,21 +59,34 @@ test.describe("accessibility", () => {
     await expect(page.getByRole("button", { name: "Search stations" })).toBeFocused();
   });
 
-  test("the station list is a keyboard route to every station", async ({ page }) => {
+  test("the station list in the search panel is a keyboard route to every station", async ({ page }) => {
     await page.goto("/");
-    const opener = page.getByRole("button", { name: "Browse all stations" });
+    const opener = page.getByRole("button", { name: "Search stations" });
     await opener.focus();
     await page.keyboard.press("Enter");
-    const dialog = page.getByRole("dialog", { name: "All stations by line" });
-    await expect(dialog).toBeVisible();
+    const browse = page.getByTestId("browse-stations");
+    await expect(browse).toBeVisible();
     await audit(page);
     // Reach a station with Tab alone, and choose it with Enter.
     await page.keyboard.press("Tab");
-    await expect(dialog.locator(":focus")).toBeVisible();
-    await dialog.getByRole("button", { name: /Siam/ }).first().focus();
+    await expect(browse.locator(":focus")).toBeVisible();
+    await browse.getByRole("button", { name: /Siam/ }).first().focus();
     await page.keyboard.press("Enter");
-    await expect(dialog).toBeHidden();
+    await expect(browse).toBeHidden();
     await expect(page.locator(".maplibregl-popup").getByText("Siam")).toBeVisible();
+  });
+
+  test("the settings dialog is keyboard operable and returns focus", async ({ page }) => {
+    await page.goto("/");
+    const opener = page.getByRole("button", { name: "Settings" });
+    await opener.focus();
+    await page.keyboard.press("Enter");
+    const dialog = page.getByRole("dialog", { name: "Settings" });
+    await expect(dialog).toBeVisible();
+    await audit(page);
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(opener).toBeFocused();
   });
 
   test("an open station card has no axe violations, live or last-known", async ({ page }) => {

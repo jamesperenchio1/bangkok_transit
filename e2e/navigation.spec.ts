@@ -56,15 +56,26 @@ test.describe("navigation and search", () => {
     await expect(page.locator(".maplibregl-popup").getByText("Chit Lom")).toBeVisible();
   });
 
-  test("the station list closes on Escape and returns focus", async ({ page }) => {
+  test("the search panel lists every station by line until you type, and closes on Escape", async ({ page }) => {
     await page.goto("/");
-    const opener = page.getByRole("button", { name: "Browse all stations" });
+    const opener = page.getByRole("button", { name: "Search stations" });
     await opener.click();
-    const dialog = page.getByRole("dialog", { name: "All stations by line" });
-    await expect(dialog).toBeVisible();
+    const browse = page.getByTestId("browse-stations");
+    await expect(browse.getByText("All stations by line")).toBeVisible();
+    await page.getByRole("combobox", { name: "Search stations" }).fill("siam");
+    await expect(browse).toBeHidden();
     await page.keyboard.press("Escape");
-    await expect(dialog).toBeHidden();
+    await expect(browse).toBeHidden();
     await expect(opener).toBeFocused();
+  });
+
+  test("the search box is at least 16px, so iOS Safari does not zoom the page on focus", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Search stations" }).click();
+    const size = await page
+      .getByRole("combobox", { name: "Search stations" })
+      .evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    expect(size).toBeGreaterThanOrEqual(16);
   });
 });
 

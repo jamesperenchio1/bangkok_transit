@@ -5,14 +5,15 @@ import * as maplibregl from "maplibre-gl";
 import { useEffect, useMemo, useRef, type RefObject } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { LocateFixed } from "lucide-react";
-import { stations, type Station } from "@/data/stations";
+import { stations, type LineKey, type Station } from "@/data/stations";
 import { fetchLineGeometry, fullLineSegments, trackBetween, type LineSegments } from "@/lib/line-geometry";
 import type { GeoPosition } from "@/lib/use-geolocation";
 import type { PathResult } from "@/lib/transit-graph";
 import { StationActions } from "@/components/StationActions";
-import { setTrainsDimmed, startLiveTrainsWhenIdle } from "@/components/live-trains-layer";
+import { setTrainsDimmed, setTrainsVisible, startLiveTrainsWhenIdle } from "@/components/live-trains-layer";
 import { LINE_COLORS, readableTextColor } from "@/lib/line-colors";
 import { stationName, useLangStore, useT, type Lang } from "@/lib/i18n";
+import { motionDuration, useSettingsStore } from "@/lib/settings-store";
 
 // MapLibre uses [lon, lat] everywhere, the opposite of Leaflet's [lat, lon] -
 // every coordinate pair in this file is in that order.
@@ -38,8 +39,7 @@ const FALLBACK_STYLE: maplibregl.StyleSpecification = {
 };
 
 /** Camera animations collapse to instant jumps for people who ask for less motion. */
-const motionMs = (ms: number) =>
-  typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : ms;
+const motionMs = motionDuration;
 
 // Basemap layers this app has no use for. `poi_transit` is the basemap's own
 // station icons/names, which would duplicate (and fight for space with) our
@@ -154,8 +154,10 @@ const LINE_COLOR_MATCH = [
 ] as unknown as maplibregl.ExpressionSpecification;
 
 /** The line-brand color for a station's primary line, or a neutral fallback. */
-function stationLineColor(station: Station): string {
-  return station.lines[0] ? LINE_COLORS[station.lines[0].line] : "#666";
+function stationLineColor(station: Station, hidden: readonly LineKey[] = []): string {
+  // The first line still on the map, so an interchange doesn't keep the colour of a hidden line.
+  const line = station.lines.find((l) => !hidden.includes(l.line)) ?? station.lines[0];
+  return line ? LINE_COLORS[line.line] : "#666";
 }
 
 function baseLinesGeoJSON(segmentsByLine: LineSegments): GeoJSON.FeatureCollection<GeoJSON.LineString> {
@@ -208,10 +210,22 @@ function stationsGeoJSON(
   startCode: string | null,
   destinationCode: string | null,
   isRouting: boolean,
+  hiddenLines: readonly LineKey[] = [],
 ): GeoJSON.FeatureCollection<GeoJSON.Point> {
   return {
     type: "FeatureCollection",
-    features: stations.map((s) => {
+    features: stations
+      // A station disappears only when every line through it is hidden; the
+      // ends and stops of a planned route always stay.
+      .filter(
+        (s) =>
+          hiddenLines.length === 0 ||
+          pathCodes.has(s.code) ||
+          s.code === startCode ||
+          s.code === destinationCode ||
+          s.lines.some((l) => !hiddenLines.includes(l.line)),
+      )
+      .map((s) => {
       const onPath = pathCodes.has(s.code);
       const isStart = s.code === startCode;
       const isDestination = s.code === destinationCode;
@@ -233,7 +247,7 @@ function stationsGeoJSON(
           // the two ends of the route are distinguishable at a glance.
           strokeColor: dimmed ? "#ccc" : isEndpoint ? ENDPOINT_COLOR : "#fff",
           strokeWidth: isEndpoint ? 4 : 1.5,
-          fillColor: dimmed ? "#ddd" : isStart ? ENDPOINT_COLOR : stationLineColor(s),
+          fillColor: dimmed ? "#ddd" : isStart ? ENDPOINT_COLOR : stationLineColor(s, hiddenLines),
           fillOpacity: dimmed ? 0.7 : 1,
           isDestination,
         },
@@ -309,6 +323,7 @@ export function TransitMap({
   );
   const isRouting = path !== null;
   const { lang, t } = useT();
+  const { showLabels, showTrains, showLocation, hiddenLines } = useSettingsStore((s) => s.settings);
 
   // Keep the latest callbacks/state in refs so the map's own click handler
   // (registered once, at style-load time) always sees current values without
@@ -526,6 +541,7 @@ export function TransitMap({
         getSegments: () => geometryRef.current,
         stationHitLayer: STATIONS_HIT_LAYER,
         isDimmed: () => dimmedRef.current,
+        isVisible: () => useSettingsStore.getState().settings.showTrains,
       });
 
       map.addSource(GPS_SOURCE, {
@@ -697,11 +713,31 @@ export function TransitMap({
     if (!map) return;
     const apply = () => {
       const source = map.getSource<maplibregl.GeoJSONSource>(STATIONS_SOURCE);
-      source?.setData(stationsGeoJSON(pathCodes, startCode, destinationCode, isRouting));
+      source?.setData(stationsGeoJSON(pathCodes, startCode, destinationCode, isRouting, hiddenLines));
     };
     if (loadedRef.current) apply();
     else map.once("style.load", apply);
-  }, [pathCodes, startCode, destinationCode, isRouting]);
+  }, [pathCodes, startCode, destinationCode, isRouting, hiddenLines]);
+
+  // Settings: which lines, labels, trains and GPS marker are drawn. The route
+  // highlight is never filtered - hiding a line must not break a planned trip.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      map.setFilter(
+        LINES_LAYER,
+        hiddenLines.length ? ["!", ["in", ["get", "line"], ["literal", hiddenLines]]] : null,
+      );
+      map.setLayoutProperty(STATIONS_LABEL_LAYER, "visibility", showLabels ? "visible" : "none");
+      for (const id of [GPS_RING_LAYER, GPS_RING_OUTLINE_LAYER, GPS_DOT_LAYER]) {
+        map.setLayoutProperty(id, "visibility", showLocation ? "visible" : "none");
+      }
+      setTrainsVisible(map, showTrains);
+    };
+    if (loadedRef.current) apply();
+    else map.once("style.load", apply);
+  }, [hiddenLines, showLabels, showLocation, showTrains]);
 
   // Keep any open popup's Start/Destination checkmarks in sync if route
   // state changes from elsewhere (e.g. search) while it's still open.
@@ -766,7 +802,9 @@ export function TransitMap({
       const other = otherCode ? stations.find((s) => s.code === otherCode) : undefined;
       // Room for the card above the marker, and for the header/pills.
       const padding = { top: 200, bottom: 90, left: 40, right: 40 };
-      const move = focusCamera(map, focusStation, other, padding);
+      // With "zoom in" off the camera only pans (and only when the station is
+      // off screen); the rider's zoom level is never changed.
+      const move = focusCamera(map, focusStation, other, padding, useSettingsStore.getState().settings.autoZoom);
       if (move) map.stop().easeTo({ ...move, duration: motionMs(600) });
       openPopup(map, popupsRef, focusStation, latest);
     };
@@ -828,6 +866,7 @@ function focusCamera(
   target: Station,
   other: Station | undefined,
   padding: { top: number; bottom: number; left: number; right: number },
+  allowZoom = true,
 ): { center: [number, number]; zoom: number } | null {
   const { width, height } = map.getCanvas().getBoundingClientRect();
   const visible = (s: Station) => {
@@ -836,6 +875,7 @@ function focusCamera(
   };
   const points = other ? [target, other] : [target];
   if (points.every(visible)) return null;
+  if (!allowZoom) return { center: [target.lon, target.lat], zoom: map.getZoom() };
   if (other) {
     const cam = map.cameraForBounds(
       [

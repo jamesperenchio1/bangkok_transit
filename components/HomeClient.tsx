@@ -6,7 +6,7 @@ import { AlertTriangle, ArrowLeftRight, ArrowRight, Navigation, WifiOff, X } fro
 import { stations, stationsByCode, type Station } from "@/data/stations";
 import { fareText, RoutePanel, type RoutePanelState } from "@/components/RoutePanel";
 import { StationSearch } from "@/components/StationSearch";
-import { StationList } from "@/components/StationList";
+import { SettingsMenu } from "@/components/SettingsMenu";
 import { StopAlertBanner } from "@/components/StopAlertControl";
 import { useStopAlert } from "@/lib/use-stop-alert";
 import { findPath } from "@/lib/transit-graph";
@@ -17,6 +17,7 @@ import { fetchLineGeometry, haversineMeters } from "@/lib/line-geometry";
 import { computeFare } from "@/lib/fares";
 import { useFares } from "@/lib/use-fares";
 import { restoreLang, stationName, useLangStore, useT } from "@/lib/i18n";
+import { restoreSettings, useSettingsStore } from "@/lib/settings-store";
 
 // Kicked off as soon as this module evaluates (not when <TransitMap> first
 // renders), so the MapLibre chunk - by far the largest download - and the
@@ -107,8 +108,18 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
   useEffect(() => {
     startArrivalsPolling();
     restoreLang();
+    // Before the offline warm-up, which honours the data-saver choice.
+    restoreSettings();
     scheduleOfflineWarm();
   }, []);
+
+  // Text size and motion apply to the whole page, so they live on <html>.
+  const { largeText, reduceMotion, fewerChanges, avoidWalking } = useSettingsStore((s) => s.settings);
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.fontSize = largeText ? "112.5%" : "";
+    root.toggleAttribute("data-reduce-motion", reduceMotion);
+  }, [largeText, reduceMotion]);
 
   useEffect(() => {
     let cancelled = false;
@@ -159,8 +170,8 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
   // The route is derived, not staged: as soon as both ends exist the path is
   // highlighted. There is no separate confirm step to get stuck on.
   const path = useMemo(
-    () => (start && destination ? findPath(start.code, destination.code) : null),
-    [start, destination],
+    () => (start && destination ? findPath(start.code, destination.code, { fewerChanges, avoidWalking }) : null),
+    [start, destination, fewerChanges, avoidWalking],
   );
   const fares = useFares(path !== null);
   const fareLine = fareText(t, computeFare(path, fares));
@@ -280,8 +291,8 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
             </button>
           )}
           <LangToggle />
-          <StationList onSelectStation={handleSearchSelect} />
           <StationSearch onSelectStation={handleSearchSelect} />
+          <SettingsMenu />
         </div>
       </header>
       {/* Operator line colours as a hairline under the header: brand, not data. */}
