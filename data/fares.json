@@ -1,0 +1,19 @@
+{
+  "retrievedAt": "2026-11-06",
+  "note": "Written by scripts/scrape-fares.ts. An operator is null until a verified source is wired in; the app then says the fare is unavailable rather than guessing.",
+  "operators": {
+    "arl": null,
+    "bts": null,
+    "gold": null,
+    "mrt": {
+      "name": "MRT Blue",
+      "lines": ["blue"],
+      "effective": "2026-07-03",
+      "source": "https://www.thaipbs.or.th/verify/en/content/13302",
+      "stopFares": [17, 20, 22, 25, 27, 29, 32, 34, 37, 39, 42, 44]
+    },
+    "pink": null,
+    "srtRed": null,
+    "yellow": null
+  }
+}

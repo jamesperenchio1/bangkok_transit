@@ -2,11 +2,13 @@ import * as maplibregl from "maplibre-gl";
 import { stations } from "@/data/stations";
 import { serverNow, useArrivalsStore } from "@/lib/arrivals-store";
 import { stationName, strings, useLangStore } from "@/lib/i18n";
+import { LINE_NAMES } from "@/lib/line-colors";
 import { haversineMeters, trackBetween, type LatLon, type LineSegments } from "@/lib/line-geometry";
 import { estimateTrains, type TrainEstimate, type TrainLine } from "@/lib/live-trains";
 
 export const TRAINS_SOURCE = "live-trains";
 export const TRAINS_LAYER = "live-trains-layer";
+const TRAINS_LABEL_LAYER = "live-trains-label-layer";
 const TRAINS_HIT_LAYER = "live-trains-hit-layer";
 
 /** ~4 fps: a train moves a few pixels a second, so this reads as smooth without a render loop. */
@@ -18,7 +20,7 @@ const REDUCED_MOTION_FRAME_MS = 5_000;
  * circle - the WCAG 2.5.8 minimum the rest of the app holds to - and far more
  * than the train itself covers at city zoom, so a moving train is easy to hit.
  */
-const TAP_RADIUS_PX = 22;
+const TAP_RADIUS_PX = 24;
 
 const stationsByCode = new Map(stations.map((s) => [s.code, s]));
 const TRAIN_ICON = "live-train";
@@ -31,150 +33,39 @@ interface Track {
 }
 
 /**
- * A four-car train seen from above, nose up, drawn the way the real thing
- * looks from a drone: a silver roof shaded to read as curved, a dark
- * charcoal outline, rubber gangways between the cars, a row of air-conditioning
- * units along the roof, a dark windscreen and pale light bar at the front, a
- * smaller cab window and red tail lights at the back. Deliberately not tinted
- * by line - the track already carries the colour, and a train in the same
- * green or blue disappears into it. A soft shadow and white halo lift it off
- * any basemap. Drawn at 2x so it stays sharp on phones.
+ * A bold navigation arrow, tip up, so direction reads from the shape alone:
+ * dark navy fill, a thick white outline and a thin dark edge outside that,
+ * which keeps at least 3:1 contrast (WCAG 1.4.11) against light, dark, green
+ * and water basemap pixels alike. It is deliberately large and not tinted by
+ * line: colour never carries meaning here, the text label and the card do.
+ * Drawn at 2x so it stays sharp on phones.
  */
 function drawTrainIcon(): ImageData | null {
   const ratio = 2;
-  const W = 20;
-  const H = 76;
+  const S = 44;
   const canvas = document.createElement("canvas");
-  canvas.width = W * ratio;
-  canvas.height = H * ratio;
+  canvas.width = S * ratio;
+  canvas.height = S * ratio;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
   ctx.scale(ratio, ratio);
   ctx.lineJoin = "round";
-
-  const left = 3;
-  const right = 17;
-  const mid = (left + right) / 2;
-  // A car from y0 to y1; `nose` is how much its end is rounded off (0 = square-ish).
-  const car = (y0: number, y1: number, front: number, back: number) => {
-    const p = new Path2D();
-    if (front > 2) {
-      p.moveTo(left, y0 + front * 1.5);
-      p.bezierCurveTo(left, y0 + front * 0.5, left + 2.5, y0, mid, y0);
-      p.bezierCurveTo(right - 2.5, y0, right, y0 + front * 0.5, right, y0 + front * 1.5);
-    } else {
-      p.moveTo(left, y0 + 1.5);
-      p.quadraticCurveTo(left, y0, left + 1.5, y0);
-      p.lineTo(right - 1.5, y0);
-      p.quadraticCurveTo(right, y0, right, y0 + 1.5);
-    }
-    if (back > 2) {
-      p.lineTo(right, y1 - back * 1.5);
-      p.bezierCurveTo(right, y1 - back * 0.5, right - 2.5, y1, mid, y1);
-      p.bezierCurveTo(left + 2.5, y1, left, y1 - back * 0.5, left, y1 - back * 1.5);
-    } else {
-      p.lineTo(right, y1 - 1.5);
-      p.quadraticCurveTo(right, y1, right - 1.5, y1);
-      p.lineTo(left + 1.5, y1);
-      p.quadraticCurveTo(left, y1, left, y1 - 1.5);
-    }
-    p.closePath();
-    return p;
-  };
-  const cars = [car(3, 20, 5, 0), car(22.5, 36.75, 0, 0), car(39.25, 53.5, 0, 0), car(56, 73, 0, 4)];
-  const gangways: [number, number][] = [
-    [19, 23.5],
-    [35.75, 40.25],
-    [52.5, 57],
-  ];
-
-  // Halo and shadow first, underneath everything.
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.4)";
-  ctx.shadowBlur = 3;
-  ctx.shadowOffsetY = 1;
-  ctx.lineWidth = 4;
+  const arrow = new Path2D();
+  arrow.moveTo(22, 4);
+  arrow.lineTo(38, 38);
+  arrow.lineTo(22, 30);
+  arrow.lineTo(6, 38);
+  arrow.closePath();
+  // Outer dark edge, then white outline, then the navy body.
+  ctx.strokeStyle = "#0b1220";
+  ctx.lineWidth = 8;
+  ctx.stroke(arrow);
   ctx.strokeStyle = "#ffffff";
-  ctx.fillStyle = "#ffffff";
-  for (const c of cars) {
-    ctx.stroke(c);
-    ctx.fill(c);
-  }
-  for (const [y0, y1] of gangways) ctx.fillRect(7, y0, 6, y1 - y0);
-  ctx.restore();
-
-  // Gangways: dark, with a few ribs for the folded rubber.
-  for (const [y0, y1] of gangways) {
-    ctx.fillStyle = "#334155";
-    ctx.fillRect(6.4, y0, 7.2, y1 - y0);
-    ctx.fillStyle = "#64748b";
-    ctx.fillRect(6.4, y0 + (y1 - y0) / 2 - 0.3, 7.2, 0.6);
-  }
-
-  // Cars: silver roof shaded lighter down the middle, charcoal outline.
-  const shade = ctx.createLinearGradient(left, 0, right, 0);
-  shade.addColorStop(0, "#b6c0cc");
-  shade.addColorStop(0.5, "#f5f7fa");
-  shade.addColorStop(1, "#b6c0cc");
-  ctx.fillStyle = shade;
-  ctx.strokeStyle = "#1e293b";
-  ctx.lineWidth = 1.2;
-  for (const c of cars) {
-    ctx.fill(c);
-    ctx.stroke(c);
-  }
-
-  // Air-conditioning units along the roof, with fins.
-  const unit = (y: number, h: number) => {
-    ctx.fillStyle = "#8b97a6";
-    ctx.fillRect(6, y, 8, h);
-    ctx.strokeStyle = "#5b6676";
-    ctx.lineWidth = 0.6;
-    ctx.strokeRect(6, y, 8, h);
-    ctx.beginPath();
-    for (let fy = y + 1.1; fy < y + h - 0.4; fy += 1.1) {
-      ctx.moveTo(6.6, fy);
-      ctx.lineTo(13.4, fy);
-    }
-    ctx.stroke();
-  };
-  unit(14, 4);
-  unit(24.5, 4.2);
-  unit(30.8, 4.2);
-  unit(41.2, 4.2);
-  unit(47.5, 4.2);
-  unit(58.5, 4);
-
-  // Front cab: a big dark windscreen and a pale light bar on the nose.
-  ctx.fillStyle = "#0f172a";
-  ctx.beginPath();
-  ctx.moveTo(5.3, 11.5);
-  ctx.bezierCurveTo(5.3, 7.5, 7.2, 5.6, mid, 5.6);
-  ctx.bezierCurveTo(12.8, 5.6, 14.7, 7.5, 14.7, 11.5);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.4)";
-  ctx.lineWidth = 0.7;
-  ctx.beginPath();
-  ctx.moveTo(7, 9.5);
-  ctx.lineTo(8.6, 7.2);
-  ctx.stroke();
-  ctx.fillStyle = "#fde68a";
-  ctx.fillRect(7.8, 3.5, 4.4, 0.9);
-
-  // Rear cab: a smaller window, and red tail lights.
-  ctx.fillStyle = "#0f172a";
-  ctx.beginPath();
-  ctx.moveTo(6, 67);
-  ctx.lineTo(14, 67);
-  ctx.lineTo(13, 70.3);
-  ctx.lineTo(7, 70.3);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = "#ef4444";
-  ctx.fillRect(7.6, 71.2, 4.8, 0.9);
-
-  return ctx.getImageData(0, 0, W * ratio, H * ratio);
+  ctx.lineWidth = 6;
+  ctx.stroke(arrow);
+  ctx.fillStyle = "#0b2a6b";
+  ctx.fill(arrow);
+  return ctx.getImageData(0, 0, S * ratio, S * ratio);
 }
 
 /** Layer to add; call once the style has loaded, before the station labels so names stay on top. */
@@ -189,7 +80,7 @@ export function addLiveTrainsLayer(map: maplibregl.Map, beforeId: string): void 
       source: TRAINS_SOURCE,
       layout: {
         "icon-image": TRAIN_ICON,
-        "icon-size": ["interpolate", ["linear"], ["zoom"], 9, 0.3, 12, 0.42, 15, 0.65, 17, 0.85],
+        "icon-size": ["interpolate", ["linear"], ["zoom"], 9, 0.5, 12, 0.65, 15, 0.85, 17, 1],
         // Turn with the map, not the screen: a train keeps pointing along its track.
         "icon-rotate": ["get", "bearing"],
         "icon-rotation-alignment": "map",
@@ -197,6 +88,26 @@ export function addLiveTrainsLayer(map: maplibregl.Map, beforeId: string): void 
         "icon-allow-overlap": true,
         "icon-ignore-placement": true,
       },
+    },
+    beforeId,
+  );
+  // Text next to the arrow once zoomed in, so direction is also written down.
+  map.addLayer(
+    {
+      id: TRAINS_LABEL_LAYER,
+      type: "symbol",
+      source: TRAINS_SOURCE,
+      minzoom: 14,
+      layout: {
+        "text-field": ["get", "label"],
+        "text-font": ["Noto Sans Bold"],
+        "text-size": 13,
+        "text-anchor": "top",
+        "text-offset": [0, 1.3],
+        "text-max-width": 10,
+        "text-optional": true,
+      },
+      paint: { "text-color": "#0b2a6b", "text-halo-color": "#ffffff", "text-halo-width": 2.5 },
     },
     beforeId,
   );
@@ -281,6 +192,55 @@ export function startLiveTrains(map: maplibregl.Map, { getSegments, stationHitLa
     const [x0, y0] = track.points[i - 1];
     const [x1, y1] = track.points[i];
     return { at: [x0 + (x1 - x0) * t, y0 + (y1 - y0) * t], bearing: bearing(track, i) };
+  }
+
+  // --- Text for the on-map label and the screen-reader list ---
+
+  function summarise(train: TrainEstimate) {
+    const lang = useLangStore.getState().lang;
+    const t = strings[lang];
+    const toward = stationsByCode.get(train.towardCode);
+    const next = train.next ? stationsByCode.get(train.next.code) : undefined;
+    const towardName = toward ? stationName(toward, lang) : "";
+    const lineName = LINE_NAMES[train.line];
+    return {
+      label: towardName ? `${lineName} · ${towardName}` : lineName,
+      sentence: t.trainItem(lineName, train.trainNo, towardName, next ? stationName(next, lang) : ""),
+    };
+  }
+
+  // A visually hidden list of the same trains, outside the canvas, so a screen
+  // reader or the keyboard can reach them. Each entry shows itself when
+  // focused and opens the train's card. Rebuilt only when its text changes,
+  // never per frame, and not a live region, so it doesn't chatter.
+  const list = document.createElement("ul");
+  list.className = "sr-only";
+  list.setAttribute("aria-label", strings[useLangStore.getState().lang].trainsRegion);
+  map.getContainer().after(list);
+  let listSignature = "";
+  function paintList(items: { id: string; text: string; at: [number, number] }[]) {
+    const signature = items.map((i) => `${i.id}|${i.text}`).join("\n");
+    list.setAttribute("aria-label", strings[useLangStore.getState().lang].trainsRegion);
+    if (signature === listSignature) return;
+    listSignature = signature;
+    list.replaceChildren(
+      ...items.map((item) => {
+        const li = document.createElement("li");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = item.text;
+        button.className =
+          "focus:not-sr-only focus:fixed focus:bottom-4 focus:left-4 focus:z-[2000] focus:rounded focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-neutral-900 focus:shadow-lg";
+        button.addEventListener("click", () => {
+          const entry = latest.get(item.id);
+          if (!entry) return;
+          map.easeTo({ center: entry.at, zoom: Math.max(map.getZoom(), 15), duration: 0 });
+          openCard(entry.train, entry.at);
+        });
+        li.append(button);
+        return li;
+      }),
+    );
   }
 
   // --- The card that opens when a train is tapped ---
@@ -394,17 +354,21 @@ export function startLiveTrains(map: maplibregl.Map, { getSegments, stationHitLa
 
     const features: GeoJSON.Feature<GeoJSON.Point>[] = [];
     const placedNow = new Map<string, { train: TrainEstimate; at: [number, number] }>();
+    const items: { id: string; text: string; at: [number, number] }[] = [];
     for (const train of estimateTrains(useArrivalsStore.getState().map, serverNow())) {
       const placed = place(train, segments);
       if (!placed) continue;
       placedNow.set(train.id, { train, at: placed.at });
+      const summary = summarise(train);
+      items.push({ id: train.id, text: summary.sentence, at: placed.at });
       features.push({
         type: "Feature",
-        properties: { id: train.id, line: train.line, bearing: placed.bearing },
+        properties: { id: train.id, line: train.line, bearing: placed.bearing, label: summary.label },
         geometry: { type: "Point", coordinates: placed.at },
       });
     }
     latest = placedNow;
+    paintList(items);
 
     // The open card follows its train, and closes when the train is gone.
     if (selected) {
@@ -434,5 +398,53 @@ export function startLiveTrains(map: maplibregl.Map, { getSegments, stationHitLa
     map.off("mouseenter", TRAINS_HIT_LAYER, onEnter);
     map.off("mouseleave", TRAINS_HIT_LAYER, onLeave);
     selected?.popup.remove();
+    list.remove();
   };
+}
+
+/**
+ * Trains are a second thought: the map, lines, stations and routing are
+ * interactive first, and the train layer (icon, source, polling loop) is only
+ * added once the map has gone idle and the browser has a spare moment. The
+ * returned function cancels a pending start or tears down a running one.
+ */
+export function startLiveTrainsWhenIdle(
+  map: maplibregl.Map,
+  beforeId: string,
+  options: LiveTrainsOptions & { isDimmed: () => boolean },
+): () => void {
+  let stop: (() => void) | null = null;
+  let cancelled = false;
+  let idleHandle: number | null = null;
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+
+  const start = () => {
+    idleHandle = null;
+    timeout = null;
+    if (cancelled || !map.isStyleLoaded()) return;
+    addLiveTrainsLayer(map, beforeId);
+    setTrainsDimmed(map, options.isDimmed());
+    stop = startLiveTrains(map, options);
+  };
+  const onIdle = () => {
+    if (cancelled) return;
+    if (typeof requestIdleCallback === "function") idleHandle = requestIdleCallback(start, { timeout: 3_000 });
+    else timeout = setTimeout(start, 500);
+  };
+  map.once("idle", onIdle);
+
+  return () => {
+    cancelled = true;
+    map.off("idle", onIdle);
+    if (idleHandle !== null && typeof cancelIdleCallback === "function") cancelIdleCallback(idleHandle);
+    if (timeout !== null) clearTimeout(timeout);
+    stop?.();
+    stop = null;
+  };
+}
+
+/** Trains ease back a little while a route is highlighted (not far: the arrow must stay high-contrast). A no-op until the layer exists. */
+export function setTrainsDimmed(map: maplibregl.Map, dimmed: boolean): void {
+  if (!map.getLayer(TRAINS_LAYER)) return;
+  map.setPaintProperty(TRAINS_LAYER, "icon-opacity", dimmed ? 0.85 : 1);
 }

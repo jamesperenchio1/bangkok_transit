@@ -1,5 +1,6 @@
 "use client";
 
+import { computeFare, OPERATOR_NAMES, type FareResult } from "@/lib/fares";
 import { useEffect, useId, useRef, useState } from "react";
 import { X, MapPin, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import { useArrivals } from "@/lib/use-arrivals";
@@ -105,7 +106,7 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePan
   const to = state ? stationName(state.destination, lang) : "";
   const changes = state?.path ? effectiveChanges(state.path) : 0;
   const summary = state?.path
-    ? [t.stops(state.path.stops), t.changes(changes), t.aboutMinutes(state.path.minutes)].join(", ")
+    ? [t.stops(state.path.stops), t.changes(changes), t.aboutMinutes(state.path.minutes), fareText(t, computeFare(state.path))].join(", ")
     : state
       ? t.noRoute
       : "";
@@ -353,13 +354,33 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePan
   );
 }
 
+export function fareText(t: ReturnType<typeof useT>["t"], fare: FareResult | null): string {
+  if (!fare) return "";
+  if (fare.complete) return t.fareTotal(fare.total);
+  return fare.total > 0 ? t.farePartial(fare.total) : t.fareUnavailable;
+}
+
 function RouteSummary({ path, changes }: { path: PathResult; changes: number }) {
   const { t } = useT();
   const parts = [t.stops(path.stops), t.changes(changes)];
   if (path.walkMeters > 0) parts.push(t.walk(path.walkMeters));
   parts.push(t.aboutMinutes(path.minutes));
+  const fare = computeFare(path);
   return (
-    <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-300">{parts.join(" · ")}</p>
+    <>
+      <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-300">{parts.join(" · ")}</p>
+      {fare && (
+        <div data-testid="route-fare" className="mt-1 text-sm text-neutral-900 dark:text-neutral-100">
+          <p className="font-semibold">{fareText(t, fare)}</p>
+          {fare.segments.length > 1 && (
+            <p className="text-xs text-neutral-600 dark:text-neutral-300">
+              {fare.segments.map((s) => t.fareLeg(OPERATOR_NAMES[s.operator], s.fare)).join(" · ")}
+            </p>
+          )}
+          <p className="text-xs text-neutral-600 dark:text-neutral-300">{t.faresAsOf(fare.asOf)}</p>
+        </div>
+      )}
+    </>
   );
 }
 
