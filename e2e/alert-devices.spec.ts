@@ -71,6 +71,21 @@ function installProbe() {
   }
 }
 
+/**
+ * `navigator.audioSession` is Apple's API: real iPhone Safari has it (16.4+),
+ * but the WebKit that Playwright ships for Linux/CI does not, even though the
+ * iPhone profiles run it. Without this, the "playback session" test below could
+ * only ever skip its check on CI (or, as it used to, fail). So on iPhone
+ * profiles whose engine lacks the API, provide the same object a real iPhone
+ * has - type "auto" until the page sets it - and let the test assert that the
+ * app really asks for "playback". Real Safari behaviour stays on the phone
+ * checklist in docs/operations.md.
+ */
+function installAudioSessionStandIn() {
+  if ("audioSession" in navigator) return;
+  Object.defineProperty(navigator, "audioSession", { configurable: true, value: { type: "auto" } });
+}
+
 const CHIME = [988, 1319, 988, 1319];
 const BUZZ = [300, 120, 300, 120, 600];
 
@@ -105,6 +120,7 @@ test.describe("station alert on phones", () => {
     // its plain fallback background (components/TransitMap.tsx), a real path.
     await page.route("https://tiles.openfreemap.org/**", (route) => route.abort("failed"));
     await page.addInitScript(installProbe);
+    if (platformOf() === "ios") await page.addInitScript(installAudioSessionStandIn);
     await context.setGeolocation({ latitude: 13.8021, longitude: 100.5535 }); // Mo Chit, far from Siam
   });
 
@@ -159,11 +175,14 @@ test.describe("station alert on phones", () => {
     const sheet = await alertOptions(page);
     await press(sheet.getByRole("button", { name: "Test sound" }));
     const type = await page.evaluate(() => (navigator as Navigator & { audioSession?: { type: string } }).audioSession?.type ?? null);
-    if (type === null) {
-      // Engines without the API (every non-WebKit browser, iOS before 16.4) just
-      // play; there is no silent-switch problem to ask about.
+    if (platformOf() === "ios") {
+      // Always present on iPhone profiles (real, or the stand-in above), so this
+      // is a real check, never a skip.
+      expect(type, "the app asked iOS for a playback session").toBe("playback");
+    } else if (type === null) {
+      // Android and desktop engines without the API just play; there is no
+      // silent-switch problem to ask about.
       test.info().annotations.push({ type: "note", description: "navigator.audioSession not exposed by this engine" });
-      expect(platformOf(), "current iPhone WebKit exposes audioSession").not.toBe("ios");
     } else {
       expect(type).toBe("playback");
     }
