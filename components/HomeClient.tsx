@@ -297,13 +297,6 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
       <OfflineBanner />
       <StopAlertBanner alert={stopAlert} />
 
-      {geoError === "denied" && (
-        <div role="status" className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
-          <AlertTriangle size={14} className="shrink-0" aria-hidden="true" />
-          {t.locationDenied}
-        </div>
-      )}
-
       <main id="map" tabIndex={-1} aria-label={t.mapRegion} className="relative isolate flex-1 overflow-hidden overflow-clip outline-none">
         {!mapReady && (
           <div
@@ -312,6 +305,15 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
             className="pointer-events-none absolute inset-x-0 top-0 z-[1001] h-0.5 overflow-hidden bg-neutral-200 dark:bg-neutral-800"
           >
             <div className="h-full w-1/3 animate-[progress-slide_1.1s_ease-in-out_infinite] bg-green-700" />
+          </div>
+        )}
+        {/* Floats over the map instead of sitting above it: as a block in the
+            flow it pushed the whole map down when the permission answer
+            arrived (layout shift). left-14 clears the zoom buttons. */}
+        {geoError === "denied" && (
+          <div role="status" className="absolute left-14 right-2 top-2 z-[1002] flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 shadow-md dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+            <AlertTriangle size={14} className="shrink-0" aria-hidden="true" />
+            {t.locationDenied}
           </div>
         )}
         <TransitMap
