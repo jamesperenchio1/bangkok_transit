@@ -101,17 +101,25 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
   }, []);
 
   // Theme, text size and motion apply to the whole page, so they live on
-  // <html>. (app/layout.tsx sets the same attributes before first paint, so a
-  // saved dark theme doesn't flash light; this keeps them in step afterwards.)
-  const { textSize, theme, reduceMotion, compactHeader, showFare, fewerChanges, avoidWalking, avoidLines, walkSpeed, changeMinutes } =
-    useSettingsStore((s) => s.settings);
+  // <html>. (app/layout.tsx sets theme and text size before first paint, so a
+  // saved dark theme doesn't flash light.) Read from the store when the effect
+  // runs - after restoreSettings() above, in the same commit - and re-applied
+  // on every change, so the render-time defaults can never overwrite them.
   useEffect(() => {
-    const root = document.documentElement;
-    root.style.fontSize = textSize === 100 ? "" : `${textSize}%`;
-    root.toggleAttribute("data-reduce-motion", reduceMotion);
-    if (theme === "system") root.removeAttribute("data-theme");
-    else root.setAttribute("data-theme", theme);
-  }, [textSize, theme, reduceMotion]);
+    const apply = () => {
+      const { textSize, theme, reduceMotion } = useSettingsStore.getState().settings;
+      const root = document.documentElement;
+      root.style.fontSize = textSize === 100 ? "" : `${textSize}%`;
+      root.toggleAttribute("data-reduce-motion", reduceMotion);
+      if (theme === "system") root.removeAttribute("data-theme");
+      else root.setAttribute("data-theme", theme);
+    };
+    apply();
+    return useSettingsStore.subscribe(apply);
+  }, []);
+  const { compactHeader, showFare, fewerChanges, avoidWalking, avoidLines, walkSpeed, changeMinutes } = useSettingsStore(
+    (s) => s.settings,
+  );
 
   useEffect(() => {
     let cancelled = false;

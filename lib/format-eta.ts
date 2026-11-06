@@ -21,7 +21,8 @@ function forcedClock(lang: Lang, hour12: boolean): Intl.DateTimeFormat {
     format = new Intl.DateTimeFormat(lang === "th" ? "th-TH" : "en-US", {
       hour: hour12 ? "numeric" : "2-digit",
       minute: "2-digit",
-      hour12,
+      // h23, not hour12:false - the latter prints midnight as "24:07".
+      hourCycle: hour12 ? "h12" : "h23",
       timeZone: "Asia/Bangkok",
     });
     forcedClocks.set(key, format);

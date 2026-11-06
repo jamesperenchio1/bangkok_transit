@@ -113,6 +113,8 @@ export function chimeWav(options?: ChimeOptions): Uint8Array {
 }
 
 let mediaEl: HTMLAudioElement | null = null;
+/** Bumped by every real play, so a still-pending silent unlock knows it must not pause the chime. */
+let playToken = 0;
 let mediaKey = "";
 let mediaUrl = "";
 
@@ -136,15 +138,18 @@ function unlockMedia(): void {
   try {
     const el = chimeElement();
     if (!el) return;
+    const token = playToken;
     el.muted = true;
     void el.play().then(
       () => {
+        // A real chime started in the meantime (the same tap): leave it playing.
+        if (token !== playToken) return;
         el.pause();
         el.currentTime = 0;
         el.muted = false;
       },
       () => {
-        el.muted = false;
+        if (token === playToken) el.muted = false;
       },
     );
   } catch {
@@ -165,6 +170,7 @@ export function playDing(options?: ChimeOptions): Promise<ChimeStatus> {
   try {
     const el = chimeElement(options);
     if (!el) return Promise.resolve(status);
+    playToken++;
     el.muted = false;
     el.currentTime = 0;
     return el.play().then(

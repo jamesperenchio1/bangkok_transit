@@ -139,7 +139,6 @@ export function addLiveTrainsLayer(map: maplibregl.Map, beforeId: string): void 
       type: "symbol",
       source: TRAINS_SOURCE,
       minzoom: 14,
-      filter: ON_ROUTE,
       layout: {
         "text-field": ["get", "label"],
         "text-font": ["Noto Sans Bold"],
@@ -161,8 +160,6 @@ export function addLiveTrainsLayer(map: maplibregl.Map, beforeId: string): void 
       id: TRAINS_HIT_LAYER,
       type: "circle",
       source: TRAINS_SOURCE,
-      // A greyed-out train is not tappable: it is not part of what the rider is looking at.
-      filter: ON_ROUTE,
       paint: { "circle-radius": TAP_RADIUS_PX, "circle-opacity": 0 },
     },
     beforeId,
@@ -537,6 +534,11 @@ export function applyTrainStyle(map: maplibregl.Map, routing: boolean): void {
   map.setLayoutProperty(TRAINS_LAYER, "icon-size", iconSize(SIZE_FACTOR[s.trainSize]));
   // Trains ease back a little while a route is highlighted (not far: the
   // arrow must stay high-contrast); the ones off the route fade right back.
+  // Greyed-out trains carry no text and cannot be tapped (they are not what
+  // the rider is looking at); "show" leaves every train fully interactive.
+  const greyOthers = routing && s.otherTrains === "dim";
+  map.setFilter(TRAINS_LABEL_LAYER, greyOthers ? ON_ROUTE : null);
+  map.setFilter(TRAINS_HIT_LAYER, greyOthers ? ON_ROUTE : null);
   const base = routing ? 0.85 : 1;
   map.setPaintProperty(
     TRAINS_LAYER,

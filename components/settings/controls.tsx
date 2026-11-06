@@ -231,9 +231,14 @@ function Action({ row, lang }: { row: Extract<Row, { kind: "action" }>; lang: La
     },
     importSettings: () => {
       if (!text.trim()) return setStatus(T("Paste your backup in the box first.", "วางข้อมูลสำรองในช่องก่อน"));
+      let parsed: unknown;
       try {
-        JSON.parse(text);
+        parsed = JSON.parse(text);
       } catch {
+        return setStatus(T("That isn't a valid backup.", "ข้อมูลสำรองไม่ถูกต้อง"));
+      }
+      // Valid JSON of the wrong shape ([], null, 5) must not wipe the current settings.
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
         return setStatus(T("That isn't a valid backup.", "ข้อมูลสำรองไม่ถูกต้อง"));
       }
       replace(text);

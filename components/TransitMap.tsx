@@ -96,18 +96,18 @@ function transformStyle(
 /** Our own station labels: the name in the chosen language, plus the code once zoomed in. */
 function stationLabelField(lang: Lang, codes = true, both = false): maplibregl.ExpressionSpecification {
   const nameOf = (l: Lang) => ["get", l === "th" ? "nameTh" : "nameEn"] as maplibregl.ExpressionSpecification;
-  // "Both languages": the second name goes on its own line, smaller.
-  const name: maplibregl.ExpressionSpecification = both
-    ? (["format", nameOf("en"), {}, "\n", {}, nameOf("th"), { "font-scale": 0.85 }] as unknown as maplibregl.ExpressionSpecification)
-    : nameOf(lang);
-  if (!codes) return name;
-  return [
-    "step",
-    ["zoom"],
-    name,
-    14,
-    ["format", name, {}, "\n", {}, ["get", "code"], { "font-scale": 0.8 }],
-  ];
+  // `format` cannot nest, so each variant is one flat `format`: the name (and,
+  // for "both", the second language, smaller) then, zoomed in, the code.
+  const parts = (withCode: boolean): unknown[] => {
+    const out: unknown[] = both
+      ? [nameOf("en"), {}, "\n", {}, nameOf("th"), { "font-scale": 0.85 }]
+      : [nameOf(lang), {}];
+    if (withCode) out.push("\n", {}, ["get", "code"], { "font-scale": 0.8 });
+    return out;
+  };
+  const plain = both ? (["format", ...parts(false)] as unknown as maplibregl.ExpressionSpecification) : nameOf(lang);
+  if (!codes) return plain;
+  return ["step", ["zoom"], plain, 14, ["format", ...parts(true)]] as unknown as maplibregl.ExpressionSpecification;
 }
 
 const MARKER_FACTOR = { small: 0.75, medium: 1, large: 1.35 } as const;
@@ -788,6 +788,12 @@ export function TransitMap({
     else map.once("style.load", apply);
   }, [showLabels, labelMinZoom, markerSize, routeWidth, basemapLabels, showLocation, rotateGestures, settings.showTrains, settings.otherTrains, settings.trainSize, settings.trainLabels, isRouting]);
 
+  // Keep any open popup's Start/Destination checkmarks in sync if route
+  // state changes from elsewhere (e.g. search) while it's still open.
+  useEffect(() => {
+    popupsRef.current.forEach(({ render }) => render());
+  }, [startCode, destinationCode]);
+
   // GPS position.
   useEffect(() => {
     const map = mapRef.current;
@@ -836,7 +842,9 @@ export function TransitMap({
   // in other map apps; the Settings switch turns it back on.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !userPosition || !settings.followMe) return;
+    // Not while the camera is already travelling (a route fit, a station
+    // pick): the next GPS fix must not cancel it.
+    if (!map || !userPosition || !settings.followMe || map.isMoving()) return;
     map.easeTo({ center: [userPosition.lon, userPosition.lat], duration: motionMs(500) });
   }, [userPosition, settings.followMe]);
 

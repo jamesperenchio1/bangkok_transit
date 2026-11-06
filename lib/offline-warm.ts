@@ -98,7 +98,7 @@ async function mapPool<T>(items: T[], run: (item: T) => Promise<void>): Promise<
   return !failed;
 }
 
-async function warm(): Promise<void> {
+async function warm(): Promise<boolean> {
   // Same flags as MapLibre's own requests (CORS, no credentials) so the
   // cache entries are reused rather than duplicated.
   const get = async (url: string) => {
@@ -147,6 +147,7 @@ async function warm(): Promise<void> {
       // non-fatal: it will simply run again next visit
     }
   }
+  return ok;
 }
 
 /** Ask the browser not to evict the cached map/app under storage pressure. */
@@ -190,6 +191,11 @@ export function scheduleOfflineWarm(): void {
 
 /** "Download the map for offline use now" (Settings): ignores the data-saver / cellular checks, because the rider asked. */
 export async function warmMapNow(): Promise<void> {
+  // Without the service worker in control, fetches go straight to the network
+  // and nothing is stored: that is a failure to report, not a success.
+  if (!("serviceWorker" in navigator)) throw new Error("no service worker support");
+  await navigator.serviceWorker.ready;
+  if (!navigator.serviceWorker.controller) throw new Error("page not controlled by the service worker yet");
   await requestPersistence();
-  await warm();
+  if (!(await warm())) throw new Error("some tiles could not be downloaded");
 }

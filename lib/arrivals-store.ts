@@ -233,6 +233,8 @@ export function startArrivalsPolling() {
     // "Pause live updates" in Settings: no request at all; held times keep
     // counting down and, as they age, are shown as last-known (never as live).
     if (useSettingsStore.getState().settings.pauseLive) {
+      // Settled: "nothing held" is the honest answer now, not "still checking".
+      if (!useArrivalsStore.getState().settled) useArrivalsStore.setState({ settled: true });
       if (!document.hidden) timer = setTimeout(poll, POLL_MS);
       return;
     }
