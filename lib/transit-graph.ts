@@ -177,12 +177,28 @@ const stateKey = (s: State) => `${s.code}|${s.mode}|${s.line ?? ""}`;
  * them. Dijkstra over (station, arrival mode, line) states; the network is
  * ~200 stations, so a sorted array is a perfectly good priority queue.
  */
-export function findPath(fromCode: string, toCode: string): PathResult | null {
+export interface PathOptions {
+  /** Charge extra for each change of line, so fewer changes beat a slightly faster trip. */
+  fewerChanges?: boolean;
+  /** Charge extra for walking transfers, so a ride-only route wins unless it is much slower. */
+  avoidWalking?: boolean;
+}
+
+// Minutes added on top of the real cost. Large enough to change the winner
+// between comparable routes, small enough that a route that truly needs a
+// change or a walk still gets found (these are preferences, not bans).
+const FEWER_CHANGES_PENALTY_MIN = 8;
+const AVOID_WALKING_PENALTY_MIN = 15;
+
+export function findPath(fromCode: string, toCode: string, options: PathOptions = {}): PathResult | null {
   const graph = getGraph();
   if (fromCode === toCode || !graph.has(fromCode) || !graph.has(toCode)) return null;
 
   const start: State = { code: fromCode, mode: "start", line: null };
   const best = new Map<string, number>([[stateKey(start), 0]]);
+  // The trip's real minutes alongside the (possibly penalised) search cost,
+  // so a preference never inflates the time shown to the rider.
+  const realMinutes = new Map<string, number>([[stateKey(start), 0]]);
   const prev = new Map<string, { state: State; meters?: number }>();
   const queue: { state: State; cost: number }[] = [{ state: start, cost: 0 }];
   let goal: { state: State; cost: number } | null = null;
@@ -199,20 +215,24 @@ export function findPath(fromCode: string, toCode: string): PathResult | null {
     for (const edge of graph.get(state.code) ?? []) {
       let next: State;
       let edgeCost: number;
+      let penalty = 0;
       if (edge.kind === "walk") {
         // One walk per transfer: never walk station-to-station-to-station.
         if (state.mode === "walk") continue;
         next = { code: edge.to, mode: "walk", line: null };
         edgeCost = walkMinutes(edge.meters);
+        if (options.avoidWalking) penalty = AVOID_WALKING_PENALTY_MIN;
       } else {
         const changing = state.mode === "ride" && state.line !== edge.line;
         next = { code: edge.to, mode: "ride", line: edge.line };
         edgeCost = edge.minutes + (changing ? CHANGE_MIN : 0);
+        if (changing && options.fewerChanges) penalty = FEWER_CHANGES_PENALTY_MIN;
       }
-      const nextCost = cost + edgeCost;
+      const nextCost = cost + edgeCost + penalty;
       const key = stateKey(next);
       if (nextCost < (best.get(key) ?? Infinity)) {
         best.set(key, nextCost);
+        realMinutes.set(key, (realMinutes.get(stateKey(state)) ?? 0) + edgeCost);
         prev.set(key, { state, meters: edge.kind === "walk" ? edge.meters : undefined });
         queue.push({ state: next, cost: nextCost });
       }
@@ -260,6 +280,6 @@ export function findPath(fromCode: string, toCode: string): PathResult | null {
     stops: legs.filter((l) => l.mode === "ride").length,
     changes: Math.max(0, boardings - 1),
     walkMeters: legs.reduce((sum, l) => sum + (l.walkMeters ?? 0), 0),
-    minutes: Math.max(1, Math.round(goal.cost)),
+    minutes: Math.max(1, Math.round(realMinutes.get(stateKey(goal.state)) ?? goal.cost)),
   };
 }

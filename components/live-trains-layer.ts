@@ -454,7 +454,7 @@ export function startLiveTrains(map: maplibregl.Map, { getSegments, stationHitLa
 export function startLiveTrainsWhenIdle(
   map: maplibregl.Map,
   beforeId: string,
-  options: LiveTrainsOptions & { isDimmed: () => boolean },
+  options: LiveTrainsOptions & { isDimmed: () => boolean; isVisible?: () => boolean },
 ): () => void {
   let stop: (() => void) | null = null;
   let cancelled = false;
@@ -467,6 +467,8 @@ export function startLiveTrainsWhenIdle(
     if (cancelled || !map.isStyleLoaded()) return;
     addLiveTrainsLayer(map, beforeId);
     setTrainsDimmed(map, options.isDimmed());
+    // The rider may have hidden trains in settings before the layer existed.
+    if (options.isVisible && !options.isVisible()) setTrainsVisible(map, false);
     stop = startLiveTrains(map, options);
   };
   const onIdle = () => {
@@ -490,4 +492,15 @@ export function startLiveTrainsWhenIdle(
 export function setTrainsDimmed(map: maplibregl.Map, dimmed: boolean): void {
   if (!map.getLayer(TRAINS_LAYER)) return;
   map.setPaintProperty(TRAINS_LAYER, "icon-opacity", dimmed ? 0.85 : 1);
+}
+
+/**
+ * Show or hide the train markers (icon, label and the invisible tap target, so
+ * a hidden train can't be tapped). A no-op until the layers exist; the idle
+ * starter re-applies the choice when it adds them.
+ */
+export function setTrainsVisible(map: maplibregl.Map, visible: boolean): void {
+  for (const id of [TRAINS_LAYER, TRAINS_LABEL_LAYER, TRAINS_HIT_LAYER]) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", visible ? "visible" : "none");
+  }
 }

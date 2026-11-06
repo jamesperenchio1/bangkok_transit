@@ -28,7 +28,7 @@ for (const size of sizes) {
     });
 
     test("header controls are all at least 44px and inside the screen", async ({ page }) => {
-      await page.goto("/?from=W1&to=E1"); // the busiest header: swap + clear + language + list + search
+      await page.goto("/?from=W1&to=E1"); // the busiest header: swap + clear + language + search + settings
       const header = page.getByRole("banner");
       for (const button of await header.getByRole("button").all()) {
         const box = (await button.boundingBox())!;

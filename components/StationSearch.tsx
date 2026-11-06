@@ -3,7 +3,8 @@
 import { useId, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { stations, type Station } from "@/data/stations";
-import { LINE_COLORS } from "@/lib/line-colors";
+import { LINE_COLORS, LINE_NAMES } from "@/lib/line-colors";
+import { stationsByLine } from "@/lib/station-groups";
 import { useArrivals } from "@/lib/use-arrivals";
 import { minutesLabel, upcomingTrains } from "@/lib/format-eta";
 import { stationName, useT } from "@/lib/i18n";
@@ -67,6 +68,10 @@ export function StationSearch({ onSelectStation }: StationSearchProps) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listId = useId();
 
+  // The full list by line, shown while the box is empty: the old separate
+  // "browse" button, folded in. Built only once the panel has been opened.
+  const groups = useMemo(() => (open ? stationsByLine() : []), [open]);
+
   const results = useMemo(() => {
     const q = normalize(query);
     if (!q) return [];
@@ -119,7 +124,7 @@ export function StationSearch({ onSelectStation }: StationSearchProps) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-neutral-200 bg-white p-2 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="absolute right-0 top-full z-50 mt-2 flex max-h-[70dvh] w-72 flex-col rounded-xl border border-neutral-200 bg-white p-2 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
           <input
             autoFocus
             role="combobox"
@@ -135,7 +140,7 @@ export function StationSearch({ onSelectStation }: StationSearchProps) {
             }}
             onKeyDown={onKeyDown}
             placeholder={t.searchPlaceholder}
-            className="min-h-11 w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-sm placeholder:text-neutral-600 dark:border-neutral-600 dark:bg-neutral-800 dark:placeholder:text-neutral-400"
+            className="min-h-11 w-full shrink-0 rounded-lg border border-neutral-300 px-3 py-1.5 text-base placeholder:text-neutral-600 dark:border-neutral-600 dark:bg-neutral-800 dark:placeholder:text-neutral-400"
           />
 
           {/* Announces the result count as the user types (polite, not per keystroke noise). */}
@@ -143,7 +148,7 @@ export function StationSearch({ onSelectStation }: StationSearchProps) {
             {query.trim() ? (results.length > 0 ? t.searchResultsCount(results.length) : t.noStations) : ""}
           </p>
 
-          <ul id={listId} role="listbox" aria-label={t.searchStations} hidden={results.length === 0} className="mt-1 max-h-64 overflow-y-auto">
+          <ul id={listId} role="listbox" aria-label={t.searchStations} hidden={results.length === 0} className="mt-1 min-h-0 overflow-y-auto">
             {results.map((s, i) => (
               <li
                 key={s.code}
@@ -170,6 +175,42 @@ export function StationSearch({ onSelectStation }: StationSearchProps) {
 
           {query.trim() && results.length === 0 && (
             <p className="px-2 py-2 text-sm text-neutral-600 dark:text-neutral-400">{t.noStations}</p>
+          )}
+
+          {!query.trim() && (
+            <div className="mt-1 min-h-0 overflow-y-auto" data-testid="browse-stations">
+              <p className="px-2 pt-1 text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
+                {t.browseByLine}
+              </p>
+              {groups.map(({ line, stations: list }) => (
+                <section key={line} aria-labelledby={`${listId}-line-${line}`} className="mt-2">
+                  <h3 id={`${listId}-line-${line}`} className="flex items-center gap-2 px-2 text-sm font-semibold">
+                    <span
+                      aria-hidden="true"
+                      className="h-3 w-3 shrink-0 rounded-full"
+                      style={{ backgroundColor: LINE_COLORS[line] }}
+                    />
+                    <span lang="en">{LINE_NAMES[line]}</span>
+                  </h3>
+                  <ul>
+                    {list.map((s) => (
+                      <li key={s.code}>
+                        <button
+                          type="button"
+                          onClick={() => select(s)}
+                          className="flex min-h-11 w-full items-center gap-2 rounded-lg px-2 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                        >
+                          <span className="w-12 shrink-0 text-xs text-neutral-600 dark:text-neutral-400">{s.code}</span>
+                          <span lang={lang} className="flex-1 truncate">
+                            {stationName(s, lang)}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
           )}
         </div>
       )}

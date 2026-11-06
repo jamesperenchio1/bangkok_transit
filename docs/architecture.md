@@ -116,6 +116,12 @@ Shown in the header and route sheet once a start and destination give a route. C
 
 Data: `scripts/scrape-fares.ts` rebuilds `data/fares.json` from public sources (see `scripts/README.md`): OTP's Namtang GTFS for BTS, Purple, Yellow, Pink and ARL (station-pair matrices, spot-checked against the operators' Royal Gazette tables), srtet.co.th for Red, and the Gazette table for Blue (the feed lags it). `.github/workflows/update-fares.yml` runs it monthly and commits to `main` only if its guards and `npm test` pass; a failure leaves the data untouched and emails the owner.
 
+## Search and settings (`components/StationSearch.tsx`, `components/SettingsMenu.tsx`, `lib/settings-store.ts`)
+
+- The search input is 16px (`text-base`): iOS Safari zooms the whole page when a focused input is smaller, and page zoom must stay enabled (WCAG 1.4.4), so the font size is the fix, not `maximum-scale`. `e2e/navigation.spec.ts` guards it.
+- While the box is empty the panel lists every station by line (`lib/station-groups.ts`); typing switches to ranked matches.
+- Settings are a Zustand store persisted to `localStorage` (`bts:settings:v1`), restored in an effect after hydration. They only toggle layer visibility/filters on the existing map, route-planning weights (`findPath` options; the minutes shown never include the preference penalty), root text size and motion. Nothing is sent anywhere, so there is no cost. Defaults equal the pre-settings behaviour.
+
 ## Cost model
 
 All numbers per day unless stated; limits are Cloudflare's free plan (checked against Cloudflare's pricing docs, October 2026). None of them depends on the number of users.
