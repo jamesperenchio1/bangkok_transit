@@ -23,17 +23,28 @@ const TAP_RADIUS_PX = 22;
 /** Smaller than this on screen is invisible: not worth a map render. */
 const VISIBLE_MOVE_PX = 0.75;
 
+/** A turn smaller than this is not visible on a train icon. */
+const VISIBLE_TURN_DEG = 5;
+
+interface DrawnTrain {
+  at: [number, number];
+  bearing: number;
+}
+
 function trainsMoved(
   map: maplibregl.Map,
-  now: Map<string, { train: TrainEstimate; at: [number, number] }>,
-  drawn: Map<string, [number, number]>,
+  now: Map<string, DrawnTrain>,
+  drawn: Map<string, DrawnTrain>,
 ): boolean {
   if (now.size !== drawn.size) return true;
-  for (const [id, { at }] of now) {
+  for (const [id, { at, bearing }] of now) {
     const before = drawn.get(id);
     if (!before) return true;
+    // At a bend the icon turns while its centre barely moves.
+    const turn = Math.abs(((bearing - before.bearing + 540) % 360) - 180);
+    if (turn >= VISIBLE_TURN_DEG) return true;
     const a = map.project(at);
-    const b = map.project(before);
+    const b = map.project(before.at);
     if (Math.hypot(a.x - b.x, a.y - b.y) >= VISIBLE_MOVE_PX) return true;
   }
   return false;
@@ -402,7 +413,7 @@ export function startLiveTrains(map: maplibregl.Map, { getSegments, stationHitLa
   map.on("mouseenter", TRAINS_HIT_LAYER, onEnter);
   map.on("mouseleave", TRAINS_HIT_LAYER, onLeave);
 
-  let drawnAt = new Map<string, [number, number]>();
+  let drawnAt = new Map<string, DrawnTrain>();
   function frame() {
     if (document.hidden) return;
     // Until the track geometry arrives, hop paths would fall back to straight
@@ -414,10 +425,12 @@ export function startLiveTrains(map: maplibregl.Map, { getSegments, stationHitLa
 
     const features: GeoJSON.Feature<GeoJSON.Point>[] = [];
     const placedNow = new Map<string, { train: TrainEstimate; at: [number, number] }>();
+    const bearings = new Map<string, number>();
     for (const train of estimateTrains(useArrivalsStore.getState().map, serverNow())) {
       const placed = place(train, segments);
       if (!placed) continue;
       placedNow.set(train.id, { train, at: placed.at });
+      bearings.set(train.id, placed.bearing);
       features.push({
         type: "Feature",
         properties: { id: train.id, line: train.line, bearing: placed.bearing },
@@ -444,8 +457,11 @@ export function startLiveTrains(map: maplibregl.Map, { getSegments, stationHitLa
     // repaint the map for a change nobody can see - and keep the main thread
     // busy enough to delay taps. Redraw only when a train has moved at least
     // VISIBLE_MOVE_PX from where it was last drawn (or the set changed).
-    if (!trainsMoved(map, placedNow, drawnAt)) return;
-    drawnAt = new Map([...placedNow].map(([id, v]) => [id, v.at]));
+    const placedDrawn = new Map<string, DrawnTrain>(
+      [...placedNow].map(([id, v]) => [id, { at: v.at, bearing: bearings.get(id) ?? 0 }]),
+    );
+    if (!trainsMoved(map, placedDrawn, drawnAt)) return;
+    drawnAt = placedDrawn;
     drawn = features.length > 0;
     source.setData({ type: "FeatureCollection", features });
   }
