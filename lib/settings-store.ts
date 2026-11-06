@@ -26,6 +26,8 @@ export interface Settings {
   fewerChanges: boolean;
   /** Route planning: avoid walking transfers between stations where a ride-only route exists. */
   avoidWalking: boolean;
+  /** Search places (malls, hospitals, addresses...) online as you type. Sends the typed text to Photon. */
+  onlinePlaces: boolean;
   /** 112.5% root text size. */
   largeText: boolean;
   /** Never animate the camera or the UI, regardless of the OS setting. */
@@ -42,6 +44,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoZoom: true,
   fewerChanges: false,
   avoidWalking: false,
+  onlinePlaces: true,
   largeText: false,
   reduceMotion: false,
   dataSaver: false,

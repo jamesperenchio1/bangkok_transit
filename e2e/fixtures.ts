@@ -137,9 +137,39 @@ export async function mapReady(page: Page) {
  * Every test fails on a page error, a console error, or a CSP violation -
  * so a broken script or a new third-party origin can't pass silently.
  */
-export const test = base.extend<{ problems: string[] }>({
+export const PHOTON_URL = "https://photon.komoot.io/**";
+
+/** Answers the online place search with `features` (Photon's GeoJSON shape). */
+export async function servePlaces(page: Page, features: unknown[]) {
+  await page.route(PHOTON_URL, (route) =>
+    route.fulfill({
+      json: { type: "FeatureCollection", features },
+      headers: { "access-control-allow-origin": "*" },
+    }),
+  );
+}
+
+export const test = base.extend<{ problems: string[]; placesOnline: boolean }>({
+  // Online place search is off for every test but the ones that opt in (with
+  // `test.use({ placesOnline: true, serviceWorkers: "block" })`). The service
+  // worker answers cross-origin fetches itself, where Playwright's request
+  // mocking cannot reach, so without blocking it a test would hit the real
+  // service. Seeded only when nothing is saved, so reloads keep the choice.
+  placesOnline: [false, { option: true }],
   problems: [
-    async ({ page }, use) => {
+    async ({ page, placesOnline }, use) => {
+      // No test may depend on the real third-party service: it answers
+      // "nothing found" unless a test serves its own results.
+      await servePlaces(page, []);
+      await page.addInitScript((online) => {
+        try {
+          if (!localStorage.getItem("bts:settings:v1")) {
+            localStorage.setItem("bts:settings:v1", JSON.stringify({ onlinePlaces: online }));
+          }
+        } catch {
+          // storage unavailable
+        }
+      }, placesOnline);
       const problems: string[] = [];
       page.on("pageerror", (err) => problems.push(`pageerror: ${err.message}`));
       page.on("console", (msg) => {

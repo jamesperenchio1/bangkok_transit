@@ -1,16 +1,61 @@
 "use client";
 
-import { useId, useMemo, useRef, useState } from "react";
-import { Search, X } from "lucide-react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
+import { MapPin, Search, X } from "lucide-react";
 import { stations, type Station } from "@/data/stations";
 import { LINE_COLORS, LINE_NAMES } from "@/lib/line-colors";
 import { stationsByLine } from "@/lib/station-groups";
 import { useArrivals } from "@/lib/use-arrivals";
 import { minutesLabel, upcomingTrains } from "@/lib/format-eta";
 import { stationName, useT } from "@/lib/i18n";
+import { MIN_QUERY_LENGTH, searchPlaces, type Place } from "@/lib/place-search";
+import { useSettingsStore } from "@/lib/settings-store";
 
 export interface StationSearchProps {
   onSelectStation: (station: Station) => void;
+  onSelectPlace: (place: Place) => void;
+}
+
+/** One keyboard-navigable list: stations first, then places found online. */
+type Item = { kind: "station"; station: Station; key: string } | { kind: "place"; place: Place; key: string };
+
+const PLACE_DEBOUNCE_MS = 350;
+
+/**
+ * Places matching the query, fetched online after a short pause. Each new
+ * keystroke cancels the previous request; a failure (offline, rate limit) is
+ * reported, never thrown, so station search keeps working regardless.
+ */
+function usePlaces(query: string, enabled: boolean, lang: "en" | "th") {
+  const [state, setState] = useState<{ query: string; places: Place[]; error: boolean }>({
+    query: "",
+    places: [],
+    error: false,
+  });
+  const q = query.trim();
+  const active = enabled && q.length >= MIN_QUERY_LENGTH;
+
+  useEffect(() => {
+    if (!active) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      searchPlaces(q, lang, controller.signal)
+        .then((places) => setState({ query: q, places, error: false }))
+        .catch((err) => {
+          if (!controller.signal.aborted) setState({ query: q, places: [], error: true });
+          void err;
+        });
+    }, PLACE_DEBOUNCE_MS);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [q, active, lang]);
+
+  // Results belong to the query that produced them: while a newer query is in
+  // flight nothing from the old one is shown as if it matched.
+  const ready = active && state.query === q;
+  return { places: ready ? state.places : [], error: ready && state.error, loading: active && !ready };
 }
 
 const MAX_RESULTS = 8;
@@ -60,7 +105,7 @@ function SearchResultEta({ station }: { station: Station }) {
   );
 }
 
-export function StationSearch({ onSelectStation }: StationSearchProps) {
+export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -72,7 +117,10 @@ export function StationSearch({ onSelectStation }: StationSearchProps) {
   // "browse" button, folded in. Built only once the panel has been opened.
   const groups = useMemo(() => (open ? stationsByLine() : []), [open]);
 
-  const results = useMemo(() => {
+  const onlinePlaces = useSettingsStore((s) => s.settings.onlinePlaces);
+  const { places, error: placesError, loading: placesLoading } = usePlaces(query, onlinePlaces, lang);
+
+  const stationResults = useMemo(() => {
     const q = normalize(query);
     if (!q) return [];
     return searchIndex
@@ -80,6 +128,17 @@ export function StationSearch({ onSelectStation }: StationSearchProps) {
       .map(({ station }) => station)
       .slice(0, MAX_RESULTS);
   }, [query]);
+
+  const results: Item[] = useMemo(
+    () => [
+      ...stationResults.map((station): Item => ({ kind: "station", station, key: `s-${station.code}` })),
+      ...places.map((place): Item => ({ kind: "place", place, key: `p-${place.id}` })),
+    ],
+    [stationResults, places],
+  );
+
+  // The highlighted row, kept in range as results arrive or shrink.
+  const current = Math.min(active, results.length - 1);
 
   const close = (returnFocus = false) => {
     setOpen(false);
@@ -96,18 +155,19 @@ export function StationSearch({ onSelectStation }: StationSearchProps) {
       close(true);
     } else if (e.key === "ArrowDown" && results.length) {
       e.preventDefault();
-      setActive((i) => (i + 1) % results.length);
+      setActive(() => (current + 1) % results.length);
     } else if (e.key === "ArrowUp" && results.length) {
       e.preventDefault();
-      setActive((i) => (i - 1 + results.length) % results.length);
-    } else if (e.key === "Enter" && results[active]) {
+      setActive(() => (current - 1 + results.length) % results.length);
+    } else if (e.key === "Enter" && results[current]) {
       e.preventDefault();
-      select(results[active]);
+      select(results[current]);
     }
   };
 
-  const select = (station: Station) => {
-    onSelectStation(station);
+  const select = (item: Item) => {
+    if (item.kind === "station") onSelectStation(item.station);
+    else onSelectPlace(item.place);
     close();
   };
 
@@ -132,7 +192,7 @@ export function StationSearch({ onSelectStation }: StationSearchProps) {
             aria-expanded={results.length > 0}
             aria-controls={listId}
             aria-autocomplete="list"
-            aria-activedescendant={results[active] ? `${listId}-${results[active].code}` : undefined}
+            aria-activedescendant={results[current] ? `${listId}-${results[current].key}` : undefined}
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -145,35 +205,77 @@ export function StationSearch({ onSelectStation }: StationSearchProps) {
 
           {/* Announces the result count as the user types (polite, not per keystroke noise). */}
           <p className="sr-only" role="status">
-            {query.trim() ? (results.length > 0 ? t.searchResultsCount(results.length) : t.noStations) : ""}
+            {query.trim()
+              ? results.length > 0
+                ? t.searchResultsCount(results.length)
+                : placesLoading
+                  ? t.searchingPlaces
+                  : t.noStations
+              : ""}
           </p>
 
           <ul id={listId} role="listbox" aria-label={t.searchStations} hidden={results.length === 0} className="mt-1 min-h-0 overflow-y-auto">
-            {results.map((s, i) => (
-              <li
-                key={s.code}
-                id={`${listId}-${s.code}`}
-                role="option"
-                aria-selected={i === active}
-                onClick={() => select(s)}
-                onMouseMove={() => setActive(i)}
-                className={`flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left text-sm ${
-                  i === active ? "bg-neutral-100 dark:bg-neutral-800" : ""
-                }`}
-              >
-                <span
-                  aria-hidden="true"
-                  className="h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: LINE_COLORS[s.lines[0].line] }}
-                />
-                <span lang={lang} className="flex-1 truncate">{stationName(s, lang)}</span>
-                <SearchResultEta station={s} />
-                <span className="shrink-0 text-xs text-neutral-600 dark:text-neutral-400">{s.code}</span>
-              </li>
-            ))}
+            {results.map((item, i) => {
+              const rowClass = `flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left text-sm ${
+                i === current ? "bg-neutral-100 dark:bg-neutral-800" : ""
+              }`;
+              // A heading row where the places begin, so it is clear which results are stations and which are places.
+              const placesStart = item.kind === "place" && results[i - 1]?.kind !== "place";
+              return (
+                <Fragment key={item.key}>
+                  {placesStart && (
+                    <li role="presentation" className="px-2 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
+                      {t.placesHeading}
+                    </li>
+                  )}
+                  {item.kind === "station" ? (
+                    <li
+                      id={`${listId}-${item.key}`}
+                      role="option"
+                      aria-selected={i === current}
+                      onClick={() => select(item)}
+                      onMouseMove={() => setActive(i)}
+                      className={rowClass}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: LINE_COLORS[item.station.lines[0].line] }}
+                      />
+                      <span lang={lang} className="flex-1 truncate">{stationName(item.station, lang)}</span>
+                      <SearchResultEta station={item.station} />
+                      <span className="shrink-0 text-xs text-neutral-600 dark:text-neutral-400">{item.station.code}</span>
+                    </li>
+                  ) : (
+                    <li
+                      id={`${listId}-${item.key}`}
+                      role="option"
+                      aria-selected={i === current}
+                      onClick={() => select(item)}
+                      onMouseMove={() => setActive(i)}
+                      className={rowClass}
+                    >
+                      <MapPin size={14} className="shrink-0 text-neutral-600 dark:text-neutral-400" aria-hidden="true" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate">{item.place.name}</span>
+                        <span className="block truncate text-xs text-neutral-600 dark:text-neutral-400">
+                          {[item.place.kind, item.place.detail].filter(Boolean).join(" · ")}
+                        </span>
+                      </span>
+                    </li>
+                  )}
+                </Fragment>
+              );
+            })}
           </ul>
 
-          {query.trim() && results.length === 0 && (
+          {query.trim() && onlinePlaces && placesLoading && (
+            <p className="px-2 py-2 text-xs text-neutral-600 dark:text-neutral-400">{t.searchingPlaces}</p>
+          )}
+          {query.trim() && placesError && (
+            <p className="px-2 py-2 text-xs text-neutral-600 dark:text-neutral-400">{t.placesUnavailable}</p>
+          )}
+          {query.trim() && results.length === 0 && !placesLoading && !placesError && (
             <p className="px-2 py-2 text-sm text-neutral-600 dark:text-neutral-400">{t.noStations}</p>
           )}
 
@@ -197,7 +299,7 @@ export function StationSearch({ onSelectStation }: StationSearchProps) {
                       <li key={s.code}>
                         <button
                           type="button"
-                          onClick={() => select(s)}
+                          onClick={() => select({ kind: "station", station: s, key: s.code })}
                           className="flex min-h-11 w-full items-center gap-2 rounded-lg px-2 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
                         >
                           <span className="w-12 shrink-0 text-xs text-neutral-600 dark:text-neutral-400">{s.code}</span>

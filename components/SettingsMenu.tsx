@@ -154,6 +154,7 @@ export function SettingsMenu() {
             </Section>
 
             <Section title={t.settingsData}>
+              <Toggle setting="onlinePlaces" label={t.settingOnlinePlaces} hint={t.settingOnlinePlacesHint} />
               <Toggle setting="dataSaver" label={t.settingDataSaver} hint={t.settingDataSaverHint} />
             </Section>
 

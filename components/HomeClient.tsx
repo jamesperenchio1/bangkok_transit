@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { AlertTriangle, ArrowLeftRight, ArrowRight, Navigation, WifiOff, X } from "lucide-react";
-import { stations, stationsByCode, type Station } from "@/data/stations";
+import { stationsByCode, type Station } from "@/data/stations";
 import { fareText, RoutePanel, type RoutePanelState } from "@/components/RoutePanel";
 import { StationSearch } from "@/components/StationSearch";
 import { SettingsMenu } from "@/components/SettingsMenu";
@@ -13,7 +13,9 @@ import { findPath } from "@/lib/transit-graph";
 import { useGeolocation } from "@/lib/use-geolocation";
 import { startArrivalsPolling, useArrivalsStore } from "@/lib/arrivals-store";
 import { scheduleOfflineWarm } from "@/lib/offline-warm";
-import { fetchLineGeometry, haversineMeters } from "@/lib/line-geometry";
+import { fetchLineGeometry } from "@/lib/line-geometry";
+import { distanceLabel, nearestStation } from "@/lib/nearest-station";
+import type { Place } from "@/lib/place-search";
 import { computeFare } from "@/lib/fares";
 import { useFares } from "@/lib/use-fares";
 import { restoreLang, stationName, useLangStore, useT } from "@/lib/i18n";
@@ -29,19 +31,6 @@ const TransitMap = dynamic(
   () => (transitMapModule ?? import("@/components/TransitMap")).then((m) => m.TransitMap),
   { ssr: false },
 );
-
-function nearestStation(lat: number, lon: number): { station: Station; meters: number } {
-  let best = stations[0];
-  let bestMeters = Infinity;
-  for (const s of stations) {
-    const meters = haversineMeters([lat, lon], [s.lat, s.lon]);
-    if (meters < bestMeters) {
-      best = s;
-      bestMeters = meters;
-    }
-  }
-  return { station: best, meters: bestMeters };
-}
 
 /**
  * One button that shows the language you'd switch *to*. Two 44px segments
@@ -84,10 +73,6 @@ function OfflineBanner() {
   );
 }
 
-function distanceLabel(meters: number): string {
-  return meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toFixed(1)} km`;
-}
-
 /**
  * `children` is the page's server-rendered, screen-reader-only SEO block
  * (`SeoContent`). It arrives as a prop rather than an import so that its data
@@ -99,6 +84,7 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
   const [destination, setDestination] = useState<Station | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [focusStation, setFocusStation] = useState<Station | null>(null);
+  const [focusPlace, setFocusPlace] = useState<Place | null>(null);
   // The map chunk is the biggest download; until it lands the header is the
   // only thing on screen, so a thin indeterminate bar explains the wait.
   const [mapReady, setMapReady] = useState(false);
@@ -207,6 +193,13 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
     setSheetOpen(false);
   };
 
+  // A searched place (mall, hospital, address): the map shows it with its
+  // nearest station, from where the rider can start or end a route.
+  const handlePlaceSelect = (place: Place) => {
+    setFocusPlace({ ...place });
+    setSheetOpen(false);
+  };
+
   const swapRoute = () => {
     setStart(destination);
     setDestination(start);
@@ -291,7 +284,7 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
             </button>
           )}
           <LangToggle />
-          <StationSearch onSelectStation={handleSearchSelect} />
+          <StationSearch onSelectStation={handleSearchSelect} onSelectPlace={handlePlaceSelect} />
           <SettingsMenu />
         </div>
       </header>
@@ -336,6 +329,7 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
           path={path}
           userPosition={position}
           focusStation={focusStation}
+          focusPlace={focusPlace}
           sheetOpen={sheetOpen && hasRoute}
         />
 
