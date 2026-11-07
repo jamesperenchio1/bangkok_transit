@@ -5,6 +5,9 @@
   # The app uses geolocation (lib/use-geolocation.ts), so scope it to
   # same-origin; everything else sensitive stays disabled by not appearing.
   Permissions-Policy: geolocation=(self)
+  # Isolates the page from cross-origin windows that open it (Spectre-style
+  # leaks, window.opener tampering). The app opens no cross-origin popups.
+  Cross-Origin-Opener-Policy: same-origin
   # 'unsafe-inline' for scripts is unavoidable for a static export: Next
   # inlines its bootstrap scripts and nonces need a server per request.
   # Everything the page talks to is listed explicitly: map tiles/fonts/
@@ -31,6 +34,10 @@
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 /icons/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/.well-known/security.txt
+  Cache-Control: public, max-age=3600
+  Content-Type: text/plain; charset=utf-8
 
 # Crawl files and social images: refreshed daily, served as-is.
 /robots.txt
