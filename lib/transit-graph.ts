@@ -94,8 +94,8 @@ function scheduledRideMinutes(line: LineKey, a: string, b: string): number | und
   return run === undefined ? undefined : run + table!.dwell;
 }
 
-function walkMinutes(meters: number): number {
-  return WALK_TRANSFER_MIN + meters / WALK_M_PER_MIN;
+function walkMinutes(meters: number, speed = WALK_M_PER_MIN): number {
+  return WALK_TRANSFER_MIN + meters / speed;
 }
 
 const sequences = lineSequences as Record<LineKey, string[][]>;
@@ -178,6 +178,12 @@ const stateKey = (s: State) => `${s.code}|${s.mode}|${s.line ?? ""}`;
  * ~200 stations, so a sorted array is a perfectly good priority queue.
  */
 export interface PathOptions {
+  /** Lines to avoid: charged extra per ride minute, so a route without them wins unless it is far slower. */
+  avoidLines?: readonly LineKey[];
+  /** Walking speed for transfers, metres per minute (default 75). */
+  walkSpeed?: number;
+  /** Minutes for a change of line / platform (default 5). */
+  changeMinutes?: number;
   /** Charge extra for each change of line, so fewer changes beat a slightly faster trip. */
   fewerChanges?: boolean;
   /** Charge extra for walking transfers, so a ride-only route wins unless it is much slower. */
@@ -189,6 +195,8 @@ export interface PathOptions {
 // change or a walk still gets found (these are preferences, not bans).
 const FEWER_CHANGES_PENALTY_MIN = 8;
 const AVOID_WALKING_PENALTY_MIN = 15;
+/** Extra cost multiplier on the ride minutes of an avoided line (1 = no extra). */
+const AVOIDED_LINE_FACTOR = 2.5;
 
 export function findPath(fromCode: string, toCode: string, options: PathOptions = {}): PathResult | null {
   const graph = getGraph();
@@ -220,13 +228,14 @@ export function findPath(fromCode: string, toCode: string, options: PathOptions 
         // One walk per transfer: never walk station-to-station-to-station.
         if (state.mode === "walk") continue;
         next = { code: edge.to, mode: "walk", line: null };
-        edgeCost = walkMinutes(edge.meters);
+        edgeCost = walkMinutes(edge.meters, options.walkSpeed);
         if (options.avoidWalking) penalty = AVOID_WALKING_PENALTY_MIN;
       } else {
         const changing = state.mode === "ride" && state.line !== edge.line;
         next = { code: edge.to, mode: "ride", line: edge.line };
-        edgeCost = edge.minutes + (changing ? CHANGE_MIN : 0);
+        edgeCost = edge.minutes + (changing ? (options.changeMinutes ?? CHANGE_MIN) : 0);
         if (changing && options.fewerChanges) penalty = FEWER_CHANGES_PENALTY_MIN;
+        if (options.avoidLines?.includes(edge.line)) penalty += edge.minutes * (AVOIDED_LINE_FACTOR - 1);
       }
       const nextCost = cost + edgeCost + penalty;
       const key = stateKey(next);

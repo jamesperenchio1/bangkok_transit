@@ -17,7 +17,8 @@ const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 // the opening view's tiles were cached only if the service worker already
 // controlled the page during the first visit, so offline could open on stations
 // over an empty basemap. Bumping re-runs it for installs that did the v1 pass.
-const DONE_KEY = "bts:map-warm:v2";
+export const OFFLINE_DONE_KEY = "bts:map-warm:v2";
+const DONE_KEY = OFFLINE_DONE_KEY;
 const CONCURRENCY = 4;
 /** Whole-network overview zooms (9 is where the map opens), then street-level zoom only around stations. */
 const OVERVIEW_ZOOMS = [9, 10, 11, 12, 13];
@@ -97,7 +98,7 @@ async function mapPool<T>(items: T[], run: (item: T) => Promise<void>): Promise<
   return !failed;
 }
 
-async function warm(): Promise<void> {
+async function warm(): Promise<boolean> {
   // Same flags as MapLibre's own requests (CORS, no credentials) so the
   // cache entries are reused rather than duplicated.
   const get = async (url: string) => {
@@ -146,6 +147,7 @@ async function warm(): Promise<void> {
       // non-fatal: it will simply run again next visit
     }
   }
+  return ok;
 }
 
 /** Ask the browser not to evict the cached map/app under storage pressure. */
@@ -185,4 +187,15 @@ export function scheduleOfflineWarm(): void {
     .requestIdleCallback;
   // Well after first paint and the first live-times poll.
   setTimeout(() => (idle ? idle(() => void start(), { timeout: 10_000 }) : void start()), 8_000);
+}
+
+/** "Download the map for offline use now" (Settings): ignores the data-saver / cellular checks, because the rider asked. */
+export async function warmMapNow(): Promise<void> {
+  // Without the service worker in control, fetches go straight to the network
+  // and nothing is stored: that is a failure to report, not a success.
+  if (!("serviceWorker" in navigator)) throw new Error("no service worker support");
+  await navigator.serviceWorker.ready;
+  if (!navigator.serviceWorker.controller) throw new Error("page not controlled by the service worker yet");
+  await requestPersistence();
+  if (!(await warm())) throw new Error("some tiles could not be downloaded");
 }

@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+/* `dark:` follows the OS unless the rider picked a theme in Settings
+   (<html data-theme="light|dark">). The CSS variables below follow the same rule. */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]) *) {
+      @slot;
+    }
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -29,7 +42,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --background: #0a0a0a;
     --foreground: #ededed;
     --surface: #171717;
@@ -41,6 +54,24 @@
     --shadow-2: 0 4px 12px rgb(0 0 0 / 0.5);
     --shadow-3: 0 8px 28px rgb(0 0 0 / 0.6);
   }
+}
+
+:root[data-theme="dark"] {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --surface: #171717;
+  --surface-muted: #262626;
+  --border: #333333;
+  --brand: #22c55e;
+  --brand-strong: #16a34a;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-2: 0 4px 12px rgb(0 0 0 / 0.5);
+  --shadow-3: 0 8px 28px rgb(0 0 0 / 0.6);
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 body {
@@ -133,9 +164,13 @@ button {
 }
 
 @media (prefers-color-scheme: dark) {
-  :focus-visible {
+  :root:not([data-theme="light"]) :focus-visible {
     outline-color: #93c5fd;
   }
+}
+
+:root[data-theme="dark"] :focus-visible {
+  outline-color: #93c5fd;
 }
 
 /* Honour "reduce motion": no sliding sheets or animated map camera

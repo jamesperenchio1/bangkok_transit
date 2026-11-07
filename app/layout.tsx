@@ -79,7 +79,18 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   preconnect(new URL(ARRIVALS_URL).origin, { crossOrigin: "anonymous" });
 
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+      <head>
+        {/* Applies the saved theme and text size before first paint, so a
+            rider who chose dark on a light phone doesn't see a light flash.
+            Tiny, synchronous, and wrapped in try/catch: storage can be blocked. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              'try{var s=JSON.parse(localStorage.getItem("bts:settings:v1")||"{}"),r=document.documentElement;if(s.theme==="light"||s.theme==="dark")r.setAttribute("data-theme",s.theme);if(typeof s.textSize==="number"&&s.textSize>=90&&s.textSize<=150&&s.textSize!==100)r.style.fontSize=s.textSize+"%"}catch(e){}',
+          }}
+        />
+      </head>
       <body className="h-full flex flex-col overflow-hidden overflow-clip overscroll-none">
         {children}
         <JsonLd data={siteLd()} />

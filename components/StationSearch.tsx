@@ -26,7 +26,7 @@ const PLACE_DEBOUNCE_MS = 350;
  * keystroke cancels the previous request; a failure (offline, rate limit) is
  * reported, never thrown, so station search keeps working regardless.
  */
-function usePlaces(query: string, enabled: boolean, lang: "en" | "th") {
+function usePlaces(query: string, enabled: boolean, lang: "en" | "th", limit: number) {
   const [state, setState] = useState<{ query: string; places: Place[]; error: boolean }>({
     query: "",
     places: [],
@@ -39,7 +39,7 @@ function usePlaces(query: string, enabled: boolean, lang: "en" | "th") {
     if (!active) return;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
-      searchPlaces(q, lang, controller.signal)
+      searchPlaces(q, lang, controller.signal, limit)
         .then((places) => setState({ query: q, places, error: false }))
         .catch((err) => {
           if (!controller.signal.aborted) setState({ query: q, places: [], error: true });
@@ -50,7 +50,7 @@ function usePlaces(query: string, enabled: boolean, lang: "en" | "th") {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [q, active, lang]);
+  }, [q, active, lang, limit]);
 
   // Results belong to the query that produced them: while a newer query is in
   // flight nothing from the old one is shown as if it matched.
@@ -75,9 +75,13 @@ const searchIndex = stations.map((s) => ({
   keys: [normalize(s.nameEn), normalize(s.nameTh), normalize(s.code)],
 }));
 
+const searchKeys = searchIndex.map(({ keys }) => keys);
+
 function SearchResultEta({ station }: { station: Station }) {
   const { data, live, now } = useArrivals(station.hasLiveArrivals ? station.code : null);
   const { t } = useT();
+  const showLiveTimes = useSettingsStore((s) => s.settings.showLiveTimes);
+  if (!showLiveTimes) return null;
   if (!station.hasLiveArrivals) {
     return <span className="shrink-0 text-[11px] text-neutral-600 dark:text-neutral-400">{t.noLiveData}</span>;
   }
@@ -117,17 +121,31 @@ export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchP
   // "browse" button, folded in. Built only once the panel has been opened.
   const groups = useMemo(() => (open ? stationsByLine() : []), [open]);
 
-  const onlinePlaces = useSettingsStore((s) => s.settings.onlinePlaces);
-  const { places, error: placesError, loading: placesLoading } = usePlaces(query, onlinePlaces, lang);
+  const { onlinePlaces, placeResults } = useSettingsStore((s) => s.settings);
+  const { places, error: placesError, loading: placesLoading } = usePlaces(query, onlinePlaces, lang, placeResults);
+
+  // The typo-tolerant matcher is a separate chunk, fetched the first time the
+  // panel opens (the main bundle never carries it). Until it arrives - a
+  // moment on a slow link - plain substring matching answers.
+  const [fuzzy, setFuzzy] = useState<typeof import("@/lib/fuzzy") | null>(null);
+  useEffect(() => {
+    if (!open || fuzzy) return;
+    let cancelled = false;
+    void import("@/lib/fuzzy").then((m) => !cancelled && setFuzzy(m));
+    return () => {
+      cancelled = true;
+    };
+  }, [open, fuzzy]);
 
   const stationResults = useMemo(() => {
     const q = normalize(query);
     if (!q) return [];
+    if (fuzzy) return fuzzy.rank(q, searchKeys, MAX_RESULTS).map((i) => searchIndex[i].station);
     return searchIndex
       .filter(({ keys }) => keys.some((key) => key.includes(q)))
       .map(({ station }) => station)
       .slice(0, MAX_RESULTS);
-  }, [query]);
+  }, [query, fuzzy]);
 
   const results: Item[] = useMemo(
     () => [
