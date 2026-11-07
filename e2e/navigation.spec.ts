@@ -40,6 +40,15 @@ test.describe("navigation and search", () => {
     await expect(page.getByRole("option")).toHaveCount(0);
   });
 
+  test("search forgives typos", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Search stations" }).click();
+    await page.getByRole("combobox").fill("siem");
+    await expect(page.getByRole("option", { name: /^Siam/ }).first()).toBeVisible();
+    await page.getByRole("combobox").fill("chatchak");
+    await expect(page.getByRole("option", { name: /Chatuchak/ }).first()).toBeVisible();
+  });
+
   test("search finds a station by its Thai name", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: "Search stations" }).click();

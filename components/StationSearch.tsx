@@ -75,6 +75,8 @@ const searchIndex = stations.map((s) => ({
   keys: [normalize(s.nameEn), normalize(s.nameTh), normalize(s.code)],
 }));
 
+const searchKeys = searchIndex.map(({ keys }) => keys);
+
 function SearchResultEta({ station }: { station: Station }) {
   const { data, live, now } = useArrivals(station.hasLiveArrivals ? station.code : null);
   const { t } = useT();
@@ -122,14 +124,28 @@ export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchP
   const { onlinePlaces, placeResults } = useSettingsStore((s) => s.settings);
   const { places, error: placesError, loading: placesLoading } = usePlaces(query, onlinePlaces, lang, placeResults);
 
+  // The typo-tolerant matcher is a separate chunk, fetched the first time the
+  // panel opens (the main bundle never carries it). Until it arrives - a
+  // moment on a slow link - plain substring matching answers.
+  const [fuzzy, setFuzzy] = useState<typeof import("@/lib/fuzzy") | null>(null);
+  useEffect(() => {
+    if (!open || fuzzy) return;
+    let cancelled = false;
+    void import("@/lib/fuzzy").then((m) => !cancelled && setFuzzy(m));
+    return () => {
+      cancelled = true;
+    };
+  }, [open, fuzzy]);
+
   const stationResults = useMemo(() => {
     const q = normalize(query);
     if (!q) return [];
+    if (fuzzy) return fuzzy.rank(q, searchKeys, MAX_RESULTS).map((i) => searchIndex[i].station);
     return searchIndex
       .filter(({ keys }) => keys.some((key) => key.includes(q)))
       .map(({ station }) => station)
       .slice(0, MAX_RESULTS);
-  }, [query]);
+  }, [query, fuzzy]);
 
   const results: Item[] = useMemo(
     () => [
