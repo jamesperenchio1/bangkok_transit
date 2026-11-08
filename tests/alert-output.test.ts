@@ -325,6 +325,49 @@ describe("chimeWav (the media-element copy, heard even with the iPhone ringer on
   });
 });
 
+describe("chimeWav has no click", () => {
+  const samples = (b: Uint8Array) => {
+    const v = new DataView(b.buffer, b.byteOffset);
+    return Float32Array.from({ length: (b.length - 44) / 2 }, (_, i) => v.getInt16(44 + i * 2, true) / 32768);
+  };
+  // Loudest sample in each millisecond (22.05 kHz mono), for the first note only:
+  // the second note starts at 280 ms.
+  const perMs = (x: Float32Array) =>
+    Array.from({ length: 270 }, (_, ms) => {
+      let m = 0;
+      for (let i = Math.round(ms * 22.05); i < Math.round((ms + 1) * 22.05); i++) m = Math.max(m, Math.abs(x[i]));
+      return m;
+    });
+
+  it("never drops in level from one millisecond to the next: the attack ends where the fade begins", async () => {
+    // It once fell from 0.47 to 0.28 in one sample at 20 ms, a tick at the start of every note.
+    const { chimeWav } = await load();
+    for (const volume of [0.2, 0.6, 1]) {
+      const level = perMs(samples(chimeWav({ volume, repeats: 2 })));
+      for (let ms = 1; ms < level.length; ms++) {
+        expect(level[ms], `${volume}: ${ms} ms`).toBeGreaterThanOrEqual(level[ms - 1] * 0.9);
+      }
+    }
+  });
+
+  it("peaks at 20 ms and fades smoothly after it, like the Web Audio chime", async () => {
+    const { chimeWav } = await load();
+    const level = perMs(samples(chimeWav({ volume: 0.6, repeats: 1 })));
+    const peakAt = level.indexOf(Math.max(...level));
+    expect(peakAt).toBeGreaterThanOrEqual(18);
+    expect(peakAt).toBeLessThanOrEqual(22);
+    expect(level[100]).toBeLessThan(level[peakAt]);
+    expect(level[200]).toBeLessThan(level[100]);
+  });
+
+  it("starts and ends near silence, so there is no step at either end", async () => {
+    const { chimeWav } = await load();
+    const x = samples(chimeWav({ volume: 1, repeats: 1 }));
+    expect(Math.abs(x[0])).toBeLessThan(0.001);
+    expect(Math.abs(x[x.length - 1])).toBeLessThan(0.001);
+  });
+});
+
 describe("playDing result", () => {
   it("reports the media copy as unsupported where there is no <audio>, and the Web Audio state", async () => {
     const { unlockAudio, playDing } = await load();

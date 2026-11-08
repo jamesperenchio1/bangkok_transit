@@ -60,6 +60,9 @@ const NOTES: [number, number][] = [
   [1319, 0.28],
 ];
 
+/** The quietest the envelope gets (-80 dB), standing in for silence since an exponential never reaches 0. */
+const FLOOR = 0.0001;
+
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
 function resolve(options?: ChimeOptions) {
@@ -87,8 +90,12 @@ export function chimeWav(options?: ChimeOptions): Uint8Array {
       const length = Math.floor(0.75 * rate);
       for (let i = 0; i < length && start + i < samples; i++) {
         const t = i / rate;
-        // Same envelope as the Web Audio chime: quick attack, exponential fade.
-        const env = t < 0.02 ? t / 0.02 : Math.pow(0.0001 / 0.6, (t - 0.02) / 0.68) * 0.6;
+        // The Web Audio chime's envelope, sample for sample: 20 ms exponential
+        // attack from the floor to full, then an exponential fade back to it.
+        // The attack must END at the level the fade STARTS from. It once ended
+        // at 1.0 and the fade began at 0.6, so the signal dropped 40% in one
+        // sample at 20 ms into every note: a tick, four times a chime.
+        const env = t < 0.02 ? Math.pow(FLOOR, 1 - t / 0.02) : Math.pow(FLOOR, (t - 0.02) / 0.68);
         mix[start + i] += Math.sin(2 * Math.PI * freq * t) * env;
       }
     }
@@ -192,9 +199,9 @@ function ring(ctx: AudioContext, options?: ChimeOptions): void {
       osc.type = "sine";
       osc.frequency.value = freq;
       const t = start + r * PAIR_MS + offset;
-      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.setValueAtTime(FLOOR, t);
       gain.gain.exponentialRampToValueAtTime(volume, t + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+      gain.gain.exponentialRampToValueAtTime(FLOOR, t + 0.7);
       osc.connect(gain).connect(ctx.destination);
       osc.start(t);
       osc.stop(t + 0.75);
