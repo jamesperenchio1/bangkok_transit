@@ -16,7 +16,8 @@ export const LINE_COLORS: Record<LineKey, string> = {
   blue: "#1c3f94",
   purple: "#a1458e",
   arl: "#8b3f97",
-  srtRed: "#a5122a",
+  srtDarkRed: "#a5122a",
+  srtLightRed: "#e8656f",
 };
 
 const DARK_TEXT = "#171717";
@@ -60,4 +61,4 @@ export const LINE_NAMES: Record<LineKey, string> = (() => {
 })();
 
 /** Display order for grouping stations by line. */
-export const LINE_ORDER: LineKey[] = ["sukhumvit", "silom", "gold", "yellow", "pink", "blue", "purple", "arl", "srtRed"];
+export const LINE_ORDER: LineKey[] = ["sukhumvit", "silom", "gold", "yellow", "pink", "blue", "purple", "arl", "srtDarkRed", "srtLightRed"];

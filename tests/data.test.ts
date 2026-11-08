@@ -127,6 +127,62 @@ describe("interchanges", () => {
   });
 });
 
+describe("official station codes", () => {
+  // The operators' own codes (Wikipedia station lists for MRT Blue, the Airport
+  // Rail Link and the SRT Red lines; EBM's Yellow Line page gives Lat Phrao as
+  // BL15). The ids in stations.json are NOT these and must not change (they
+  // are in shared links and page URLs); `displayCode` is what riders see.
+  const OFFICIAL: Record<string, string> = {
+    "Tha Phra": "BL01", "Charan Sanitwong 13": "BL02", "Fai Chai": "BL03", "Bang Khun Non": "BL04",
+    "Bang Yi Khan": "BL05", Sirindhorn: "BL06", "Bang Phlat": "BL07", "Bang O": "BL08", "Bang Pho": "BL09",
+    "Tao Poon": "BL10 / PP16", "Bang Sue": "BL11", "Kamphaeng Phet": "BL12", "Chatuchak Park": "BL13",
+    "Phahon Yothin": "BL14", "Lat Phrao": "BL15", Ratchadaphisek: "BL16", Sutthisan: "BL17",
+    "Huai Khwang": "BL18", "Thailand Cultural Centre": "BL19", "Phra Ram 9": "BL20", Phetchaburi: "BL21",
+    Sukhumvit: "BL22", "Queen Sirikit National Convention Centre": "BL23", "Khlong Toei": "BL24",
+    Lumphini: "BL25", "Si Lom": "BL26", "Sam Yan": "BL27", "Hua Lamphong": "BL28", "Wat Mangkon": "BL29",
+    "Sam Yot": "BL30", "Sanam Chai": "BL31", Itsaraphap: "BL32", "Bang Phai": "BL33", "Bang Wa": "BL34",
+    "Phetkasem 48": "BL35", "Phasi Charoen": "BL36", "Bang Khae": "BL37", "Lak Song": "BL38",
+    Suvarnabhumi: "A1", "Lat Krabang": "A2", "Ban Thap Chang": "A3", "Hua Mak": "A4", Ramkhamhaeng: "A5",
+    Makkasan: "A6", Ratchaprarop: "A7", "Phaya Thai": "A8",
+    "Krung Thep Aphiwat (Bang Sue Grand)": "RN01 / RW01", Chatuchak: "RN02", "Wat Samian Nari": "RN03",
+    "Bang Khen": "RN04", "Thung Song Hong": "RN05", "Lak Si": "RN06", "Kan Kheha": "RN07", "Don Mueang": "RN08",
+    "Lak Hok": "RN09", Rangsit: "RN10", "Bang Son": "RW02", "Bang Bamru": "RW05", "Taling Chan": "RW06",
+  };
+  const OPERATOR_LINES = new Set<LineKey>(["blue", "arl", "srtDarkRed", "srtLightRed"]);
+
+  it("shows the operator's code for every Blue, ARL and SRT Red station", () => {
+    const seen = new Set<string>();
+    for (const s of stations.filter((x) => x.lines.some((l) => OPERATOR_LINES.has(l.line)))) {
+      // Bang Son and Lak Si also exist as Purple / Pink stations under other names' codes; match by line.
+      const onOperatorLine = s.lines.every((l) => OPERATOR_LINES.has(l.line)) || s.code === "BL31";
+      if (!onOperatorLine) continue;
+      expect(OFFICIAL[s.nameEn], `${s.code} ${s.nameEn} is not in the official list`).toBeDefined();
+      expect(s.displayCode, `${s.code} ${s.nameEn}`).toBe(OFFICIAL[s.nameEn]);
+      seen.add(s.nameEn);
+    }
+    expect([...seen].sort()).toEqual(Object.keys(OFFICIAL).sort());
+  });
+
+  it("never reuses a displayed code on two stations of one operator", () => {
+    const owner = new Map<string, string>();
+    for (const s of stations) {
+      for (const code of (s.displayCode ?? s.code).split("/").map((c) => c.trim())) {
+        expect(owner.has(code), `${code}: ${owner.get(code)} and ${s.code}`).toBe(false);
+        owner.set(code, s.code);
+      }
+    }
+  });
+
+  it("keeps the ids stable: Tha Phra is still BL07 internally", () => {
+    expect(stationsByCode.get("BL07")!.nameEn).toBe("Tha Phra");
+    expect(stationsByCode.get("BL07")!.displayCode).toBe("BL01");
+  });
+
+  it("spells Si Iam with a capital i, not a lowercase L", () => {
+    expect(stationsByCode.get("YL17")!.nameEn).toBe("Si Iam");
+  });
+});
+
 describe("hop times", () => {
   const tables = hopTimes.lines as Record<string, { dwell: number; hops: Record<string, number> }>;
   const hopKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
@@ -134,8 +190,8 @@ describe("hop times", () => {
     new Set(sequences[line].flatMap((seg) => seg.slice(0, -1).map((c, i) => hopKey(c, seg[i + 1]))));
 
   // Yellow and Pink are placeholders in the feed (uniform times), Light Red is
-  // too small to judge; they must stay on the distance formula.
-  const SCHEDULED: LineKey[] = ["sukhumvit", "silom", "gold", "blue", "purple", "arl", "srtRed"];
+  // not in the selection; they must stay on the distance formula.
+  const SCHEDULED: LineKey[] = ["sukhumvit", "silom", "gold", "blue", "purple", "arl", "srtDarkRed"];
 
   it("only covers lines with trustworthy feed times", () => {
     expect(Object.keys(tables).sort()).toEqual([...SCHEDULED].sort());
@@ -148,11 +204,9 @@ describe("hop times", () => {
     }
   });
 
-  it("has a time for every hop of the lines it covers (except SRT Light Red)", () => {
-    const lightRed = new Set(sequences.srtRed[0].slice(0, -1).map((c, i) => hopKey(c, sequences.srtRed[0][i + 1])));
+  it("has a time for every hop of the lines it covers", () => {
     for (const line of SCHEDULED) {
       for (const key of adjacent(line)) {
-        if (line === "srtRed" && lightRed.has(key)) continue;
         expect(tables[line].hops[key], `${line} ${key}`).toBeGreaterThan(0);
       }
     }

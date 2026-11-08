@@ -93,6 +93,42 @@ describe("computeFare", () => {
     }
   });
 
+  describe("transfer discounts riders reported missing", () => {
+    it("charges one entry fee on Blue <-> Purple at Tao Poon: Bang Sue -> Wong Sawang is 23, not 40", () => {
+      const fare = computeFare(path("BL30", "PP14"), data)!;
+      expect(fare.segments.map((s) => s.system)).toEqual(["blue", "purple"]);
+      expect(fare.segments.map((s) => s.discount)).toEqual([0, 14]);
+      expect(fare.total).toBe(23);
+      expect(fare.discount).toBe(14);
+      expect(computeFare(path("PP14", "BL30"), data)!.total).toBe(23);
+    });
+
+    it("takes 15 baht off the Yellow ride after Blue at Lat Phrao, same EMV card", () => {
+      const fare = computeFare(path("BL25", "YL02"), data)!; // Ratchadaphisek -> Lat Phrao, walk, Ladprao -> Phawana
+      expect(fare.segments.map((s) => s.system)).toEqual(["blue", "yellow"]);
+      const yellow = data.systems.yellow.pairs!["YL01|YL02"];
+      expect(fare.segments[1]).toMatchObject({ discount: 15, fare: yellow - 15 });
+      expect(fare.total).toBe(fare.segments[0].fare! + yellow - 15);
+    });
+
+    it("gives no discount the other way round, or at an unrelated change", () => {
+      expect(computeFare(path("YL02", "BL25"), data)!.discount).toBe(0);
+      // BTS -> Blue is a different operator and pays both entry fees.
+      expect(computeFare(path("N9", "BL10"), data)!.discount).toBe(0);
+    });
+
+    it("never takes a fare below zero or discounts one it could not price", () => {
+      const cheap: FareData = {
+        ...data,
+        systems: { ...data.systems, yellow: { ...data.systems.yellow, pairs: { "YL01|YL02": 9 } } },
+      };
+      expect(computeFare(path("BL25", "YL02"), cheap)!.segments[1].fare).toBe(0);
+      const unpriced: FareData = { ...data, systems: { ...data.systems, yellow: { ...data.systems.yellow, pairs: {} } } };
+      const fare = computeFare(path("BL25", "YL02"), unpriced)!;
+      expect(fare.segments[1]).toMatchObject({ fare: null, discount: 0 });
+    });
+  });
+
   it("is honest, never NaN, when a fare is missing", () => {
     const partial: FareData = { ...data, systems: { ...data.systems, bts: { ...data.systems.bts, pairs: {} } } };
     const fare = computeFare(path("CEN", "E1"), partial)!;

@@ -13,7 +13,7 @@ import {
   upcomingTrains,
   updatedAgoLabel,
 } from "@/lib/format-eta";
-import type { Station } from "@/data/stations";
+import { shownCode, type Station } from "@/data/stations";
 import { terminusInDirection, type PathResult } from "@/lib/transit-graph";
 import type { GeoPosition } from "@/lib/use-geolocation";
 import { LINE_COLORS, LINE_NAMES } from "@/lib/line-colors";
@@ -275,7 +275,7 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePan
                             {stationName(leg.station, lang)}
                           </span>
                           <span className="rounded bg-neutral-100 px-1 py-px font-mono text-[10px] font-semibold tracking-wide text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
-                            {leg.station.code}
+                            {shownCode(leg.station)}
                           </span>
                           {i === 0 && (
                             <span className="rounded-full bg-green-700 px-1.5 py-px text-[10px] font-semibold text-white">
@@ -313,7 +313,9 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePan
                               // The line by name, so it never depends on colour alone.
                               <span lang="en" className="font-medium">{LINE_NAMES[nextLeg.line]} · </span>
                             )}
-                            {t.boardToward(stationName(leg.boardToward, lang))}
+                            {leg.boardVia
+                              ? t.boardTowardVia(stationName(leg.boardToward, lang), stationName(leg.boardVia, lang))
+                              : t.boardToward(stationName(leg.boardToward, lang))}
                           </p>
                         )}
                         {leg.boardToward && leg.station.hasLiveArrivals && nextLeg?.line && (
@@ -382,6 +384,9 @@ function RouteSummary({ path, changes }: { path: PathResult; changes: number }) 
             <p className="text-xs text-neutral-600 dark:text-neutral-300">
               {fare.segments.map((s) => t.fareLeg(lang === "th" ? s.nameTh : s.name, s.fare)).join(" · ")}
             </p>
+          )}
+          {fare.discount > 0 && (
+            <p className="text-xs text-neutral-600 dark:text-neutral-300">{t.fareDiscount(fare.discount)}</p>
           )}
           <p className="text-xs text-neutral-600 dark:text-neutral-300">{t.faresAsOf(fare.asOf)}</p>
         </div>

@@ -156,7 +156,7 @@
     "A07|A08": 3
    }
   },
-  "srtRed": {
+  "srtDarkRed": {
    "dwell": 0.5,
    "hops": {
     "RD04|RD05": 3,

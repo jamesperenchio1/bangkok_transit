@@ -43,8 +43,8 @@ const features: GisLineFeature[] = JSON.parse(
   readFileSync(path.join(ROOT, "data", "raw", "bma-lines.geojson"), "utf8"),
 ).features;
 
-// GIS COLOR_E -> our LineKey. Dark Red + Light Red (two branches of one SRT
-// system) both map to "srtRed". Orange Line is excluded - every feature is
+// GIS COLOR_E -> our LineKey. Dark Red and Light Red are separate lines (they
+// share only Krung Thep Aphiwat, and have their own codes, RN and RW). Orange Line is excluded - every feature is
 // STATUS "under construction" (not open, not on the reference map).
 const COLOR_TO_LINE_KEY: Record<string, string> = {
   "green line": "sukhumvit",
@@ -55,8 +55,8 @@ const COLOR_TO_LINE_KEY: Record<string, string> = {
   "blue line": "blue",
   "purple line": "purple",
   "airport rail link": "arl",
-  "dark red line": "srtRed",
-  "light red line": "srtRed",
+  "dark red line": "srtDarkRed",
+  "light red line": "srtLightRed",
 };
 
 const segmentsByLine: Record<string, LatLon[][]> = {};

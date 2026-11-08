@@ -248,7 +248,7 @@ async function redLine(): Promise<FareSystem> {
   if (!table) throw new Error("red: no fare table on the SRTET page");
   const rows = [...table.matchAll(/<tr[\s\S]*?<\/tr>/g)].map((m) => [...m[0].matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/g)].map((c) => plain(c[1]).trim()));
   const header = rows[0].slice(1);
-  const redCodes = codesOf(["srtRed"]);
+  const redCodes = codesOf(["srtDarkRed", "srtLightRed"]);
   const codeOf = (name: string): string => {
     const code = RED_ALIASES[name] ?? redCodes.find((c) => byCode.get(c)!.nameTh === name);
     if (!code) throw new Error(`red: station "${name}" on the SRTET page matches none of ours`);
@@ -271,7 +271,7 @@ async function redLine(): Promise<FareSystem> {
   return {
     name: "SRT Red Line",
     nameTh: "รถไฟฟ้าสายสีแดง",
-    lines: ["srtRed"],
+    lines: ["srtDarkRed", "srtLightRed"],
     effective: null,
     source: SRTET_URL,
     pairs: Object.fromEntries([...pairs.entries()].sort(([x], [y]) => (x < y ? -1 : 1))),

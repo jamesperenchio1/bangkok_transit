@@ -60,15 +60,26 @@ live BTS arrivals, live at bangkok-transit.com. Read `README.md` first, then
 Consecutive codes are adjacent; branches are extra segments sharing a station;
 MRT Blue is one segment visiting Tha Phra twice. Termini are segment ends —
 used for "board toward X" and to match BTS live platforms (`direction_key`).
+A loop-closing end hands over to the other end, so every Blue train ends at
+Lak Song; where both ways out of a station end at the same place the leg also
+carries `boardVia` (the next station) so the rider can pick the platform. Each
+segment is a separate *service*: switching segment on one line (Pink trunk ↔
+Muang Thong Thani spur) is a change.
 `interchanges.json` lists walking transfers between distinct stations;
 same-building interchanges are one node with several `lines`. `findPath`
-runs Dijkstra over (station, mode, line) states with a minutes cost model and
+runs Dijkstra over (station, mode, service) states with a minutes cost model and
 returns legs with `mode: "start" | "ride" | "walk"`.
 
-Station codes for BTS/Gold/Yellow/Pink are the operators'; MRT Blue/Purple,
-ARL and SRT Red use locally assigned codes (`BL01`…, `PP01`…, `A01`…,
-`RD01`…) that do **not** match the operators' numbering. Don't renumber them;
-fix names/order against an authoritative source and let the tests guard it.
+A station's `code` is a stable **internal id**: it is in `?from=`/`?to=` links,
+page slugs and the fare/hop data, so never renumber it. For BTS/Gold/Yellow/Pink
+and Purple it is also the operator's code. MRT Blue, ARL and SRT Red use local
+ids (`BL07`, `A01`, `RD04`…) that do **not** match the operators' numbering
+(Tha Phra is BL01, Suvarnabhumi A1, Krung Thep Aphiwat RN01 / RW01), so those
+stations carry a `displayCode` with the official code(s). Always show
+`shownCode(station)` to people and search on `codeAliases(station)`, never the
+id. The `official station codes` test in `tests/data.test.ts` pins every one by
+name; check any new station against the operator's list. SRT Dark Red (RN) and
+Light Red (RW) are separate lines that share Krung Thep Aphiwat.
 
 ## Conventions
 
