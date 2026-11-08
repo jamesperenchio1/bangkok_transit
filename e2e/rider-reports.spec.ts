@@ -1,3 +1,4 @@
+import { stationsByCode } from "../data/stations";
 import { expect, liveDocument, mapReady, serveArrivals, test } from "./fixtures";
 
 /**
@@ -44,12 +45,14 @@ test.describe("rider-reported errors", () => {
   test("the map and the search box show the operator's codes, and search finds them", async ({ page }) => {
     await page.goto("/");
     await mapReady(page);
-    const labels = await page.evaluate(async () => {
+    // Centred on the station itself (from the data), so the narrow mobile viewport sees it too.
+    const huaiKhwang = stationsByCode.get("BL23")!;
+    const labels = await page.evaluate(async ([lon, lat]) => {
       const map = (window as unknown as { __map: import("maplibre-gl").Map }).__map;
-      map.jumpTo({ center: [100.5865, 13.7785], zoom: 15 }); // Huai Khwang
+      map.jumpTo({ center: [lon, lat], zoom: 15 });
       await new Promise<void>((resolve) => map.once("idle", () => resolve()));
       return map.queryRenderedFeatures({ layers: ["stations-label-layer"] }).map((f) => `${f.properties.nameEn} ${f.properties.shownCode}`);
-    });
+    }, [huaiKhwang.lon, huaiKhwang.lat]);
     expect(labels).toContain("Huai Khwang BL18");
 
     await page.getByRole("button", { name: /search/i }).first().click();
