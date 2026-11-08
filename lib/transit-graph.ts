@@ -15,7 +15,12 @@ import { haversineMeters } from "@/lib/line-geometry";
  *   Light/Dark lines both start at Krung Thep Aphiwat; Pink's Muang Thong
  *   Thani spur leaves the trunk at PK10). MRT Blue is one segment that
  *   visits Tha Phra twice: trains run Lak Song -> Tha Phra -> round the loop
- *   -> Charan 13 -> Tha Phra, so its termini are simply the segment's ends.
+ *   -> Charan 13 -> Tha Phra, so its termini are simply the segment's ends
+ *   (a loop-closing end, Tha Phra, hands over to the other end, Lak Song:
+ *   the train carries on, so every Blue Line train ends at Lak Song).
+ *   Each segment is its own *service* - a different train - so moving
+ *   between two segments of one line (Pink trunk <-> Muang Thong Thani
+ *   spur) is a change, even though the line is the same.
  * - data/interchanges.json: walking transfers between *distinct* stations on
  *   different lines (Mo Chit BTS <-> Chatuchak Park MRT). Same-building
  *   interchanges (Siam, Tao Poon) are one station node carrying several
@@ -37,12 +42,21 @@ export interface PathLeg {
   mode: LegMode;
   /** The line ridden to reach this station (null for "start" and "walk" legs). */
   line: LineKey | null;
+  /** The train service ridden to reach this station: the line plus which segment of it (null for "start" and "walk"). */
+  service: string | null;
   /**
    * Set on the station where a line is boarded (the start, the end of a
    * walk, or a change of line): the terminus of the boarded line in the
    * direction of travel ("board toward Khu Khot").
    */
   boardToward?: Station;
+  /**
+   * Set beside `boardToward` when the terminus alone doesn't say which way to
+   * go: both directions from this station end at the same place (every MRT
+   * Blue train ends at Lak Song, whichever platform at Tha Phra it leaves
+   * from). The next station along, so the rider can pick the platform.
+   */
+  boardVia?: Station;
   /** True where the rider gets off one line and onto another (or walks). */
   isChange: boolean;
   /** Walking distance for a "walk" leg, in meters. */
@@ -62,7 +76,7 @@ export interface PathResult {
 }
 
 type Edge =
-  | { kind: "ride"; to: string; line: LineKey; minutes: number }
+  | { kind: "ride"; to: string; line: LineKey; service: string; minutes: number }
   | { kind: "walk"; to: string; meters: number };
 
 /**
@@ -121,11 +135,36 @@ function distance(a: string, b: string): number {
 export function terminusInDirection(line: LineKey, fromCode: string, towardCode: string): string | undefined {
   for (const segment of sequences[line] ?? []) {
     for (let i = 0; i < segment.length - 1; i++) {
-      if (segment[i] === fromCode && segment[i + 1] === towardCode) return segment[segment.length - 1];
-      if (segment[i] === towardCode && segment[i + 1] === fromCode) return segment[0];
+      if (segment[i] === fromCode && segment[i + 1] === towardCode) return runEnd(segment, true);
+      if (segment[i] === towardCode && segment[i + 1] === fromCode) return runEnd(segment, false);
     }
   }
   return undefined;
+}
+
+/**
+ * Where a train running to one end of `segment` really finishes. Normally the
+ * end itself; but when that station is also visited earlier in the segment (MRT
+ * Blue returns to Tha Phra after the loop) the train carries on, so it ends at
+ * the segment's other end.
+ */
+function runEnd(segment: string[], forward: boolean): string {
+  const end = forward ? segment[segment.length - 1] : segment[0];
+  if (segment.indexOf(end) === segment.lastIndexOf(end)) return end;
+  return forward ? segment[0] : segment[segment.length - 1];
+}
+
+/** Stations next to `code` on `line`, across every segment (both directions, branches included). */
+function neighbours(line: LineKey, code: string): string[] {
+  const out = new Set<string>();
+  for (const segment of sequences[line] ?? []) {
+    segment.forEach((c, i) => {
+      if (c !== code) return;
+      if (i > 0) out.add(segment[i - 1]);
+      if (i < segment.length - 1) out.add(segment[i + 1]);
+    });
+  }
+  return [...out];
 }
 
 function buildGraph(): Map<string, Edge[]> {
@@ -136,12 +175,13 @@ function buildGraph(): Map<string, Edge[]> {
   };
 
   for (const [line, segments] of Object.entries(sequences) as [LineKey, string[][]][]) {
-    for (const segment of segments) {
+    for (const [segmentIndex, segment] of segments.entries()) {
+      const service = `${line}:${segmentIndex}`;
       for (let i = 0; i < segment.length - 1; i++) {
         const minutes =
           scheduledRideMinutes(line, segment[i], segment[i + 1]) ?? rideMinutes(distance(segment[i], segment[i + 1]));
-        add(segment[i], { kind: "ride", to: segment[i + 1], line, minutes });
-        add(segment[i + 1], { kind: "ride", to: segment[i], line, minutes });
+        add(segment[i], { kind: "ride", to: segment[i + 1], line, service, minutes });
+        add(segment[i + 1], { kind: "ride", to: segment[i], line, service, minutes });
       }
     }
   }
@@ -167,9 +207,10 @@ interface State {
   code: string;
   mode: LegMode;
   line: LineKey | null;
+  service: string | null;
 }
 
-const stateKey = (s: State) => `${s.code}|${s.mode}|${s.line ?? ""}`;
+const stateKey = (s: State) => `${s.code}|${s.mode}|${s.service ?? ""}`;
 
 /**
  * Fastest route (by the cost model above) between two station codes, or
@@ -202,7 +243,7 @@ export function findPath(fromCode: string, toCode: string, options: PathOptions 
   const graph = getGraph();
   if (fromCode === toCode || !graph.has(fromCode) || !graph.has(toCode)) return null;
 
-  const start: State = { code: fromCode, mode: "start", line: null };
+  const start: State = { code: fromCode, mode: "start", line: null, service: null };
   const best = new Map<string, number>([[stateKey(start), 0]]);
   // The trip's real minutes alongside the (possibly penalised) search cost,
   // so a preference never inflates the time shown to the rider.
@@ -227,12 +268,12 @@ export function findPath(fromCode: string, toCode: string, options: PathOptions 
       if (edge.kind === "walk") {
         // One walk per transfer: never walk station-to-station-to-station.
         if (state.mode === "walk") continue;
-        next = { code: edge.to, mode: "walk", line: null };
+        next = { code: edge.to, mode: "walk", line: null, service: null };
         edgeCost = walkMinutes(edge.meters, options.walkSpeed);
         if (options.avoidWalking) penalty = AVOID_WALKING_PENALTY_MIN;
       } else {
-        const changing = state.mode === "ride" && state.line !== edge.line;
-        next = { code: edge.to, mode: "ride", line: edge.line };
+        const changing = state.mode === "ride" && state.service !== edge.service;
+        next = { code: edge.to, mode: "ride", line: edge.line, service: edge.service };
         edgeCost = edge.minutes + (changing ? (options.changeMinutes ?? CHANGE_MIN) : 0);
         if (changing && options.fewerChanges) penalty = FEWER_CHANGES_PENALTY_MIN;
         if (options.avoidLines?.includes(edge.line)) penalty += edge.minutes * (AVOIDED_LINE_FACTOR - 1);
@@ -264,6 +305,7 @@ export function findPath(fromCode: string, toCode: string, options: PathOptions 
     station: station(state.code),
     mode: state.mode,
     line: state.line,
+    service: state.service,
     isChange: false,
     ...(state.mode === "walk" && meters !== undefined && { walkMeters: Math.round(meters) }),
   }));
@@ -276,10 +318,17 @@ export function findPath(fromCode: string, toCode: string, options: PathOptions 
   for (let i = 0; i < legs.length - 1; i++) {
     const here = legs[i];
     const next = legs[i + 1];
-    if (next.mode !== "ride" || (here.mode === "ride" && here.line === next.line)) continue;
+    if (next.mode !== "ride" || (here.mode === "ride" && here.service === next.service)) continue;
     boardings++;
     const terminus = terminusInDirection(next.line!, here.station.code, next.station.code);
-    if (terminus) here.boardToward = station(terminus);
+    if (terminus) {
+      here.boardToward = station(terminus);
+      // Another way out of this station ends at the same place: say which.
+      const ambiguous = neighbours(next.line!, here.station.code).some(
+        (n) => n !== next.station.code && terminusInDirection(next.line!, here.station.code, n) === terminus,
+      );
+      if (ambiguous) here.boardVia = next.station;
+    }
     if (here.mode === "ride") here.isChange = true;
     else if (here.mode === "walk" && legs[i - 1]?.mode === "ride") legs[i - 1].isChange = true;
   }

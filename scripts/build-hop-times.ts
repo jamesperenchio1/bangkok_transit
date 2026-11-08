@@ -71,7 +71,7 @@ const LINES: LineSpec[] = [
   { line: "blue", agency: "BEM", shortName: "Blue" },
   { line: "purple", agency: "BEM", shortName: "Purple" },
   { line: "arl", agency: "SRTET", shortName: "ARL" },
-  { line: "srtRed", agency: "SRTET", shortName: "Red", longName: "Dark Red" },
+  { line: "srtDarkRed", agency: "SRTET", shortName: "Red", longName: "Dark Red" },
 ];
 
 type Row = Record<string, string>;
@@ -265,10 +265,9 @@ function main() {
         if (!(key in hops)) missing.push(key);
       }
     }
-    // Light Red shares the srtRed key but is deliberately not in the feed
-    // selection above; its hops fall back to the formula.
-    const expectedMissing = spec.line === "srtRed" ? new Set(segments[0].slice(0, -1).map((c, i) => [c, segments[0][i + 1]].sort().join("|"))) : new Set<string>();
-    const unexpected = missing.filter((k) => !expectedMissing.has(k));
+    // Light Red is its own line and deliberately not in the feed selection
+    // above; its hops fall back to the formula.
+    const unexpected = missing;
     console.log(
       `${spec.line.padEnd(9)} routes ${routeIds.join(",")}  trips used ${used} (skipped ${skippedTrips})  ` +
         `hops ${Object.keys(hops).length}  dwell ${lines[spec.line].dwell}  ` +

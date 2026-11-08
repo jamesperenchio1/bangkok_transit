@@ -1,6 +1,6 @@
 // Plain-text site summaries for AI assistants (llmstxt.org convention), built
 // from the same data as the pages so they can never drift.
-import { stations } from "@/data/stations";
+import { shownCode, stations } from "@/data/stations";
 import {
   LINES, SITE_DESCRIPTION, SITE_URL, absoluteUrl, linePath, lineStations, lineTermini, routePairs, stationPath,
 } from "@/lib/seo";
@@ -32,7 +32,7 @@ ${lines.join("\n")}
 
 export function llmsFullTxt(): string {
   const sections = LINES.map((l) => {
-    const rows = lineStations(l.key).map((s) => `- ${s.nameEn} (${s.nameTh}), ${s.code}: ${absoluteUrl(stationPath(s))}`);
+    const rows = lineStations(l.key).map((s) => `- ${s.nameEn} (${s.nameTh}), ${shownCode(s)}: ${absoluteUrl(stationPath(s))}`);
     return `## ${l.nameEn} (${l.nameTh})\n${absoluteUrl(linePath(l))}\n${rows.join("\n")}`;
   });
   const routes = routePairs.map((p) => `- ${p.from.nameEn} to ${p.to.nameEn}: ${absoluteUrl(`/routes/${p.slug}`)}`);

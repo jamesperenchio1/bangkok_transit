@@ -1191,7 +1191,7 @@
   },
   {
     "code": "YL17",
-    "nameEn": "Si lam",
+    "nameEn": "Si Iam",
     "nameTh": "ศรีเอี่ยม",
     "lines": [
       {
@@ -1791,6 +1791,7 @@
   },
   {
     "code": "BL01",
+    "displayCode": "BL38",
     "nameEn": "Lak Song",
     "nameTh": "หลักสอง",
     "lines": [
@@ -1806,6 +1807,7 @@
   },
   {
     "code": "BL02",
+    "displayCode": "BL37",
     "nameEn": "Bang Khae",
     "nameTh": "บางแค",
     "lines": [
@@ -1821,6 +1823,7 @@
   },
   {
     "code": "BL03",
+    "displayCode": "BL36",
     "nameEn": "Phasi Charoen",
     "nameTh": "ภาษีเจริญ",
     "lines": [
@@ -1836,6 +1839,7 @@
   },
   {
     "code": "BL04",
+    "displayCode": "BL35",
     "nameEn": "Phetkasem 48",
     "nameTh": "เพชรเกษม 48",
     "lines": [
@@ -1851,6 +1855,7 @@
   },
   {
     "code": "BL05",
+    "displayCode": "BL34",
     "nameEn": "Bang Wa",
     "nameTh": "บางหว้า",
     "lines": [
@@ -1866,6 +1871,7 @@
   },
   {
     "code": "BL06",
+    "displayCode": "BL33",
     "nameEn": "Bang Phai",
     "nameTh": "บางไผ่",
     "lines": [
@@ -1881,6 +1887,7 @@
   },
   {
     "code": "BL07",
+    "displayCode": "BL01",
     "nameEn": "Tha Phra",
     "nameTh": "ท่าพระ",
     "lines": [
@@ -1896,6 +1903,7 @@
   },
   {
     "code": "BL08",
+    "displayCode": "BL02",
     "nameEn": "Charan Sanitwong 13",
     "nameTh": "จรัลสนิทวงศ์ 13",
     "lines": [
@@ -1911,6 +1919,7 @@
   },
   {
     "code": "BL09",
+    "displayCode": "BL32",
     "nameEn": "Itsaraphap",
     "nameTh": "อิสรภาพ",
     "lines": [
@@ -1926,6 +1935,7 @@
   },
   {
     "code": "BL10",
+    "displayCode": "BL31",
     "nameEn": "Sanam Chai",
     "nameTh": "สนามไชย",
     "lines": [
@@ -1941,6 +1951,7 @@
   },
   {
     "code": "BL11",
+    "displayCode": "BL30",
     "nameEn": "Sam Yot",
     "nameTh": "สามยอด",
     "lines": [
@@ -1956,6 +1967,7 @@
   },
   {
     "code": "BL12",
+    "displayCode": "BL29",
     "nameEn": "Wat Mangkon",
     "nameTh": "วังมังกร",
     "lines": [
@@ -1971,6 +1983,7 @@
   },
   {
     "code": "BL13",
+    "displayCode": "BL28",
     "nameEn": "Hua Lamphong",
     "nameTh": "หัวลำโพง",
     "lines": [
@@ -1986,6 +1999,7 @@
   },
   {
     "code": "BL14",
+    "displayCode": "BL27",
     "nameEn": "Sam Yan",
     "nameTh": "สามย่าน",
     "lines": [
@@ -2001,6 +2015,7 @@
   },
   {
     "code": "BL15",
+    "displayCode": "BL26",
     "nameEn": "Si Lom",
     "nameTh": "สีลม",
     "lines": [
@@ -2016,6 +2031,7 @@
   },
   {
     "code": "BL16",
+    "displayCode": "BL25",
     "nameEn": "Lumphini",
     "nameTh": "ลุมพินี",
     "lines": [
@@ -2031,6 +2047,7 @@
   },
   {
     "code": "BL17",
+    "displayCode": "BL24",
     "nameEn": "Khlong Toei",
     "nameTh": "คลองเตย",
     "lines": [
@@ -2046,6 +2063,7 @@
   },
   {
     "code": "BL18",
+    "displayCode": "BL23",
     "nameEn": "Queen Sirikit National Convention Centre",
     "nameTh": "ศูนย์การประชุมแห่งชาติสิริกิติ์",
     "lines": [
@@ -2061,6 +2079,7 @@
   },
   {
     "code": "BL19",
+    "displayCode": "BL22",
     "nameEn": "Sukhumvit",
     "nameTh": "สุขุมวิท",
     "lines": [
@@ -2076,6 +2095,7 @@
   },
   {
     "code": "BL20",
+    "displayCode": "BL21",
     "nameEn": "Phetchaburi",
     "nameTh": "เพชรบุรี",
     "lines": [
@@ -2091,6 +2111,7 @@
   },
   {
     "code": "BL21",
+    "displayCode": "BL20",
     "nameEn": "Phra Ram 9",
     "nameTh": "พระราม 9",
     "lines": [
@@ -2106,6 +2127,7 @@
   },
   {
     "code": "BL22",
+    "displayCode": "BL19",
     "nameEn": "Thailand Cultural Centre",
     "nameTh": "ศูนย์วัฒนธรรมแห่งประเทศไทย",
     "lines": [
@@ -2121,6 +2143,7 @@
   },
   {
     "code": "BL23",
+    "displayCode": "BL18",
     "nameEn": "Huai Khwang",
     "nameTh": "ห้วยขวาง",
     "lines": [
@@ -2136,6 +2159,7 @@
   },
   {
     "code": "BL24",
+    "displayCode": "BL17",
     "nameEn": "Sutthisan",
     "nameTh": "สุทธิสาร",
     "lines": [
@@ -2151,6 +2175,7 @@
   },
   {
     "code": "BL25",
+    "displayCode": "BL16",
     "nameEn": "Ratchadaphisek",
     "nameTh": "รัชดาภิเษก",
     "lines": [
@@ -2166,6 +2191,7 @@
   },
   {
     "code": "BL26",
+    "displayCode": "BL15",
     "nameEn": "Lat Phrao",
     "nameTh": "ลาดพร้าว",
     "lines": [
@@ -2181,6 +2207,7 @@
   },
   {
     "code": "BL27",
+    "displayCode": "BL14",
     "nameEn": "Phahon Yothin",
     "nameTh": "พหลโยธิน",
     "lines": [
@@ -2196,6 +2223,7 @@
   },
   {
     "code": "BL28",
+    "displayCode": "BL13",
     "nameEn": "Chatuchak Park",
     "nameTh": "สวนจตุจักร",
     "lines": [
@@ -2211,6 +2239,7 @@
   },
   {
     "code": "BL29",
+    "displayCode": "BL12",
     "nameEn": "Kamphaeng Phet",
     "nameTh": "กำแพงเพชร",
     "lines": [
@@ -2226,6 +2255,7 @@
   },
   {
     "code": "BL30",
+    "displayCode": "BL11",
     "nameEn": "Bang Sue",
     "nameTh": "บางซื่อ",
     "lines": [
@@ -2241,6 +2271,7 @@
   },
   {
     "code": "BL31",
+    "displayCode": "BL10 / PP16",
     "nameEn": "Tao Poon",
     "nameTh": "เตาปูน",
     "lines": [
@@ -2261,6 +2292,7 @@
   },
   {
     "code": "BL32",
+    "displayCode": "BL09",
     "nameEn": "Bang Pho",
     "nameTh": "บางโพ",
     "lines": [
@@ -2276,6 +2308,7 @@
   },
   {
     "code": "BL33",
+    "displayCode": "BL08",
     "nameEn": "Bang O",
     "nameTh": "บางอ้อ",
     "lines": [
@@ -2291,6 +2324,7 @@
   },
   {
     "code": "BL34",
+    "displayCode": "BL07",
     "nameEn": "Bang Phlat",
     "nameTh": "บางพลัด",
     "lines": [
@@ -2306,6 +2340,7 @@
   },
   {
     "code": "BL35",
+    "displayCode": "BL06",
     "nameEn": "Sirindhorn",
     "nameTh": "สิรินธร",
     "lines": [
@@ -2321,6 +2356,7 @@
   },
   {
     "code": "BL36",
+    "displayCode": "BL05",
     "nameEn": "Bang Yi Khan",
     "nameTh": "บางยี่ขัน",
     "lines": [
@@ -2336,6 +2372,7 @@
   },
   {
     "code": "BL37",
+    "displayCode": "BL04",
     "nameEn": "Bang Khun Non",
     "nameTh": "บางขุนนนท์",
     "lines": [
@@ -2351,6 +2388,7 @@
   },
   {
     "code": "BL38",
+    "displayCode": "BL03",
     "nameEn": "Fai Chai",
     "nameTh": "แยกไฟฉาย",
     "lines": [
@@ -2591,6 +2629,7 @@
   },
   {
     "code": "A01",
+    "displayCode": "A8",
     "nameEn": "Phaya Thai",
     "nameTh": "พญาไท",
     "lines": [
@@ -2606,6 +2645,7 @@
   },
   {
     "code": "A02",
+    "displayCode": "A7",
     "nameEn": "Ratchaprarop",
     "nameTh": "ราชปรารถ",
     "lines": [
@@ -2621,6 +2661,7 @@
   },
   {
     "code": "A03",
+    "displayCode": "A6",
     "nameEn": "Makkasan",
     "nameTh": "มักกะสัน",
     "lines": [
@@ -2636,6 +2677,7 @@
   },
   {
     "code": "A04",
+    "displayCode": "A5",
     "nameEn": "Ramkhamhaeng",
     "nameTh": "รามคำแหง",
     "lines": [
@@ -2651,6 +2693,7 @@
   },
   {
     "code": "A05",
+    "displayCode": "A4",
     "nameEn": "Hua Mak",
     "nameTh": "หัวหมาก",
     "lines": [
@@ -2666,6 +2709,7 @@
   },
   {
     "code": "A06",
+    "displayCode": "A3",
     "nameEn": "Ban Thap Chang",
     "nameTh": "บ้านทับช้าง",
     "lines": [
@@ -2681,6 +2725,7 @@
   },
   {
     "code": "A07",
+    "displayCode": "A2",
     "nameEn": "Lat Krabang",
     "nameTh": "ลาดกระบัง",
     "lines": [
@@ -2696,6 +2741,7 @@
   },
   {
     "code": "A08",
+    "displayCode": "A1",
     "nameEn": "Suvarnabhumi",
     "nameTh": "สุวรรณภูมิ",
     "lines": [
@@ -2711,13 +2757,14 @@
   },
   {
     "code": "RD01",
+    "displayCode": "RW02",
     "nameEn": "Bang Son",
     "nameTh": "บางซ่อน",
     "lines": [
       {
-        "line": "srtRed",
-        "name": "SRT Red Line",
-        "color": "#a5122a"
+        "line": "srtLightRed",
+        "name": "SRT Light Red Line",
+        "color": "#e8656f"
       }
     ],
     "hasLiveArrivals": false,
@@ -2726,13 +2773,14 @@
   },
   {
     "code": "RD02",
+    "displayCode": "RW05",
     "nameEn": "Bang Bamru",
     "nameTh": "บางบำหรุ",
     "lines": [
       {
-        "line": "srtRed",
-        "name": "SRT Red Line",
-        "color": "#a5122a"
+        "line": "srtLightRed",
+        "name": "SRT Light Red Line",
+        "color": "#e8656f"
       }
     ],
     "hasLiveArrivals": false,
@@ -2741,13 +2789,14 @@
   },
   {
     "code": "RD03",
+    "displayCode": "RW06",
     "nameEn": "Taling Chan",
     "nameTh": "ตลิ่งชัน",
     "lines": [
       {
-        "line": "srtRed",
-        "name": "SRT Red Line",
-        "color": "#a5122a"
+        "line": "srtLightRed",
+        "name": "SRT Light Red Line",
+        "color": "#e8656f"
       }
     ],
     "hasLiveArrivals": false,
@@ -2756,13 +2805,19 @@
   },
   {
     "code": "RD04",
+    "displayCode": "RN01 / RW01",
     "nameEn": "Krung Thep Aphiwat (Bang Sue Grand)",
     "nameTh": "กลางบางซื่อ",
     "lines": [
       {
-        "line": "srtRed",
-        "name": "SRT Red Line",
+        "line": "srtDarkRed",
+        "name": "SRT Dark Red Line",
         "color": "#a5122a"
+      },
+      {
+        "line": "srtLightRed",
+        "name": "SRT Light Red Line",
+        "color": "#e8656f"
       }
     ],
     "hasLiveArrivals": false,
@@ -2771,12 +2826,13 @@
   },
   {
     "code": "RD05",
+    "displayCode": "RN02",
     "nameEn": "Chatuchak",
     "nameTh": "จตุจักร",
     "lines": [
       {
-        "line": "srtRed",
-        "name": "SRT Red Line",
+        "line": "srtDarkRed",
+        "name": "SRT Dark Red Line",
         "color": "#a5122a"
       }
     ],
@@ -2786,12 +2842,13 @@
   },
   {
     "code": "RD06",
+    "displayCode": "RN03",
     "nameEn": "Wat Samian Nari",
     "nameTh": "วัดเสมียนนารี",
     "lines": [
       {
-        "line": "srtRed",
-        "name": "SRT Red Line",
+        "line": "srtDarkRed",
+        "name": "SRT Dark Red Line",
         "color": "#a5122a"
       }
     ],
@@ -2801,12 +2858,13 @@
   },
   {
     "code": "RD07",
+    "displayCode": "RN04",
     "nameEn": "Bang Khen",
     "nameTh": "บางเขน",
     "lines": [
       {
-        "line": "srtRed",
-        "name": "SRT Red Line",
+        "line": "srtDarkRed",
+        "name": "SRT Dark Red Line",
         "color": "#a5122a"
       }
     ],
@@ -2816,12 +2874,13 @@
   },
   {
     "code": "RD08",
+    "displayCode": "RN05",
     "nameEn": "Thung Song Hong",
     "nameTh": "ทุ่งสองห้อง",
     "lines": [
       {
-        "line": "srtRed",
-        "name": "SRT Red Line",
+        "line": "srtDarkRed",
+        "name": "SRT Dark Red Line",
         "color": "#a5122a"
       }
     ],
@@ -2831,12 +2890,13 @@
   },
   {
     "code": "RD09",
+    "displayCode": "RN06",
     "nameEn": "Lak Si",
     "nameTh": "หลักสี่",
     "lines": [
       {
-        "line": "srtRed",
-        "name": "SRT Red Line",
+        "line": "srtDarkRed",
+        "name": "SRT Dark Red Line",
         "color": "#a5122a"
       }
     ],
@@ -2846,12 +2906,13 @@
   },
   {
     "code": "RD10",
+    "displayCode": "RN07",
     "nameEn": "Kan Kheha",
     "nameTh": "การเคหะ",
     "lines": [
       {
-        "line": "srtRed",
-        "name": "SRT Red Line",
+        "line": "srtDarkRed",
+        "name": "SRT Dark Red Line",
         "color": "#a5122a"
       }
     ],
@@ -2861,12 +2922,13 @@
   },
   {
     "code": "RD11",
+    "displayCode": "RN08",
     "nameEn": "Don Mueang",
     "nameTh": "ดอนเมือง",
     "lines": [
       {
-        "line": "srtRed",
-        "name": "SRT Red Line",
+        "line": "srtDarkRed",
+        "name": "SRT Dark Red Line",
         "color": "#a5122a"
       }
     ],
@@ -2876,12 +2938,13 @@
   },
   {
     "code": "RD12",
+    "displayCode": "RN09",
     "nameEn": "Lak Hok",
     "nameTh": "หลักหก",
     "lines": [
       {
-        "line": "srtRed",
-        "name": "SRT Red Line",
+        "line": "srtDarkRed",
+        "name": "SRT Dark Red Line",
         "color": "#a5122a"
       }
     ],
@@ -2891,12 +2954,13 @@
   },
   {
     "code": "RD13",
+    "displayCode": "RN10",
     "nameEn": "Rangsit",
     "nameTh": "รังสิต",
     "lines": [
       {
-        "line": "srtRed",
-        "name": "SRT Red Line",
+        "line": "srtDarkRed",
+        "name": "SRT Dark Red Line",
         "color": "#a5122a"
       }
     ],

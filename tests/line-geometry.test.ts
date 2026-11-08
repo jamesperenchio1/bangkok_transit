@@ -28,7 +28,7 @@ describe("trackBetween", () => {
   });
 
   it("has geometry for every line", () => {
-    for (const line of ["sukhumvit", "silom", "gold", "blue", "purple", "yellow", "pink", "arl", "srtRed"]) {
+    for (const line of ["sukhumvit", "silom", "gold", "blue", "purple", "yellow", "pink", "arl", "srtDarkRed", "srtLightRed"]) {
       expect(geometry[line]?.length, line).toBeGreaterThan(0);
     }
   });

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import {
   LINES, breadcrumbLd, pageMeta, linePath, lineBranches, lineLd, lineStations, lineTermini, linesBySlug, mapLink, stationLines, stationPath,
 } from "@/lib/seo";
-import type { LineKey, Station } from "@/data/stations";
+import { shownCode, type LineKey, type Station } from "@/data/stations";
 import { JsonLd } from "@/components/JsonLd";
 
 function StationRows({ stations, lineKey }: { stations: Station[]; lineKey: LineKey }) {
@@ -14,7 +14,7 @@ function StationRows({ stations, lineKey }: { stations: Station[]; lineKey: Line
         const others = stationLines(s).filter((l) => l.key !== lineKey);
         return (
           <li key={s.code} className="flex flex-wrap items-baseline gap-x-2 py-2">
-            <span className="w-12 shrink-0 font-mono text-sm text-neutral-600 dark:text-neutral-400">{s.code}</span>
+            <span className="w-12 shrink-0 font-mono text-sm text-neutral-600 dark:text-neutral-400">{shownCode(s)}</span>
             <Link href={stationPath(s)} className="font-medium underline-offset-2 hover:underline">{s.nameEn}</Link>
             <span lang="th" className="text-sm text-neutral-600 dark:text-neutral-400">{s.nameTh}</span>
             {others.length > 0 && (

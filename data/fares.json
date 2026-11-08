@@ -1972,7 +1972,8 @@
       "name": "SRT Red Line",
       "nameTh": "รถไฟฟ้าสายสีแดง",
       "lines": [
-        "srtRed"
+        "srtDarkRed",
+        "srtLightRed"
       ],
       "effective": null,
       "source": "https://www.srtet.co.th/th/fare-information",

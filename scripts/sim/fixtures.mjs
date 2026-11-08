@@ -25,7 +25,8 @@ const LINE_ENDS = {
   blue: ["BL01", "BL38"],
   purple: ["PP01", "PP16"],
   arl: ["A01", "A08"],
-  srtRed: ["RD01", "RD13"],
+  srtDarkRed: ["RD04", "RD13"],
+  srtLightRed: ["RD04", "RD03"],
 };
 
 function naiveUtc(ms) {

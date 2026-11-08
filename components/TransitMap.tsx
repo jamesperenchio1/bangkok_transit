@@ -5,7 +5,7 @@ import * as maplibregl from "maplibre-gl";
 import { useEffect, useMemo, useRef, type RefObject } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { LocateFixed } from "lucide-react";
-import { stations, type LineKey, type Station } from "@/data/stations";
+import { shownCode, stations, type LineKey, type Station } from "@/data/stations";
 import { fetchLineGeometry, fullLineSegments, trackBetween, type LineSegments } from "@/lib/line-geometry";
 import type { GeoPosition } from "@/lib/use-geolocation";
 import type { PathResult } from "@/lib/transit-graph";
@@ -102,7 +102,7 @@ function stationLabelField(lang: Lang, codes = true, both = false): maplibregl.E
     const out: unknown[] = both
       ? [nameOf("en"), {}, "\n", {}, nameOf("th"), { "font-scale": 0.85 }]
       : [nameOf(lang), {}];
-    if (withCode) out.push("\n", {}, ["get", "code"], { "font-scale": 0.8 });
+    if (withCode) out.push("\n", {}, ["get", "shownCode"], { "font-scale": 0.8 });
     return out;
   };
   const plain = both ? (["format", ...parts(false)] as unknown as maplibregl.ExpressionSpecification) : nameOf(lang);
@@ -249,7 +249,8 @@ function stationsGeoJSON(
       return {
         type: "Feature",
         properties: {
-          code: s.code,
+          code: s.code, // the id: clicks look the station up by it
+          shownCode: shownCode(s), // the operator's code, which is what the label shows
           nameEn: s.nameEn,
           nameTh: s.nameTh || s.nameEn,
           sortKey,
@@ -1037,7 +1038,7 @@ function openPopup(
             className="shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold"
             style={{ backgroundColor: color, color: readableTextColor(color) }}
           >
-            {station.code}
+            {shownCode(station)}
           </span>
           <PopupStationName station={station} />
         </div>
@@ -1099,7 +1100,7 @@ function PlaceCard({
           className="shrink-0 rounded px-1.5 py-0.5 font-semibold"
           style={{ backgroundColor: color, color: readableTextColor(color) }}
         >
-          {station.code}
+          {shownCode(station)}
         </span>
         <span lang={lang}>{stationName(station, lang)}</span>
         <span>· {t.placeAway(distanceLabel(meters))}</span>

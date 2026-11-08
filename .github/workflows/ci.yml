@@ -20,7 +20,10 @@ jobs:
   site:
     name: Site
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # The e2e matrix (every phone profile) takes 17+ minutes on a good run; the
+    # run on main for #40 was cancelled at the old 20-minute limit with no test
+    # failing, so a red result could not be told from a slow one.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

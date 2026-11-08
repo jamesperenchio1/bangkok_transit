@@ -107,19 +107,61 @@ describe("terminusInDirection", () => {
   });
 
   it("follows the branch a hop is on", () => {
-    expect(terminusInDirection("srtRed", "RD04", "RD01")).toBe("RD03");
-    expect(terminusInDirection("srtRed", "RD04", "RD05")).toBe("RD13");
+    expect(terminusInDirection("srtLightRed", "RD04", "RD01")).toBe("RD03");
+    expect(terminusInDirection("srtDarkRed", "RD04", "RD05")).toBe("RD13");
     expect(terminusInDirection("pink", "PK10", "MT01")).toBe("MT02");
     expect(terminusInDirection("pink", "PK10", "PK11")).toBe("PK30");
   });
 
-  it("gives the Blue Line's real termini on both sides of Tha Phra", () => {
-    expect(terminusInDirection("blue", "BL07", "BL09")).toBe("BL07"); // round the loop, back to Tha Phra
+  it("ends every Blue Line direction at Lak Song, since a loop train carries on past Tha Phra", () => {
+    expect(terminusInDirection("blue", "BL07", "BL09")).toBe("BL01"); // round the loop, then on to Lak Song
     expect(terminusInDirection("blue", "BL07", "BL06")).toBe("BL01"); // toward Lak Song
     expect(terminusInDirection("blue", "BL07", "BL08")).toBe("BL01"); // from upper platform: Charan 13 side
+    expect(terminusInDirection("blue", "BL38", "BL08")).toBe("BL01"); // Fai Chai -> Charan 13 -> Tha Phra -> Lak Song
   });
 
   it("returns undefined for stations that aren't adjacent", () => {
     expect(terminusInDirection("sukhumvit", "N8", "N1")).toBeUndefined();
+  });
+});
+
+// Regression tests for rider-reported errors: every one of these was wrong
+// while the unit tests passed, because nothing asserted what a rider is shown.
+describe("what the rider is told to board", () => {
+  it("tells Tha Phra -> Fai Chai apart from the other platform: both end at Lak Song", () => {
+    const toFaiChai = findPath("BL07", "BL38")!;
+    expect(toFaiChai.legs[0].boardToward?.nameEn).toBe("Lak Song");
+    expect(toFaiChai.legs[0].boardVia?.nameEn).toBe("Charan Sanitwong 13");
+    const toItsaraphap = findPath("BL07", "BL09")!;
+    expect(toItsaraphap.legs[0].boardToward?.nameEn).toBe("Lak Song");
+    expect(toItsaraphap.legs[0].boardVia?.nameEn).toBe("Itsaraphap");
+  });
+
+  it("only adds a next stop where the terminus alone is ambiguous", () => {
+    expect(findPath("N8", "CEN")!.legs[0].boardVia).toBeUndefined();
+    expect(findPath("PK10", "MT01")!.legs[0].boardVia).toBeUndefined();
+  });
+});
+
+describe("changes the rider has to make", () => {
+  it("makes National Telecom -> Impact Muang Thong Thani a change at Muang Thong Thani", () => {
+    // Same Pink Line, but the Impact spur is a separate train service.
+    const path = findPath("PK13", "MT01")!;
+    expect(codes(path)).toEqual(["PK13", "PK12", "PK11", "PK10", "MT01"]);
+    expect(path.changes).toBe(1);
+    expect(changesAt(path)).toEqual(["PK10"]);
+    expect(path.legs[3].boardToward?.nameEn).toContain("Muang Thong Thani"); // MLake, the spur terminus
+    expect(path.legs[3].line).toBe("pink");
+  });
+
+  it("does not add a change when staying on the Pink trunk past Muang Thong Thani", () => {
+    expect(findPath("PK13", "PK09")!.changes).toBe(0);
+  });
+
+  it("changes between the two SRT Red lines at Krung Thep Aphiwat", () => {
+    const path = findPath("RD03", "RD13")!;
+    expect(path.changes).toBe(1);
+    expect(changesAt(path)).toEqual(["RD04"]);
+    expect(path.legs.find((l) => l.station.code === "RD13")!.line).toBe("srtDarkRed");
   });
 });

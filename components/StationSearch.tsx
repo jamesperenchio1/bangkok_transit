@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 import { MapPin, Search, X } from "lucide-react";
-import { stations, type Station } from "@/data/stations";
+import { codeAliases, shownCode, stations, type Station } from "@/data/stations";
 import { LINE_COLORS, LINE_NAMES } from "@/lib/line-colors";
 import { stationsByLine } from "@/lib/station-groups";
 import { useArrivals } from "@/lib/use-arrivals";
@@ -72,7 +72,7 @@ function normalize(text: string): string {
 // Normalized once: the station list is static.
 const searchIndex = stations.map((s) => ({
   station: s,
-  keys: [normalize(s.nameEn), normalize(s.nameTh), normalize(s.code)],
+  keys: [normalize(s.nameEn), normalize(s.nameTh), ...codeAliases(s).map(normalize)],
 }));
 
 const searchKeys = searchIndex.map(({ keys }) => keys);
@@ -262,7 +262,7 @@ export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchP
                       />
                       <span lang={lang} className="flex-1 truncate">{stationName(item.station, lang)}</span>
                       <SearchResultEta station={item.station} />
-                      <span className="shrink-0 text-xs text-neutral-600 dark:text-neutral-400">{item.station.code}</span>
+                      <span className="shrink-0 text-xs text-neutral-600 dark:text-neutral-400">{shownCode(item.station)}</span>
                     </li>
                   ) : (
                     <li
@@ -320,7 +320,7 @@ export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchP
                           onClick={() => select({ kind: "station", station: s, key: s.code })}
                           className="flex min-h-11 w-full items-center gap-2 rounded-lg px-2 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
                         >
-                          <span className="w-12 shrink-0 text-xs text-neutral-600 dark:text-neutral-400">{s.code}</span>
+                          <span className="w-12 shrink-0 text-xs text-neutral-600 dark:text-neutral-400">{shownCode(s)}</span>
                           <span lang={lang} className="flex-1 truncate">
                             {stationName(s, lang)}
                           </span>
