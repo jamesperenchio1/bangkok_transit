@@ -84,8 +84,44 @@ export function downDocument(): ArrivalsDocument {
   };
 }
 
+/**
+ * What the page's `fetch` should answer for the live document: a document, or
+ * "fail" for a network failure. Held per page so a later call (a test
+ * overriding its beforeEach) replaces the earlier one.
+ *
+ * Why inside the page, and not only `page.route`: the app starts its live
+ * poll once the map has painted, by which time the service worker may already
+ * control the page - and Playwright cannot route requests the worker handles.
+ * Answering in `fetch` itself does not depend on that timing. (`page.route`
+ * is kept too, for any request that gets past it.)
+ */
+const arrivalsSource = new WeakMap<Page, () => ArrivalsDocument | "fail">();
+
+async function answerArrivalsInPage(page: Page, source: () => ArrivalsDocument | "fail") {
+  const first = !arrivalsSource.has(page);
+  arrivalsSource.set(page, source);
+  if (!first) return;
+  await page.exposeFunction("__fixtureArrivals", () => arrivalsSource.get(page)!());
+  await page.addInitScript(() => {
+    const w = window as unknown as { __fixtureArrivals: () => Promise<unknown> };
+    const realFetch = window.fetch.bind(window);
+    window.fetch = async (input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (!url.includes("/arrivals.json")) return realFetch(input, init);
+      // Like a real network: nothing is reachable while the device is offline.
+      if (!navigator.onLine) throw new TypeError("Failed to fetch");
+      const doc = await w.__fixtureArrivals();
+      if (doc === "fail") throw new TypeError("Failed to fetch");
+      return new Response(JSON.stringify(doc), {
+        headers: { "content-type": "application/json", date: new Date().toUTCString() },
+      });
+    };
+  });
+}
+
 /** Makes the live document unreachable (a network failure, not an error status). */
 export async function failArrivals(page: Page) {
+  await answerArrivalsInPage(page, () => "fail");
   await page.route("**/arrivals.json", (route) => route.abort("failed"));
 }
 
@@ -113,6 +149,7 @@ export function forgiveNetworkErrors(problems: string[], from = 0) {
 
 /** Serves `doc` wherever the app fetches the live arrivals document. */
 export async function serveArrivals(page: Page, doc: () => ArrivalsDocument) {
+  await answerArrivalsInPage(page, doc);
   await page.route("**/arrivals.json", (route) =>
     route.fulfill({
       json: doc(),
