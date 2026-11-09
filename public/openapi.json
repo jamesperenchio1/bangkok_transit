@@ -70,8 +70,8 @@
           "near_end_of_service": { "type": "boolean" },
           "service_active": { "type": "boolean" },
           "next_service": { "type": "string", "description": "When service next starts, if it is not running." },
-          "server_time": { "type": "string", "format": "date-time", "description": "The source's clock when it answered." },
-          "timestamp": { "type": "string", "description": "When this reading was taken: UTC, ISO 8601 with no trailing Z." }
+          "server_time": { "type": "string", "description": "The source's own clock when it answered, as Bangkok local time (UTC+7) written dd/mm/yyyy HH:mm, for example `09/11/2026 15:47`. Not ISO 8601: use `timestamp` for the time of the reading." },
+          "timestamp": { "type": "string", "description": "When this reading was taken: UTC, ISO 8601 with fractional seconds and no trailing Z, for example `2026-11-09T08:47:08.157629`. Append Z before parsing." }
         }
       },
       "Platform": {
@@ -84,7 +84,7 @@
           "direction": { "type": "string", "description": "Thai and English destination joined in one string." },
           "direction_key": { "type": "string", "description": "Code of the terminus station in this direction." },
           "trains": { "type": "array", "items": { "$ref": "#/components/schemas/Train" } },
-          "carried_from": { "type": "string", "format": "date-time", "description": "Set when these trains come from an older reading because the newest listed none for this direction." }
+          "carried_from": { "type": "string", "description": "Set when these trains come from an older reading because the newest listed none for this direction. It is that older reading's `timestamp`: UTC, ISO 8601 with no trailing Z. Append Z before parsing." }
         }
       },
       "Train": {
