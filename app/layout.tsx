@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     "แผนที่รถไฟฟ้า", "รถไฟฟ้าบีทีเอส", "รถไฟฟ้ามหานคร",
   ],
   category: "travel",
-  alternates: { canonical: `${SITE_URL}/` },
+  alternates: { canonical: `${SITE_URL}/`, types: { "text/markdown": `${SITE_URL}/md/index.md` } },
   openGraph: {
     type: "website",
     siteName: SITE_NAME,

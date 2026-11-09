@@ -1,0 +1,13 @@
+{
+  "linkset": [
+    {
+      "anchor": "https://live.bangkok-transit.com/arrivals.json",
+      "service-desc": [
+        { "href": "https://bangkok-transit.com/openapi.json", "type": "application/openapi+json" }
+      ],
+      "service-doc": [
+        { "href": "https://bangkok-transit.com/llms.txt", "type": "text/plain", "title": "Bangkok Transit for AI assistants" }
+      ]
+    }
+  ]
+}

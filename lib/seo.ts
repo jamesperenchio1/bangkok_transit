@@ -17,6 +17,23 @@ export function absoluteUrl(path: string): string {
   return `${SITE_URL}${path}`;
 }
 
+/**
+ * What the site tells AI crawlers it allows (contentsignals.org), written into
+ * robots.txt. Searchable and usable as input to an AI answer (the site publishes
+ * llms.txt so assistants can cite it), but not for model training. This is a
+ * statement of preference, separate from the Allow rules that govern access.
+ */
+export const CONTENT_SIGNAL = "search=yes, ai-input=yes, ai-train=no";
+
+/**
+ * Where a page's markdown twin lives (generated at build time, see
+ * lib/markdown.ts): `/` -> `/md/index.md`, `/lines` -> `/md/lines.md`,
+ * `/lines/mrt-blue-line` -> `/md/lines/mrt-blue-line.md`.
+ */
+export function markdownPath(htmlPath: string): string {
+  return htmlPath === "/" ? "/md/index.md" : `/md${htmlPath}.md`;
+}
+
 export interface LineInfo {
   key: LineKey;
   slug: string;
@@ -380,7 +397,7 @@ export function pageMeta(opts: { title: string; description: string; path: strin
   return {
     title,
     description: opts.description,
-    alternates: { canonical: url },
+    alternates: { canonical: url, types: { "text/markdown": absoluteUrl(markdownPath(opts.path)) } },
     openGraph: {
       type: opts.type ?? "website",
       siteName: SITE_NAME,
