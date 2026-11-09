@@ -19,6 +19,10 @@
     "postinstall": "node scripts/copy-maplibre-worker.mjs"
   },
   "dependencies": {
+    "@x402/core": "2.30.0",
+    "@x402/evm": "2.30.0",
+    "@x402/hono": "2.30.0",
+    "hono": "4.13.13",
     "lucide-react": "^1.33.0",
     "maplibre-gl": "^6.9.1",
     "next": "^16.4.1",
@@ -47,6 +51,7 @@
     "wrangler": "^4.151.0"
   },
   "overrides": {
-    "brace-expansion@1": "^1.1.21"
+    "brace-expansion@1": "^1.1.21",
+    "zod": "4.6.7"
   }
 }

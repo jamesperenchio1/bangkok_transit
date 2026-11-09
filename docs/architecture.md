@@ -41,7 +41,7 @@ cron * * * * *  ──► Worker.scheduled() ──► ArrivalsPoller.ensureRunn
                      every browser: fetch every 15 s (paused in hidden tabs)
 ```
 
-The site (`bangkok-transit.com`) is a static Next.js export served as Workers static assets: no server code runs for page views.
+The site (`bangkok-transit.com`) is a static Next.js export served as Workers static assets: no server code runs for page views. The one exception is the paid agent API under `/api/*` (see *Paid API (x402)*), the only path routed to a Worker.
 
 ### Why a Durable Object
 
@@ -154,10 +154,27 @@ All numbers per day unless stated; limits are Cloudflare's free plan (checked ag
 | R2 Class A (writes) | ≤ 7,400/day ≈ 223k/month; identical documents are skipped | 1M / month | ≤ 22% |
 | R2 Class B (reads) | edge revalidations go through one upper tier (Smart Tiered Cache, enabled): ≤ 8,640/day ≈ 260k/month | 10M / month | ~3% |
 | Static assets | every page view | unlimited, free | — |
+| Paid API Worker (`/api/*` only) | one invocation per API call, paid or 402 | 100,000 / day | scales with agent traffic, not riders; see *Paid API (x402)* |
 | CDN bandwidth / R2 egress | every client poll | free | — |
 | Upstream API | ≤ 186 calls/min, constant | (their rate limit ≈ 180/min) | — |
 
 Durable Object duration is the tightest line, and the reason two details matter: timeouts are cancelled as soon as a poll finishes (an `AbortSignal.timeout()` left a 9.5 s timer pending after every poll, keeping the object busy), and the poller backs off to a 3-station probe every few minutes when the upstream is down rather than staying awake for 31 failing calls every 10 s.
+
+## Paid API (x402)
+
+`/api/v1` is a pay-per-call API for AI agents, the owner's one deliberate exception to "no server code". Agents pay with [x402](https://x402.org) (HTTP 402, USDC). Everything riders and crawlers use stays free and static.
+
+- **Routing.** `wrangler.jsonc` has `main: worker/index.ts` and `assets.run_worker_first: ["/api/*"]`. Only `/api/*` runs the Worker; every other request is a static asset served without running code, so page views are still free and unlimited. Never widen that list.
+- **Code.** `lib/paid-api.ts` (pure): `PAID_ENDPOINTS` is the only place prices live, plus the JSON each endpoint returns. `worker/app.ts`: a Hono app with `@x402/hono`'s `paymentMiddleware` (x402 v2, scheme `exact`, `ExactEvmScheme`); `worker/index.ts`: the entry, default export only (workerd rejects other named exports).
+- **Endpoints.** Free: `GET /api/v1` (price list, network, pay-to address, test-mode flag). Paid: `/api/v1/arrivals?station=` $0.002, `/route?from=&to=` $0.005, `/stations/:slug` $0.001, `/lines/:slug` $0.001. Live arrivals are read from the same CDN-cached `live.` document the site uses (never from the upstream), so they add no upstream calls.
+- **Money flow.** Unpaid call -> 402 with a `PAYMENT-REQUIRED` header (price, USDC address, our address). The agent signs and retries with `PAYMENT-SIGNATURE`; the facilitator verifies it; the handler runs; settlement happens only if the handler succeeded (status < 400). So an unknown station or a missing reading is never charged. The Worker holds no private key and no secret: it only names the address to pay.
+- **Config** (public `vars` in `wrangler.jsonc`): `X402_PAY_TO` (an EVM address), `X402_NETWORK` (`eip155:84532` Base Sepolia **test** network, or `eip155:8453` Base mainnet), `X402_FACILITATOR_URL`. Invalid config makes every `/api/*` route answer 503: data is never served free by accident.
+- **Facilitator sync (a bug we hit).** `@x402/hono` must sync once with the facilitator before it can build a 402, and by default starts that sync inside whichever request is first. On Workers a request's in-flight work is cancelled when it ends, so a free `GET /api/v1` arriving first killed the sync and every later paid request hung forever (reproduced under `wrangler dev`; plain Node and unit tests cannot show it). `worker/app.ts` therefore owns the sync: it starts from the first *paid* request, is kept alive with `ctx.waitUntil`, is shared by concurrent requests, is bounded (12 s), and a failed or stuck attempt is dropped so the next request retries. Do not switch back to the library's start-on-create behaviour. `e2e/paid-api.spec.ts` (burst after the free index) and `tests/x402-worker.test.ts` guard it.
+- **Failure modes.** Facilitator down or slow (10 s per call, 12 s for the first sync): 503, nothing served, nothing charged. Live feed down: arrivals 503/404, not charged. Settlement is the facilitator's job: a timeout there is indeterminate (the facilitator may still have settled), which is inherent to x402.
+- **Safety nets.** `app/sw.ts` never caches `/api/` (a cached paid response would reach someone who didn't pay); responses are `Cache-Control: private, no-store`. `tests/x402-worker.test.ts` runs the app against a fake facilitator and checks: every paid route is 402 unpaid, a paid call settles exactly once, failed calls are not settled, a rejected or unreachable facilitator leaks no data, bad config serves nothing. `e2e/paid-api.spec.ts` boots the real Worker under `wrangler dev`.
+- **Cost.** An invocation happens for every call, including unpaid 402s. Cloudflare's free plan allows 100,000 Worker requests/day and ~10 ms CPU per request (a route search measured ~2 ms); beyond that a paid Workers plan ($5/month) is needed, which paid calls should cover. A flood of unpaid requests costs us but not the owner's income; add a Cloudflare rate-limiting rule on `/api/*` (docs/operations.md) to cap it.
+- **Terms.** The live arrivals come from a third-party public feed (`bts-api.topmile.com`, via the poller). Selling access to data derived from it may be restricted by that provider's terms, which are not known to this repo. Check before taking real money for `/api/v1/arrivals`; removing its entry from `PAID_ENDPOINTS` (and the Worker route) drops it.
+- **Going live (real money).** See docs/operations.md.
 
 ## Failure modes
 
@@ -171,6 +188,7 @@ Durable Object duration is the tightest line, and the reason two details matter:
 | Phone flaky | Last-known times keep counting down | Retries at the normal cadence. |
 | R2 origin errors | Nothing | The edge serves its last copy for up to 5 min (`stale-if-error`); clients show each reading's age. |
 | Phone clock wrong | Nothing | Countdowns use the server's clock. |
+| Payment facilitator down or slow | Agents get 503 on `/api/v1` paid calls; the website is unaffected | Nothing is served or charged; retry later. Check https://x402.org/facilitator/supported. |
 | `live.` loses edge caching or gets a second CORS header | Possibly no live times (CORS) or more R2 reads | `check-live` fails within 30 minutes and GitHub emails the owner. |
 
 ## Testing
@@ -191,7 +209,7 @@ The map is a canvas, so crawlers see little on `/` by itself. Search visibility 
 - `/` carries a screen-reader-only text block (`components/SeoContent.tsx`: lines, popular routes, FAQ + `FAQPage` JSON-LD); the root layout adds `WebSite`/`WebApplication` JSON-LD and Open Graph/Twitter tags. `public/og/og-default.png` is generated by `node scripts/build-og.mjs` (set `CHROMIUM_PATH` if needed).
 - Tests: `tests/seo.test.ts` (slugs, routes, JSON-LD) and `e2e/seo.spec.ts` (crawl files, sitemap URLs resolve, real 404s).
 
-### Agent discovery (all static, no Worker)
+### Agent discovery (static files; the paid API it points to is a Worker, see below)
 
 Answers an agent-readiness scan (isitagentready.com) with files that cost nothing per request:
 
