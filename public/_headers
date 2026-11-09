@@ -30,6 +30,13 @@
   Link: <https://tiles.openfreemap.org>; rel=preconnect; crossorigin
   Link: <https://tiles.openfreemap.org/styles/liberty>; rel=preload; as=fetch; crossorigin
   Link: </line-geometry.json>; rel=preload; as=fetch; crossorigin
+  # For agents (RFC 8288 / RFC 9727): where the machine-readable resources are.
+  # Plain headers only - Early Hints just uses the preload/preconnect ones above.
+  Link: </.well-known/api-catalog>; rel="api-catalog"
+  Link: </openapi.json>; rel="service-desc"; type="application/openapi+json"
+  Link: </llms.txt>; rel="service-doc"; type="text/plain"
+  Link: </llms.txt>; rel="describedby"; type="text/plain"
+  Link: </md/index.md>; rel="alternate"; type="text/markdown"
 
 # Content-hashed build output never changes under the same name.
 /_next/static/*
@@ -60,3 +67,17 @@
   Cache-Control: public, max-age=3600
 /og/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+# Agent discovery files. The catalog has no file extension, so Workers assets
+# would send no Content-Type at all; RFC 9727 wants application/linkset+json.
+/.well-known/api-catalog
+  Content-Type: application/linkset+json
+  Cache-Control: public, max-age=3600
+/openapi.json
+  Content-Type: application/openapi+json
+  Cache-Control: public, max-age=3600
+# Markdown twins of the content pages (lib/markdown.ts). Set here because a
+# route handler's own headers are not kept in a static export.
+/md/*
+  Content-Type: text/markdown; charset=utf-8
+  Cache-Control: public, max-age=3600
