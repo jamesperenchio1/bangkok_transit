@@ -14,6 +14,23 @@
   # fails on any CSP violation, so a new origin can't slip in unnoticed.
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org; font-src 'self' data:; connect-src 'self' https://tiles.openfreemap.org https://photon.komoot.io https://live.bangkok-transit.com https://cloudflareinsights.com; worker-src 'self' blob:; media-src 'self' blob:; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
 
+# The home page names what it will need first, as `Link` headers. With Cloudflare's
+# Early Hints switched on (dashboard: Speed > Settings > Content Optimization;
+# see docs/operations.md) the edge sends these as a 103 response while it is
+# still fetching the page, so the browser opens the tile connection and starts
+# the map style and line geometry before the HTML has even arrived. Without the
+# toggle they still work as ordinary headers, just a little later.
+# Keep each one identical to how the page requests it, or the browser downloads
+# it twice: the style is preloaded in app/layout.tsx (MAP_STYLE_URL) and the
+# geometry is fetched by lib/line-geometry.ts, both in anonymous CORS mode
+# (hence `crossorigin`). Measured: one request each, lines ~0.1-0.9 s sooner on
+# slow 4G. The MapLibre worker is deliberately not listed: its own request does
+# not reuse a preloaded copy, so it downloaded three times.
+/
+  Link: <https://tiles.openfreemap.org>; rel=preconnect; crossorigin
+  Link: <https://tiles.openfreemap.org/styles/liberty>; rel=preload; as=fetch; crossorigin
+  Link: </line-geometry.json>; rel=preload; as=fetch; crossorigin
+
 # Content-hashed build output never changes under the same name.
 /_next/static/*
   Cache-Control: public, max-age=31536000, immutable
