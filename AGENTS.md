@@ -109,6 +109,11 @@ Light Red (RW) are separate lines that share Krung Thep Aphiwat.
   `npm run test:alert` (add a device to `e2e/alert-devices.ts`, a capability
   case to `tests/alert-output.test.ts`) and the real-phone checklist in
   `docs/operations.md`. iPhones have no Vibration API; don't "fix" that.
+- **Map first.** The lines, stations and basemap get the connection before
+  anything else: start new background work (polls, downloads, prefetches) from
+  `whenMapPainted()` in `lib/map-ready.ts`, never at hydration. The lines must
+  draw even if `line-geometry.json` doesn't arrive (`stationLineSegments()` is
+  the stand-in), so don't make them wait on a second request.
 - Timers in the poller must be cancellable (`deadlineAfter` in `lib/bts.ts`),
   not `AbortSignal.timeout()` — a pending timer keeps the Durable Object
   busy and billed.

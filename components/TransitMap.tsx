@@ -6,7 +6,16 @@ import { useEffect, useMemo, useRef, type RefObject } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { LocateFixed } from "lucide-react";
 import { shownCode, stations, type LineKey, type Station } from "@/data/stations";
-import { fetchLineGeometry, fullLineSegments, trackBetween, type LineSegments } from "@/lib/line-geometry";
+import {
+  fetchLineGeometry,
+  fullLineSegments,
+  loadedLineGeometry,
+  loadLineGeometryInBackground,
+  stationLineSegments,
+  trackBetween,
+  type LineSegments,
+} from "@/lib/line-geometry";
+import { markMapPainted } from "@/lib/map-ready";
 import type { GeoPosition } from "@/lib/use-geolocation";
 import type { PathResult } from "@/lib/transit-graph";
 import { StationActions } from "@/components/StationActions";
@@ -328,6 +337,7 @@ export function TransitMap({
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const geometryRef = useRef<LineSegments | null>(null);
   const stopTrainsRef = useRef<(() => void) | null>(null);
+  const stopGeometryRef = useRef<(() => void) | null>(null);
   const dimmedRef = useRef(false);
   // The hops the planned route rides, for the trains layer (null: no route).
   const routeHopsRef = useRef<Set<string> | null>(null);
@@ -422,11 +432,18 @@ export function TransitMap({
     // takes, though nothing here depends on it. The basemap fills in beneath.
     map.once("style.load", () => {
       styleReady = true;
-      // Starts empty and fills in once the line-geometry fetch (kicked off
-      // below, in parallel with the map/style itself) resolves, rather than
-      // blocking the rest of this handler (fitBounds, click handlers, other
-      // sources) on that fetch.
-      map.addSource(LINES_SOURCE, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      // The lines are drawn from the first frame. If the curved track has
+      // already arrived (it is requested while the map's own code downloads)
+      // it is used straight away; if not, the network is drawn as straight
+      // station-to-station track from data already in the bundle and the
+      // curves swap in when they land. Either way no line is ever missing or
+      // left unconnected while waiting on a second download.
+      const known = loadedLineGeometry();
+      if (known) geometryRef.current = known;
+      map.addSource(LINES_SOURCE, {
+        type: "geojson",
+        data: baseLinesGeoJSON(known ?? stationLineSegments()),
+      });
       map.addLayer({
         id: LINES_LAYER,
         type: "line",
@@ -438,13 +455,15 @@ export function TransitMap({
           "line-opacity": 0.9,
         },
       });
-      fetchLineGeometry().then((segmentsByLine) => {
-        geometryRef.current = segmentsByLine;
-        // The component may have unmounted (and torn down `map`) before
-        // this fetch resolved - `mapRef` is nulled out in that cleanup.
-        if (mapRef.current !== map) return;
-        map.getSource<maplibregl.GeoJSONSource>(LINES_SOURCE)?.setData(baseLinesGeoJSON(segmentsByLine));
-      });
+      if (!known) {
+        stopGeometryRef.current = loadLineGeometryInBackground((segmentsByLine) => {
+          // The component may have unmounted (and torn down `map`) before
+          // this resolved - `mapRef` is nulled out in that cleanup.
+          if (mapRef.current !== map) return;
+          geometryRef.current = segmentsByLine;
+          map.getSource<maplibregl.GeoJSONSource>(LINES_SOURCE)?.setData(baseLinesGeoJSON(segmentsByLine));
+        });
+      }
 
       map.addSource(ROUTE_SOURCE, {
         type: "geojson",
@@ -646,11 +665,17 @@ export function TransitMap({
         resizeObserverRef.current = observer;
         observer.observe(container);
       }
+      // First view fully drawn (lines, stations, basemap tiles): from here the
+      // page may start everything that is not the map - live times, the
+      // offline-map download. See lib/map-ready.ts.
+      map.once("idle", markMapPainted);
     });
 
     return () => {
       stopTrainsRef.current?.();
       stopTrainsRef.current = null;
+      stopGeometryRef.current?.();
+      stopGeometryRef.current = null;
       resizeObserverRef.current?.disconnect();
       resizeObserverRef.current = null;
       popups.forEach(({ popup, root }) => {

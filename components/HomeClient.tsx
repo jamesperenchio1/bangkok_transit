@@ -14,6 +14,7 @@ import { useGeolocation } from "@/lib/use-geolocation";
 import { startArrivalsPolling, useArrivalsStore } from "@/lib/arrivals-store";
 import { scheduleOfflineWarm } from "@/lib/offline-warm";
 import { fetchLineGeometry } from "@/lib/line-geometry";
+import { whenMapPainted } from "@/lib/map-ready";
 import { distanceLabel, nearestStation } from "@/lib/nearest-station";
 import type { Place } from "@/lib/place-search";
 import { computeFare } from "@/lib/fares";
@@ -93,11 +94,22 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
 
   useEffect(() => {
     // Settings first: polling honours "pause live updates" and the offline
-    // warm-up honours the data-saver choice.
+    // warm-up honours the data-saver choice. Both are cheap and local.
     restoreSettings();
-    startArrivalsPolling();
     restoreLang();
-    scheduleOfflineWarm();
+    // The map comes first: the lines, the stations and the basemap get the
+    // connection to themselves. Live times and the offline-map download start
+    // once the first view is drawn (or after a short cap, so a hung basemap
+    // host can't hold live times back for good).
+    let cancelled = false;
+    void whenMapPainted().then(() => {
+      if (cancelled) return;
+      startArrivalsPolling();
+      scheduleOfflineWarm();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Theme, text size and motion apply to the whole page, so they live on

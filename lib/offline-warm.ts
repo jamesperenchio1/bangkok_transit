@@ -101,8 +101,10 @@ async function mapPool<T>(items: T[], run: (item: T) => Promise<void>): Promise<
 async function warm(): Promise<boolean> {
   // Same flags as MapLibre's own requests (CORS, no credentials) so the
   // cache entries are reused rather than duplicated.
+  // priority "low": this is a background download, and must never queue ahead
+  // of a tile the rider's own panning needs.
   const get = async (url: string) => {
-    const res = await fetch(url, { mode: "cors", credentials: "omit" });
+    const res = await fetch(url, { mode: "cors", credentials: "omit", priority: "low" });
     if (!res.ok) throw new Error(String(res.status));
     return res;
   };
@@ -137,7 +139,7 @@ async function warm(): Promise<boolean> {
   // Missing tiles (404 in empty ocean/edges) are normal; only a transport
   // failure should leave the job unfinished so it retries next visit.
   const ok = await mapPool(urls, async (url) => {
-    const res = await fetch(url, { mode: "cors", credentials: "omit" });
+    const res = await fetch(url, { mode: "cors", credentials: "omit", priority: "low" });
     if (!res.ok && res.status !== 404 && res.status !== 204) throw new Error(String(res.status));
   });
   if (ok) {
@@ -185,7 +187,8 @@ export function scheduleOfflineWarm(): void {
   };
   const idle = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void })
     .requestIdleCallback;
-  // Well after first paint and the first live-times poll.
+  // Called once the map has painted (see HomeClient), and then still waits:
+  // well after first paint and the first live-times poll.
   setTimeout(() => (idle ? idle(() => void start(), { timeout: 10_000 }) : void start()), 8_000);
 }
 
