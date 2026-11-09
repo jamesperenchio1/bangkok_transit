@@ -155,7 +155,8 @@ test.describe("the map comes first", () => {
     await page.route("**/line-geometry.json", (route) => route.abort("failed"));
     await page.goto("/");
     await expect.poll(() => linesDrawn(page), { timeout: 30_000 }).toBeGreaterThan(10);
-    expect(await stationsDrawn(page)).toBeGreaterThan(10);
+    await expect.poll(() => stationsDrawn(page), { timeout: 30_000 }).toBeGreaterThan(10);
+    // Last, so it covers the blocked requests logged by the retries too.
     forgiveNetworkErrors(problems);
   });
 
