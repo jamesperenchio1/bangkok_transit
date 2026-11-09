@@ -15,6 +15,8 @@ let calls: Calls;
 let facilitatorMode: "ok" | "reject" | "down";
 /** How /settle behaves after a payment verified fine: succeeds, is refused, or the network fails. */
 let settleMode: "ok" | "refuse" | "network-error";
+/** The live arrivals document never answers, or answers headers and then stalls the body. */
+let arrivalsMode: "ok" | "stall-headers" | "stall-body";
 /** Failures to inject into the next /supported calls (a failing, then recovering, facilitator). */
 let supportedFailures = 0;
 /** When set, /supported never answers until released (a facilitator that hangs). */
@@ -42,6 +44,7 @@ beforeEach(() => {
   calls = { verify: [], settle: [], arrivals: 0, supported: 0 };
   facilitatorMode = "ok";
   settleMode = "ok";
+  arrivalsMode = "ok";
   supportedFailures = 0;
   stallSupported = null;
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -51,6 +54,18 @@ beforeEach(() => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
       if (url === LIVE_ARRIVALS_URL) {
         calls.arrivals++;
+        const aborted = (reject: (e: unknown) => void) =>
+          init?.signal?.addEventListener("abort", () => reject(new DOMException("The operation was aborted", "AbortError")));
+        if (arrivalsMode === "stall-headers") return new Promise<Response>((_, reject) => aborted(reject));
+        if (arrivalsMode === "stall-body") {
+          // Headers arrive, the body never finishes; aborting the request errors the stream, as a real fetch does.
+          const body = new ReadableStream({
+            start(controller) {
+              aborted((e) => controller.error(e));
+            },
+          });
+          return new Response(body, { status: 200, headers: { "content-type": "application/json" } });
+        }
         return json(liveDoc());
       }
       if (!url.startsWith(FACILITATOR)) throw new Error(`unexpected fetch ${url}`);
@@ -200,6 +215,36 @@ describe("when something is wrong, nobody gets data for free and nobody is charg
       }
       expect(calls.settle, `${e.id}: settlement was attempted`).toHaveLength(1);
       expect(res.headers.get("cache-control")).toBe("private, no-store");
+    }
+  });
+
+  it.each([
+    ["never answers", "stall-headers"],
+    ["answers, then stalls its body", "stall-body"],
+  ] as const)("a live feed that %s gives a quick 503, nothing settled, nothing served", async (_label, mode) => {
+    vi.useFakeTimers();
+    try {
+      arrivalsMode = mode;
+      const app = createApp(env);
+      // Sign and pay for the arrivals call first (the facilitator sync is not what is under test).
+      await vi.advanceTimersByTimeAsync(0);
+      const unpaid = await app.request("/api/v1/arrivals?station=N8", {}, env);
+      const required = decode(unpaid.headers.get("payment-required"));
+      const header = Buffer.from(
+        JSON.stringify({ x402Version: 2, resource: required.resource, accepted: required.accepts[0], payload: { signature: "0xsig", authorization: {} } }),
+      ).toString("base64");
+      const pending = app.request("/api/v1/arrivals?station=N8", { headers: { "PAYMENT-SIGNATURE": header } }, env);
+      await vi.advanceTimersByTimeAsync(5_001);
+      const res = await pending;
+      expect(res.status).toBe(503);
+      const text = await res.text();
+      expect(text).toContain("not been charged");
+      expect(text).not.toContain("Mo Chit");
+      expect(calls.settle, "a failed read must not settle").toHaveLength(0);
+      // The deadline's timer is cleared, not left running (a pending timer keeps the request alive).
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
     }
   });
 

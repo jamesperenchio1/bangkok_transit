@@ -65,6 +65,10 @@ const UNAVAILABLE = "Payments are temporarily unavailable. You have not been cha
 
 /** A facilitator that does not answer in this long fails the call (uncharged) instead of hanging it. */
 const FACILITATOR_TIMEOUT_MS = 10_000;
+/** Reading the live arrivals document (headers and body together) may take at most this long. */
+const ARRIVALS_BUDGET_MS = 5_000;
+const ARRIVALS_UNAVAILABLE = "Live arrivals are unavailable right now. You have not been charged.";
+
 /** The first paid request waits at most this long for the facilitator sync before answering 503. */
 const SYNC_BUDGET_MS = 12_000;
 
@@ -192,10 +196,22 @@ export function createApp(env: Partial<Env>): Hono {
   app.use(`${API_BASE}/*`, paymentMiddlewareFromHTTPServer(httpServer, undefined, undefined, false));
 
   app.get(`${API_BASE}/arrivals`, async (c) => {
-    const res = await fetch(LIVE_ARRIVALS_URL, { cf: { cacheTtl: 5, cacheEverything: true } } as RequestInit);
-    if (!res.ok) return c.json({ error: "Live arrivals are unavailable right now. You have not been charged." }, 503);
-    const result = arrivalsFacts((await res.json()) as ArrivalsDocument, c.req.query("station"));
-    return result.ok ? c.json(result.body) : c.json({ error: result.error }, result.status);
+    // One deadline over the whole read (headers AND body), so a stalled CDN gives the
+    // caller a quick, retryable 503 - which the payment middleware does not settle -
+    // instead of a paid request that never returns.
+    const deadline = new AbortController();
+    const timer = setTimeout(() => deadline.abort(), ARRIVALS_BUDGET_MS);
+    try {
+      const res = await fetch(LIVE_ARRIVALS_URL, { signal: deadline.signal, cf: { cacheTtl: 5, cacheEverything: true } } as RequestInit);
+      if (!res.ok) return c.json({ error: ARRIVALS_UNAVAILABLE }, 503);
+      const result = arrivalsFacts((await res.json()) as ArrivalsDocument, c.req.query("station"));
+      return result.ok ? c.json(result.body) : c.json({ error: result.error }, result.status);
+    } catch (err) {
+      console.error("arrivals read failed:", err instanceof Error ? err.message : err);
+      return c.json({ error: ARRIVALS_UNAVAILABLE }, 503);
+    } finally {
+      clearTimeout(timer);
+    }
   });
 
   app.get(`${API_BASE}/route`, (c) => {
