@@ -44,6 +44,14 @@ const placeSearch: RuntimeCaching = {
   handler: new NetworkOnly(),
 };
 
+// The paid API (worker/) answers with money-gated data and 402s. A cached copy
+// would hand a paid response to someone who didn't pay (Serwist's default rule
+// caches same-origin /api/ GETs), so it is never stored.
+const paidApi: RuntimeCaching = {
+  matcher: ({ url }) => url.pathname === "/api" || url.pathname.startsWith("/api/"),
+  handler: new NetworkOnly(),
+};
+
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   // The shell ("/", added in next.config.ts) is precached, so a cold start
@@ -54,7 +62,7 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: [liveArrivals, placeSearch, openFreeMapCache, ...defaultCache],
+  runtimeCaching: [paidApi, liveArrivals, placeSearch, openFreeMapCache, ...defaultCache],
 });
 
 serwist.addEventListeners();
