@@ -1,4 +1,18 @@
+import { spawn, type ChildProcess } from "node:child_process";
+import { createServer } from "node:net";
 import { expect, test } from "./fixtures";
+
+/** A port nothing is listening on. */
+function freePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const probe = createServer();
+    probe.once("error", reject);
+    probe.listen(0, () => {
+      const { port } = probe.address() as { port: number };
+      probe.close(() => resolve(port));
+    });
+  });
+}
 
 /**
  * The paid x402 API (worker/) runs only for /api/*, under the real `wrangler dev`
@@ -33,15 +47,43 @@ test.describe("paid API", () => {
     expect(res.headers()["access-control-expose-headers"]).toContain("PAYMENT-REQUIRED");
   });
 
-  test("a burst of simultaneous paid requests all get their 402 (none hangs)", async ({ request }) => {
-    // Regression: the facilitator sync used to start inside whichever request
-    // came first and die with it, so every later paid request hung. The free
-    // index is requested first here on purpose, then a burst.
-    expect((await request.get("/api/v1")).status()).toBe(200);
-    const burst = await Promise.all(
-      Array.from({ length: 10 }, () => request.get("/api/v1/route?from=N8&to=CEN", { timeout: 20_000 })),
+  test("cold start: the free index first, then a burst of paid requests, none hangs", async ({ request }) => {
+    // Regression: the facilitator sync used to start inside whichever request came
+    // first and die with it, so every later paid request hung forever. That only
+    // shows on a Worker that has never served a request, and the shared test server
+    // (parallel tests, a second project, a reused local server) cannot promise one.
+    // So this test starts its own fresh Worker, requests the free index first, and
+    // only then sends the burst.
+    test.setTimeout(120_000);
+    const port = await freePort();
+    const worker: ChildProcess = spawn(
+      "npx",
+      ["wrangler", "dev", "--config", "e2e/wrangler.cold.jsonc", "--port", String(port)],
+      { stdio: "ignore", detached: true },
     );
-    expect(burst.map((r) => r.status())).toEqual(Array(10).fill(402));
+    try {
+      const base = `http://localhost:${port}`;
+      await expect
+        .poll(async () => (await request.get(`${base}/lines`, { timeout: 5_000 }).catch(() => null))?.status(), {
+          timeout: 90_000,
+          message: "the fresh Worker starts",
+        })
+        .toBe(200);
+      // Now, and only now, the first API request this Worker has ever had: the free index.
+      expect((await request.get(`${base}/api/v1`)).status()).toBe(200);
+      const burst = await Promise.all(
+        Array.from({ length: 10 }, () => request.get(`${base}/api/v1/route?from=N8&to=CEN`, { timeout: 20_000 })),
+      );
+      expect(burst.map((r) => r.status())).toEqual(Array(10).fill(402));
+    } finally {
+      if (worker.pid) {
+        try {
+          process.kill(-worker.pid, "SIGKILL"); // the whole process group: npx, wrangler and workerd
+        } catch {
+          // already gone
+        }
+      }
+    }
   });
 
   test("every paid endpoint wants payment, and an unknown /api path is a JSON 404", async ({ request }) => {

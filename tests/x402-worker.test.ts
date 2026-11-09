@@ -13,6 +13,8 @@ const USDC_BASE_SEPOLIA = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
 interface Calls { verify: unknown[]; settle: unknown[]; arrivals: number; supported: number }
 let calls: Calls;
 let facilitatorMode: "ok" | "reject" | "down";
+/** How /settle behaves after a payment verified fine: succeeds, is refused, or the network fails. */
+let settleMode: "ok" | "refuse" | "network-error";
 /** Failures to inject into the next /supported calls (a failing, then recovering, facilitator). */
 let supportedFailures = 0;
 /** When set, /supported never answers until released (a facilitator that hangs). */
@@ -39,6 +41,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 beforeEach(() => {
   calls = { verify: [], settle: [], arrivals: 0, supported: 0 };
   facilitatorMode = "ok";
+  settleMode = "ok";
   supportedFailures = 0;
   stallSupported = null;
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -69,6 +72,10 @@ beforeEach(() => {
       }
       if (path === "/settle") {
         calls.settle.push(body);
+        if (settleMode === "network-error") throw new TypeError("settlement connection lost");
+        if (settleMode === "refuse") {
+          return json({ success: false, errorReason: "insufficient_funds", transaction: "", network: "eip155:84532", payer: "0xPayer" });
+        }
         return json({ success: true, transaction: "0xabc123", network: "eip155:84532", payer: "0xPayer" });
       }
       return json({ error: "not found" }, 404);
@@ -171,6 +178,29 @@ describe("when something is wrong, nobody gets data for free and nobody is charg
     expect(res.status).toBe(402);
     expect(await res.text()).not.toContain("minutes");
     expect(calls.settle).toHaveLength(0);
+  });
+
+  // The payment verified, the handler ran and produced data - then settlement (the
+  // actual transfer) fails. The data must not be handed over for a payment that did
+  // not complete.
+  it.each([
+    ["is refused by the facilitator", "refuse"],
+    ["fails on the network", "network-error"],
+  ] as const)("when settlement %s after a good verification, the caller gets no data", async (_label, mode) => {
+    settleMode = mode;
+    const app = createApp(env);
+    for (const e of PAID_ENDPOINTS) {
+      calls.settle.length = 0;
+      const res = await pay(app, e.example);
+      const text = await res.text();
+      expect(res.status, `${e.id} status`).toBeGreaterThanOrEqual(400);
+      // None of the handlers' payloads (a route's minutes, a station's neighbours, a reading, a line's stations).
+      for (const leaked of ["minutes", "neighbours", "terminalStations", "ageSeconds", "Mo Chit"]) {
+        expect(text, `${e.id} leaked "${leaked}"`).not.toContain(leaked);
+      }
+      expect(calls.settle, `${e.id}: settlement was attempted`).toHaveLength(1);
+      expect(res.headers.get("cache-control")).toBe("private, no-store");
+    }
   });
 
   it("an unreachable facilitator gives a 503 with no data and no settlement", async () => {
