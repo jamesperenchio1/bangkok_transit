@@ -31,6 +31,6 @@ Today `data/stations.json`, `data/line-sequences.json` and
    station with the line; see the Pink and SRT Red entries).
 3. If it's a walkable interchange with another line's separate station, add
    the pair to `data/interchanges.json`.
-4. If it opened with new track, re-run the fetch and `build-line-geometry.ts`.
+4. If it opened with new track, re-run the fetch and `build-line-geometry.ts`, then `npm test`: `tests/line-geometry.test.ts` fails if the new track leaves a station off its line or two neighbouring stations unconnected (the build keeps BMA's pieces unstitched, so that test is the only guard).
 5. `npm test` — the data tests catch unknown codes, stations missing from
    their line, implausible hops and nearby stations missing an interchange.

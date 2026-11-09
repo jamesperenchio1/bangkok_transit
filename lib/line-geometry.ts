@@ -1,3 +1,6 @@
+import sequences from "@/data/line-sequences.json";
+import { stationsByCode } from "@/data/stations";
+
 export type LatLon = [number, number];
 export type LineSegments = Record<string, LatLon[][]>;
 
@@ -8,6 +11,9 @@ export type LineSegments = Record<string, LatLon[][]>;
 // at module scope so every caller (the map's initial line layer, and the
 // route-highlight effect on every path change) shares one request.
 let cachedPromise: Promise<LineSegments> | null = null;
+// The same data, readable synchronously once it has arrived: the map asks
+// this before drawing so it can skip the straight-line stand-in entirely.
+let loaded: LineSegments | null = null;
 
 export function fetchLineGeometry(): Promise<LineSegments> {
   if (!cachedPromise) {
@@ -15,6 +21,10 @@ export function fetchLineGeometry(): Promise<LineSegments> {
       .then((res) => {
         if (!res.ok) throw new Error(`line-geometry.json: HTTP ${res.status}`);
         return res.json() as Promise<LineSegments>;
+      })
+      .then((segments) => {
+        loaded = segments;
+        return segments;
       })
       .catch((err: unknown) => {
         // Don't cache a failure (a flaky connection on first load): the
@@ -25,6 +35,62 @@ export function fetchLineGeometry(): Promise<LineSegments> {
       });
   }
   return cachedPromise;
+}
+
+/** The curved track if it has already arrived, else null. Never starts a request. */
+export function loadedLineGeometry(): LineSegments | null {
+  return loaded;
+}
+
+/**
+ * Straight station-to-station track for every line, built from data that is
+ * already in the bundle (the stations and `line-sequences.json`). It is the
+ * map's stand-in until the curved track arrives, so the network is drawn -
+ * and connected end to end - from the first frame, whatever the connection
+ * does to the geometry download. By construction it passes through every
+ * station of every service segment, in order.
+ */
+export function stationLineSegments(): LineSegments {
+  const out: LineSegments = {};
+  for (const [line, segments] of Object.entries(sequences as Record<string, string[][]>)) {
+    out[line] = segments.map((codes) =>
+      codes.flatMap((code) => {
+        const s = stationsByCode.get(code);
+        return s ? [[s.lat, s.lon] as LatLon] : [];
+      }),
+    );
+  }
+  return out;
+}
+
+/** Waits before each retry of a failed download; after the last one the stand-in stays. */
+export const GEOMETRY_RETRY_DELAYS_MS = [1_000, 3_000, 8_000, 20_000];
+
+/**
+ * Fetches the curved track in the background and hands it to `onLoaded`,
+ * retrying a few times with growing pauses. A single failed request on a bad
+ * connection used to leave the map with stations and no lines until the next
+ * reload; now the straight stand-in stays up and the curves swap in as soon as
+ * any attempt succeeds. Returns a function that stops it (the map was torn down).
+ */
+export function loadLineGeometryInBackground(onLoaded: (segments: LineSegments) => void): () => void {
+  let stopped = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const attempt = (n: number) => {
+    void fetchLineGeometry().then((segments) => {
+      if (stopped) return;
+      if (Object.keys(segments).length > 0) {
+        onLoaded(segments);
+      } else if (n < GEOMETRY_RETRY_DELAYS_MS.length) {
+        timer = setTimeout(() => attempt(n + 1), GEOMETRY_RETRY_DELAYS_MS[n]);
+      }
+    });
+  };
+  attempt(0);
+  return () => {
+    stopped = true;
+    if (timer !== null) clearTimeout(timer);
+  };
 }
 
 export function haversineMeters(a: LatLon, b: LatLon): number {
