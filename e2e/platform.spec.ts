@@ -32,6 +32,16 @@ test.describe("security headers", () => {
     expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
     expect(headers["permissions-policy"]).toBe("geolocation=(self)");
   });
+
+  test("the home page, and only the home page, names the map's first downloads for Early Hints", async ({ request }) => {
+    // public/_headers: Cloudflare turns these into a 103 once Early Hints is on.
+    const link = (await request.get("/")).headers()["link"] ?? "";
+    expect(link).toContain("<https://tiles.openfreemap.org>; rel=preconnect");
+    expect(link).toContain("<https://tiles.openfreemap.org/styles/liberty>; rel=preload; as=fetch; crossorigin");
+    expect(link).toContain("</line-geometry.json>; rel=preload; as=fetch; crossorigin");
+    // Only the page that has the map: the SEO pages don't need these downloads.
+    expect((await request.get("/lines")).headers()["link"]).toBeUndefined();
+  });
 });
 
 test.describe("caching", () => {

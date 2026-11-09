@@ -51,6 +51,13 @@ if (site) {
   for (const header of ["content-security-policy", "x-content-type-options", "permissions-policy"]) {
     if (!site.headers.get(header)) fail(`${SITE_URL}: missing ${header} header`);
   }
+  // public/_headers: what Cloudflare's Early Hints turns into a 103. (The 103
+  // itself is invisible to fetch(); `curl -sv --http2 <site> 2>&1 | grep -i "< HTTP/2 103"`
+  // shows it, see docs/operations.md.)
+  const link = site.headers.get("link") ?? "";
+  for (const want of ["rel=preconnect", "/styles/liberty", "/line-geometry.json"]) {
+    if (!link.includes(want)) fail(`${SITE_URL}: Link header is missing ${want} (public/_headers)`);
+  }
 }
 
 // The live document, requested the way the page does (cross-origin).
