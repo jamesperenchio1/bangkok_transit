@@ -247,8 +247,8 @@ function Action({ row, lang }: { row: Extract<Row, { kind: "action" }>; lang: La
     about: () =>
       setStatus(
         T(
-          "Bangkok Transit. Map data © OpenStreetMap contributors, tiles by OpenFreeMap, places by Photon. Live BTS times are estimates.",
-          "Bangkok Transit ข้อมูลแผนที่ © ผู้ร่วมจัดทำ OpenStreetMap, แผนที่ย่อยโดย OpenFreeMap, สถานที่โดย Photon เวลารถไฟสดเป็นค่าประมาณ",
+          "Bangkok Transit. Map data © OpenStreetMap contributors, tiles by OpenFreeMap, places by Google. Live BTS times are estimates.",
+          "Bangkok Transit ข้อมูลแผนที่ © ผู้ร่วมจัดทำ OpenStreetMap, แผนที่ย่อยโดย OpenFreeMap, สถานที่โดย Google เวลารถไฟสดเป็นค่าประมาณ",
         ),
       ),
   };

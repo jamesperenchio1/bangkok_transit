@@ -174,13 +174,13 @@ export async function mapReady(page: Page) {
  * Every test fails on a page error, a console error, or a CSP violation -
  * so a broken script or a new third-party origin can't pass silently.
  */
-export const PHOTON_URL = "https://photon.komoot.io/**";
+export const GOOGLE_PLACES_URL = "https://places.googleapis.com/**";
 
-/** Answers the online place search with `features` (Photon's GeoJSON shape). */
-export async function servePlaces(page: Page, features: unknown[]) {
-  await page.route(PHOTON_URL, (route) =>
+/** Answers the online place search with `places` (Places API New shape). */
+export async function servePlaces(page: Page, places: unknown[]) {
+  await page.route(GOOGLE_PLACES_URL, (route) =>
     route.fulfill({
-      json: { type: "FeatureCollection", features },
+      json: { places },
       headers: { "access-control-allow-origin": "*" },
     }),
   );

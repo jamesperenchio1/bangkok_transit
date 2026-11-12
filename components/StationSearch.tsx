@@ -8,7 +8,7 @@ import { stationsByLine } from "@/lib/station-groups";
 import { useArrivals } from "@/lib/use-arrivals";
 import { minutesLabel, upcomingTrains } from "@/lib/format-eta";
 import { stationName, useT } from "@/lib/i18n";
-import { MIN_QUERY_LENGTH, searchPlaces, type Place } from "@/lib/place-search";
+import { MIN_QUERY_LENGTH, searchPlaces, type Place } from "@/lib/google-places";
 import { useSettingsStore } from "@/lib/settings-store";
 
 export interface StationSearchProps {

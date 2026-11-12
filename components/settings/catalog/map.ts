@@ -7,6 +7,26 @@ const sizes = [
 ];
 
 export const rows: Row[] = [
+  {
+    kind: "choice",
+    key: "mapProvider",
+    label: { en: "Map provider", th: "ผู้ให้บริการแผนที่" },
+    options: [
+      { value: "standard", label: { en: "Standard (offline)", th: "มาตรฐาน (ออฟไลน์)" } },
+      { value: "google", label: { en: "Google Maps", th: "Google Maps" } },
+    ],
+  },
+  {
+    kind: "choice",
+    key: "googleMapType",
+    label: { en: "Google map type", th: "ประเภทแผนที่ Google" },
+    options: [
+      { value: "roadmap", label: { en: "Roadmap", th: "แผนที่ถนน" } },
+      { value: "hybrid", label: { en: "Hybrid", th: "ไฮบริด" } },
+      { value: "satellite", label: { en: "Satellite", th: "ดาวเทียม" } },
+    ],
+    advanced: true,
+  },
   { kind: "toggle", key: "showLabels", label: { en: "Station names", th: "ชื่อสถานี" } },
   { kind: "toggle", key: "labelCodes", label: { en: "Station codes under names", th: "รหัสสถานีใต้ชื่อ" }, hint: { en: "Appears when zoomed in.", th: "แสดงเมื่อซูมเข้า" }, advanced: true },
   {

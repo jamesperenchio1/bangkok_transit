@@ -19,6 +19,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     entry("/lines", 0.8),
     entry("/stations", 0.8),
     entry("/routes", 0.8),
+    entry("/info", 0.5),
     ...LINES.map((l) => entry(linePath(l), 0.9)),
     ...stations.map((s) => entry(stationPath(s), 0.6)),
     ...routePairs.map((p) => entry(`/routes/${p.slug}`, 0.7)),

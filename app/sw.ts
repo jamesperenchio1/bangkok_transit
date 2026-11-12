@@ -36,11 +36,14 @@ const liveArrivals: RuntimeCaching = {
   handler: new NetworkOnly(),
 };
 
-// Place search sends what the rider types to a third party. It is fetched live
-// and never stored: a cached copy would keep their queries on the device and
-// answer from stale data. (The page keeps its own in-memory cache.)
-const placeSearch: RuntimeCaching = {
-  matcher: ({ url }) => url.hostname === "photon.komoot.io",
+// Google Places and Maps are only fetched when the rider opts into Google.
+// They stay live and uncached: Google's terms limit how long Places content
+// may be stored, and a cached map script would outlive a key rotation.
+const googleMaps: RuntimeCaching = {
+  matcher: ({ url }) =>
+    url.hostname === "places.googleapis.com" ||
+    url.hostname === "maps.googleapis.com" ||
+    url.hostname === "maps.gstatic.com",
   handler: new NetworkOnly(),
 };
 
@@ -54,7 +57,7 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: [liveArrivals, placeSearch, openFreeMapCache, ...defaultCache],
+  runtimeCaching: [liveArrivals, googleMaps, openFreeMapCache, ...defaultCache],
 });
 
 serwist.addEventListeners();

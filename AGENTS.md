@@ -1,6 +1,6 @@
 <!-- BEGIN:nextjs-agent-rules -->
 
-# This is NOT the Next.js you know
+## This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
 
@@ -22,6 +22,11 @@ live BTS arrivals, live at bangkok-transit.com. Read `README.md` first, then
   file written by one Durable Object. Don't add API routes, per-user fetches
   to the upstream, or anything that needs a paid plan. Keep the Cloudflare
   free-tier numbers in `docs/architecture.md#cost-model` true.
+  - Default users stay on MapLibre/OpenFreeMap and make zero Google requests.
+    The opt-in Google map and Google Places search are the one exception: a
+    browser key restricted by HTTP referrer and API, with daily quotas and a
+    budget alert. They are billed per request when enabled; never put them in
+    the default path.
 - **Never per-user calls to `bts-api.topmile.com`.** It has no CORS, no batch
   endpoint and a ~180/min rate limit; only `cloudflare/poller` talks to it.
 - **Honest live data.** Old readings are shown as last-known with their age

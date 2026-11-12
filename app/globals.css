@@ -116,6 +116,12 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Popups are interactive cards; keep them above MapLibre's control container
+   (attribution/zoom, z-index 2) so their buttons are never blocked. */
+.maplibregl-popup {
+  z-index: 5;
+}
+
 .maplibregl-popup-tip {
   border-top-color: var(--background) !important;
   border-bottom-color: var(--background) !important;

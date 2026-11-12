@@ -16,20 +16,23 @@ import { scheduleOfflineWarm } from "@/lib/offline-warm";
 import { fetchLineGeometry } from "@/lib/line-geometry";
 import { whenMapPainted } from "@/lib/map-ready";
 import { distanceLabel, nearestStation } from "@/lib/nearest-station";
-import type { Place } from "@/lib/place-search";
+import type { Place } from "@/lib/google-places";
 import { computeFare } from "@/lib/fares";
 import { useFares } from "@/lib/use-fares";
 import { restoreLang, stationName, useLangStore, useT } from "@/lib/i18n";
 import { restoreSettings, useSettingsStore } from "@/lib/settings-store";
 
-// Kicked off as soon as this module evaluates (not when <TransitMap> first
-// renders), so the MapLibre chunk - by far the largest download - and the
-// line geometry both start in parallel with hydration instead of after it.
-const transitMapModule = typeof window !== "undefined" ? import("@/components/TransitMap") : null;
+// Line geometry starts downloading with hydration. The map chunk itself is
+// requested when its component first renders: MapLibre by default, Google
+// only when the rider has chosen it, so a default visit never loads Google.
 if (typeof window !== "undefined") void fetchLineGeometry();
 
-const TransitMap = dynamic(
-  () => (transitMapModule ?? import("@/components/TransitMap")).then((m) => m.TransitMap),
+const TransitMap = dynamic(() => import("@/components/TransitMap").then((m) => m.TransitMap), {
+  ssr: false,
+});
+
+const GoogleTransitMap = dynamic(
+  () => import("@/components/GoogleTransitMap").then((m) => m.GoogleTransitMap),
   { ssr: false },
 );
 
@@ -80,15 +83,23 @@ function OfflineBanner() {
  * (every line, every curated route, a pathfinding run per route pair) is built
  * once at build time and never ships in, or runs in, the browser bundle.
  */
-export function HomeClient({ children }: { children?: React.ReactNode }) {
+export function HomeClient({
+  children,
+  networkSvg,
+}: {
+  children?: React.ReactNode;
+  /** Build-time SVG of the network, painted before the map's JS arrives. */
+  networkSvg?: string;
+}) {
   const [start, setStart] = useState<Station | null>(null);
   const [destination, setDestination] = useState<Station | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [focusStation, setFocusStation] = useState<Station | null>(null);
   const [focusPlace, setFocusPlace] = useState<Place | null>(null);
-  // The map chunk is the biggest download; until it lands the header is the
-  // only thing on screen, so a thin indeterminate bar explains the wait.
-  const [mapReady, setMapReady] = useState(false);
+  // The map chunk and its first tiles are the slowest part of a cold load;
+  // until the map reports first paint, the header and the build-time SVG
+  // network carry the screen, with a thin indeterminate bar above them.
+  const [mapLoaded, setMapLoaded] = useState(false);
   const { position, error: geoError } = useGeolocation();
   const { lang, t } = useT();
 
@@ -129,22 +140,8 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
     apply();
     return useSettingsStore.subscribe(apply);
   }, []);
-  const { compactHeader, showFare, fewerChanges, avoidWalking, avoidLines, walkSpeed, changeMinutes } = useSettingsStore(
-    (s) => s.settings,
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    // Always resolve through a promise: on the server (and in tests) the module
-    // is null, and setting state straight from the effect body would cascade a
-    // render before hydration.
-    void Promise.resolve(transitMapModule).then(() => {
-      if (!cancelled) setMapReady(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { compactHeader, showFare, fewerChanges, avoidWalking, avoidLines, walkSpeed, changeMinutes, mapProvider } =
+    useSettingsStore((s) => s.settings);
 
   // The route lives in the URL (?from=N15&to=CEN) so a reload, a PWA
   // relaunch, or a shared link lands on the same route. Read once on mount;
@@ -333,7 +330,7 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
       <StopAlertBanner alert={stopAlert} />
 
       <main id="map" tabIndex={-1} aria-label={t.mapRegion} className="relative isolate flex-1 overflow-hidden overflow-clip outline-none">
-        {!mapReady && (
+        {!mapLoaded && (
           <div
             role="progressbar"
             aria-label={t.loadingMap}
@@ -351,18 +348,44 @@ export function HomeClient({ children }: { children?: React.ReactNode }) {
             {t.locationDenied}
           </div>
         )}
-        <TransitMap
-          onSelectStation={handleSelectStation}
-          onSetStart={handleSetStart}
-          onSetDestination={handleSetDestination}
-          startCode={startCode}
-          destinationCode={destinationCode}
-          path={path}
-          userPosition={position}
-          focusStation={focusStation}
-          focusPlace={focusPlace}
-          sheetOpen={sheetOpen && hasRoute}
-        />
+        {/* Painted from the build-time HTML, so the network is visible
+            before any map JS runs. Removed once the map reports first paint. */}
+        {networkSvg && !mapLoaded && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-0 [&>svg]:h-full [&>svg]:w-full"
+            dangerouslySetInnerHTML={{ __html: networkSvg }}
+          />
+        )}
+        {mapProvider === "google" ? (
+          <GoogleTransitMap
+            onSelectStation={handleSelectStation}
+            onSetStart={handleSetStart}
+            onSetDestination={handleSetDestination}
+            startCode={startCode}
+            destinationCode={destinationCode}
+            path={path}
+            userPosition={position}
+            focusStation={focusStation}
+            focusPlace={focusPlace}
+            sheetOpen={sheetOpen && hasRoute}
+            onLoad={() => setMapLoaded(true)}
+          />
+        ) : (
+          <TransitMap
+            onSelectStation={handleSelectStation}
+            onSetStart={handleSetStart}
+            onSetDestination={handleSetDestination}
+            startCode={startCode}
+            destinationCode={destinationCode}
+            path={path}
+            userPosition={position}
+            focusStation={focusStation}
+            focusPlace={focusPlace}
+            sheetOpen={sheetOpen && hasRoute}
+            onLoad={() => setMapLoaded(true)}
+          />
+        )}
 
         {nearest && !hasRoute && (
           <button

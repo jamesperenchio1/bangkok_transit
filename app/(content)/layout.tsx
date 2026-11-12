@@ -16,6 +16,7 @@ export default function ContentLayout({ children }: { children: React.ReactNode 
           <Link href="/lines" className="underline-offset-2 hover:underline">Lines</Link>
           <Link href="/stations" className="underline-offset-2 hover:underline">Stations</Link>
           <Link href="/routes" className="underline-offset-2 hover:underline">Routes</Link>
+          <Link href="/info" className="underline-offset-2 hover:underline">Info</Link>
         </nav>
       </header>
       <main className="mx-auto max-w-3xl px-4 py-6 leading-relaxed">{children}</main>

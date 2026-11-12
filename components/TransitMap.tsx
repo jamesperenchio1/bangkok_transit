@@ -20,7 +20,8 @@ import type { GeoPosition } from "@/lib/use-geolocation";
 import type { PathResult } from "@/lib/transit-graph";
 import { StationActions } from "@/components/StationActions";
 import { distanceLabel, nearestStation } from "@/lib/nearest-station";
-import type { Place } from "@/lib/place-search";
+import type { Place } from "@/lib/google-places";
+import { GooglePlaceMap } from "@/components/GooglePlaceMap";
 import { applyTrainStyle, startLiveTrainsWhenIdle } from "@/components/live-trains-layer";
 import { routeHops } from "@/lib/live-trains";
 import { LINE_COLORS, readableTextColor } from "@/lib/line-colors";
@@ -146,6 +147,8 @@ export interface TransitMapProps {
   focusPlace: Place | null;
   /** Whether the route sheet covers the bottom of the screen (up to 70vh). */
   sheetOpen: boolean;
+  /** Called once, after the first style load and initial fit. */
+  onLoad?: () => void;
 }
 
 const LINES_SOURCE = "transit-lines";
@@ -330,10 +333,16 @@ export function TransitMap({
   focusStation,
   focusPlace,
   sheetOpen,
+  onLoad,
 }: TransitMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const loadedRef = useRef(false);
+  // Keep the newest callback without re-running the map-creation effect.
+  const onLoadRef = useRef(onLoad);
+  useEffect(() => {
+    onLoadRef.current = onLoad;
+  }, [onLoad]);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const geometryRef = useRef<LineSegments | null>(null);
   const stopTrainsRef = useRef<(() => void) | null>(null);
@@ -667,8 +676,12 @@ export function TransitMap({
       }
       // First view fully drawn (lines, stations, basemap tiles): from here the
       // page may start everything that is not the map - live times, the
-      // offline-map download. See lib/map-ready.ts.
-      map.once("idle", markMapPainted);
+      // offline-map download - and the instant SVG can hand over to the map.
+      // See lib/map-ready.ts.
+      map.once("idle", () => {
+        markMapPainted();
+        onLoadRef.current?.();
+      });
     });
 
     return () => {
@@ -1119,6 +1132,7 @@ function PlaceCard({
           </p>
         )}
       </div>
+      <GooglePlaceMap place={place} />
       <p className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-700 dark:text-neutral-300">
         {t.placeNearest}:
         <span

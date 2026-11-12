@@ -1,18 +1,12 @@
 import { expect, forgiveNetworkErrors, mapReady, servePlaces, test } from "./fixtures";
 
 const paragon = {
-  type: "Feature",
-  properties: {
-    osm_type: "W",
-    osm_id: 781138575,
-    osm_key: "shop",
-    osm_value: "mall",
-    name: "Siam Paragon",
-    street: "Rama I Road",
-    district: "Pathum Wan",
-    city: "Bangkok",
-  },
-  geometry: { type: "Point", coordinates: [100.534954, 13.7467785] },
+  id: "places/siam-paragon",
+  displayName: { text: "Siam Paragon" },
+  formattedAddress: "991 Rama I Rd, Pathum Wan, Bangkok",
+  location: { latitude: 13.7467785, longitude: 100.534954 },
+  types: ["shopping_mall", "point_of_interest"],
+  primaryTypeDisplayName: { text: "Shopping mall" },
 };
 
 test.use({ placesOnline: true, serviceWorkers: "block" });
@@ -47,9 +41,9 @@ test.describe("place search", () => {
 
   test("can be switched off: no request is made", async ({ page }) => {
     let calls = 0;
-    await page.route("https://photon.komoot.io/**", (route) => {
+    await page.route("https://places.googleapis.com/**", (route) => {
       calls++;
-      return route.fulfill({ json: { type: "FeatureCollection", features: [] } });
+      return route.fulfill({ json: { places: [] } });
     });
     await page.goto("/");
     await page.getByRole("button", { name: "Settings" }).click();
@@ -63,7 +57,7 @@ test.describe("place search", () => {
   });
 
   test("a failing service says so and leaves station search working", async ({ page, problems }) => {
-    await page.route("https://photon.komoot.io/**", (route) => route.abort());
+    await page.route("https://places.googleapis.com/**", (route) => route.abort());
     await page.goto("/");
     await page.getByRole("button", { name: "Search stations" }).click();
     await page.getByRole("combobox").fill("siam");
