@@ -413,9 +413,11 @@ function RouteSummary({ path, changes }: { path: PathResult; changes: number }) 
               {fare.segments.map((s) => t.fareLeg(lang === "th" ? s.nameTh : s.name, s.fare)).join(" · ")}
             </p>
           )}
-          {fare.discount > 0 && (
-            <p className="text-xs text-neutral-600 dark:text-neutral-300">{t.fareDiscount(fare.discount)}</p>
-          )}
+          {fare.applied.map((rule) => (
+            <p key={rule.id} className="text-xs text-neutral-600 dark:text-neutral-300">
+              {lang === "th" ? rule.message.th : rule.message.en}
+            </p>
+          ))}
           <p className="text-xs text-neutral-600 dark:text-neutral-300">{t.faresAsOf(fare.asOf)}</p>
         </div>
       )}

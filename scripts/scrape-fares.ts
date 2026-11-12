@@ -167,6 +167,24 @@ const GTFS_SYSTEMS: GtfsSpec[] = [
   { key: "pink", name: "MRT Pink", nameTh: "MRT สายสีชมพู", lines: ["pink"], agency: "MRTA", route: "Pink" },
 ];
 
+/**
+ * The Gold Line is run by Krungthep Thanakom, not BTS, and charges a flat fare:
+ * 17 baht from 1 January 2026, up from 16 (announced mid-December 2025: Prachachat
+ * news-1937086, Daily News 5407119, Nation 40059831). The Namtang feed still
+ * carries 16, so the feed's Gold pairs are overridden here, and a feed that
+ * has caught up is noticed rather than silently re-trusted.
+ */
+const GOLD_FLAT_FARE = 17;
+function applyGoldFare(pairs: Map<string, number>): void {
+  const gold = new Set(codesOf(["gold"]));
+  for (const key of [...pairs.keys()]) {
+    const [a, b] = key.split("|");
+    if (!gold.has(a) || !gold.has(b)) continue;
+    if (pairs.get(key) !== GOLD_FLAT_FARE) console.warn(`gold    ${key}: feed says ${pairs.get(key)}, using the announced flat ${GOLD_FLAT_FARE}`);
+    pairs.set(key, GOLD_FLAT_FARE);
+  }
+}
+
 function gtfsSystems(dir: string): Record<string, FareSystem> {
   const feed = readCsv(path.join(dir, "feed_info.txt"))[0];
   const routes = readCsv(path.join(dir, "routes.txt"));
@@ -222,6 +240,7 @@ function gtfsSystems(dir: string): Record<string, FareSystem> {
       if (was !== undefined && was !== p) conflicts++;
       seen.set(key, Math.max(was ?? 0, p));
     }
+    if (spec.key === "bts") applyGoldFare(seen);
     const pairs = Object.fromEntries([...seen.entries()].sort(([x], [y]) => (x < y ? -1 : 1)));
     console.log(`${spec.key.padEnd(7)} ${Object.keys(pairs).length} pairs, ${Math.min(...seen.values())}-${Math.max(...seen.values())} baht, ${conflicts} disagreeing pairs resolved upward`);
     if (conflicts > Math.max(5, seen.size * 0.05)) throw new Error(`${spec.key}: ${conflicts} disagreeing pairs - the feed looks broken`);

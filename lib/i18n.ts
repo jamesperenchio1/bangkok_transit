@@ -149,7 +149,6 @@ export const strings = {
     fareUnavailable: "Fare unavailable",
     fareLeg: (name: string, baht: number | null) => `${name} ${baht === null ? "fare unavailable" : `฿${baht}`}`,
     faresAsOf: (date: string) => `Fares as of ${date}.`,
-    fareDiscount: (baht: number) => `Includes a ฿${baht} transfer discount (entry fee waived or refunded to the same EMV card).`,
     trainsRegion: "Live trains",
     trainItem: (line: string, no: string, toward: string, next: string) =>
       `${line} train ${no}${toward ? `, heading to ${toward}` : ""}${next ? `, next stop ${next}` : ""}`,
@@ -260,7 +259,6 @@ export const strings = {
     fareUnavailable: "ยังไม่มีข้อมูลค่าโดยสาร",
     fareLeg: (name: string, baht: number | null) => `${name} ${baht === null ? "ยังไม่มีข้อมูลค่าโดยสาร" : `฿${baht}`}`,
     faresAsOf: (date: string) => `ค่าโดยสาร ณ วันที่ ${date}`,
-    fareDiscount: (baht: number) => `รวมส่วนลดการเปลี่ยนสาย ฿${baht} (ไม่คิดค่าแรกเข้า หรือคืนเข้าบัตร EMV ใบเดิม)`,
     trainsRegion: "รถไฟสด",
     trainItem: (line: string, no: string, toward: string, next: string) =>
       `${line} ขบวน ${no}${toward ? ` มุ่งหน้า ${toward}` : ""}${next ? ` สถานีถัดไป ${next}` : ""}`,

@@ -60,6 +60,14 @@ Poller logs (`console.warn("upstream failures")`, state transitions) are in the 
 | `check-live`: not edge-cached | `cf-cache-status` on `live.` | Restore the Cache Rule. |
 | A deploy broke the site | Workers → `bangkok-transit` → Deployments | Roll back to the previous version there, then fix forward. |
 
+## Fare audit
+
+`tests/fare-audit.test.ts` prices every ordered pair of stations (about 36,600 journeys, ~15 s) and fails on any rule violation (unpriced ride, rules raising a fare, discounts that do not add up, an unexplained difference between a journey and its reverse). Run it with `FARE_AUDIT_OUT=<dir> npx vitest run tests/fare-audit.test.ts` to also write `report.md`: which journeys get a transfer rate, and which changes between systems pay full price. `tests/fare-oracle.test.ts` compares the fares with operator tables copied as published into `data/fare-oracle/`.
+
+What is checked against an operator's own table: SRT Red Line (all 78 pairs, srtet.co.th), the MRT Blue Line table (Royal Gazette via Thai PBS, in `fares.test.ts`), the Gold Line flat 17 baht, and each transfer rule in `data/fare-rules.json` against the operator's terms (ebm.co.th, nbm.co.th). What is not: the BTS, Yellow, Pink and Airport Rail Link pair tables come from OTP's Namtang feed and are not independently verified (btsc.co.th has no readable table), and the MRT Purple per-station table is published only as an image in the Royal Gazette, so the data (which has a lowest fare of 16, where the regulation says fares start at 14) is unverified until someone reads that table. Fix by adding the operator's table to `data/fare-oracle/` and a case to the oracle test.
+
+Policy dates to watch: the Purple + Red 40-baht day cap ends 30 Nov 2026 (`red-purple-day-cap`; extend only on an operator notice); the 2027 joint ticket (`joint-ticket-2027`) is off until its regulation and interchange list are published; Pink → Purple at Nonthaburi Civic Center is off until an operator documents it. Discounts only apply with the same contactless (EMV) card, and the route sheet says so.
+
 ## Real-phone check: station alert sound and vibration
 
 The automated matrix (`npm run test:alert`) proves the code unlocks, resumes and schedules the chime correctly on every phone profile, but a headless browser can't hear it. Before announcing a change to `lib/alert-output.ts`, `lib/use-stop-alert.ts` or the alert controls, try it on real phones (open the app, plan a route, switch on *Alert me near my stop*, expand the options, tap *Test sound*):
