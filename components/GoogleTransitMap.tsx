@@ -1,19 +1,61 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { stations as allStations, stationsByCode, type Station } from "@/data/stations";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { stations, type LineKey, type Station } from "@/data/stations";
+import { LocateButton } from "@/components/LocateButton";
+import { PlaceCard, StationCard, TrainCard } from "@/components/map-cards";
+import { createTransitLayer, textWidth, type TransitLayer } from "@/components/google-layer";
+import { serverNow, useArrivalsStore } from "@/lib/arrivals-store";
+import { googleMapStyles } from "@/lib/google-map-style";
+import { loadGoogleMaps } from "@/lib/google-maps";
+import type { Place } from "@/lib/google-places";
+import { useT, strings, useLangStore } from "@/lib/i18n";
+import { labelFontSize, layoutLabels, type LabelAnchor, type LabelCandidate, type Rect } from "@/lib/label-layout";
 import { LINE_COLORS } from "@/lib/line-colors";
 import {
   fetchLineGeometry,
-  trackBetween,
+  loadedLineGeometry,
+  loadLineGeometryInBackground,
+  stationLineSegments,
   type LineSegments,
 } from "@/lib/line-geometry";
-import { googleMapsMapId, loadGoogleMaps } from "@/lib/google-maps";
-import type { Place } from "@/lib/google-places";
-import { stationName } from "@/lib/i18n";
-import { nearestStation } from "@/lib/nearest-station";
-import { useSettingsStore } from "@/lib/settings-store";
+import { estimateTrains, routeHops, trainOnRoute, type TrainEstimate } from "@/lib/live-trains";
+import { markMapPainted, whenMapPainted } from "@/lib/map-ready";
+import {
+  ENDPOINT_COLOR,
+  FOCUS_PADDING,
+  FOCUS_ZOOM_CAP,
+  FOCUS_ZOOM_FLOOR,
+  LABEL_CODE_ZOOM,
+  LOCATE_ZOOM,
+  MARKER_FACTOR,
+  PLACE_ZOOM,
+  googleToMapLibreZoom,
+  labelText,
+  lineTracks,
+  mapLibreToGoogleZoom,
+  routeBounds,
+  routeFitPadding,
+  routeParts,
+  stationVisuals,
+  type StationVisual,
+} from "@/lib/map-data";
+import { motionDuration, useSettingsStore } from "@/lib/settings-store";
 import type { PathResult } from "@/lib/transit-graph";
+import {
+  TRAIN_FRAME_MS,
+  TRAIN_LABEL_ZOOM,
+  TRAIN_SIZE_FACTOR,
+  TRAIN_SLOW_FRAME_MS,
+  TRAIN_TAP_RADIUS_PX,
+  TRAIN_ARROW_PATH,
+  TRAIN_ICON_SIZE,
+  createTrainPlacer,
+  describeTrain,
+  summariseTrain,
+  trainScale,
+} from "@/lib/train-model";
 import type { GeoPosition } from "@/lib/use-geolocation";
 
 export interface GoogleTransitMapProps {
@@ -27,22 +69,83 @@ export interface GoogleTransitMapProps {
   focusStation: Station | null;
   focusPlace: Place | null;
   sheetOpen: boolean;
+  /** Called once, after the first view has finished drawing. */
   onLoad?: () => void;
+  /** Google could not be used (offline, no key, blocked, bad key): the caller falls back to MapLibre. */
+  onError?: (reason: string) => void;
 }
 
-const CENTER = { lat: 13.7563, lng: 100.5018 };
-const WALK_COLOR = "#6b7280";
-
-type Overlay = {
-  setMap?: (map: google.maps.Map | null) => void;
-  map?: google.maps.Map | null;
+const STATION_BOUNDS = {
+  west: Math.min(...stations.map((s) => s.lon)),
+  south: Math.min(...stations.map((s) => s.lat)),
+  east: Math.max(...stations.map((s) => s.lon)),
+  north: Math.max(...stations.map((s) => s.lat)),
 };
-type Anchor = google.maps.MVCObject | google.maps.marker.AdvancedMarkerElement;
+
+/** The map has this long to show its first tiles before Google is given up on. */
+const LOAD_TIMEOUT_MS = 15_000;
+
+const WALK_COLOR = "#525252";
+const GPS_COLOR = "#2563eb";
+const FONT = `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Thai", sans-serif`;
+
+// Stacking inside the overlay layer, lowest first.
+// A station's tap target sits above the trains (a station under the finger wins,
+// as in MapLibre), while its drawn dot and the names stay below/above as drawn.
+const Z = { dot: 10, train: 20, hit: 25, label: 30, pin: 40, gps: 45, card: 100 } as const;
+
+interface StationNode {
+  station: Station;
+  dot: HTMLElement;
+  ring: HTMLElement;
+  fill: HTMLElement;
+  label: HTMLElement;
+  text: HTMLElement;
+  visual: StationVisual;
+  radius: number;
+  /** What the label last showed, so an unchanged label is not rewritten. */
+  shown: string;
+}
+
+interface TrainNode {
+  root: HTMLElement;
+  arrow: SVGSVGElement;
+  label: HTMLElement;
+  hit: HTMLElement;
+  train: TrainEstimate;
+  at: [number, number];
+}
+
+interface OpenCard {
+  id: string;
+  close: () => void;
+  refresh: () => void;
+}
+
+function isDarkNow(theme: "system" | "light" | "dark"): boolean {
+  if (theme === "dark") return true;
+  if (theme === "light") return false;
+  return typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, css: string, className = ""): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  node.style.cssText = css;
+  if (className) node.className = className;
+  return node;
+}
+
+function centered(css: string): string {
+  return `position:absolute;left:0;top:0;transform:translate(-50%,-50%);${css}`;
+}
 
 /**
- * The opt-in Google basemap. It mirrors the MapLibre view (curved lines,
- * station dots, route, GPS) but is only mounted when Settings says Google,
- * so the default visit never downloads the Maps JavaScript API.
+ * The opt-in Google basemap. It draws exactly what the MapLibre map draws -
+ * lines, the route, station dots and names, live trains, the GPS dot, the
+ * station and place cards - from the same shared data (lib/map-data.ts,
+ * lib/train-model.ts, components/map-cards.tsx) and honours the same settings.
+ * Only the drawing is different: native polylines for the track, and one DOM
+ * layer (components/google-layer.ts) for everything that marks a point.
  */
 export function GoogleTransitMap({
   onSelectStation,
@@ -56,517 +159,887 @@ export function GoogleTransitMap({
   focusPlace,
   sheetOpen,
   onLoad,
+  onError,
 }: GoogleTransitMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
-  const infoRef = useRef<google.maps.InfoWindow | null>(null);
-  const geometryRef = useRef<LineSegments>({});
-  const baseOverlays = useRef<Overlay[]>([]);
-  const routeOverlays = useRef<Overlay[]>([]);
-  const startOverlay = useRef<Overlay | null>(null);
-  const destinationOverlay = useRef<Overlay | null>(null);
-  const gpsOverlay = useRef<Overlay | null>(null);
-  const placeOverlay = useRef<Overlay | null>(null);
-  const readyRef = useRef(false);
+  const layerRef = useRef<TransitLayer | null>(null);
+  /** The track that is drawn: curved when known, straight stand-in until it arrives. */
+  const [segments, setSegments] = useState<LineSegments | null>(null);
+  /** The real curved track, or null until it has arrived (trains and routes wait for it). */
+  const realGeometryRef = useRef<LineSegments | null>(null);
+  const [ready, setReady] = useState(false);
+  const baseLines = useRef<google.maps.Polyline[]>([]);
+  const routeLines = useRef<google.maps.Polyline[]>([]);
+  const gpsCircle = useRef<google.maps.Circle | null>(null);
+  const nodes = useRef(new Map<string, StationNode>());
+  const trainNodes = useRef(new Map<string, TrainNode>());
+  const cardRef = useRef<OpenCard | null>(null);
+  /** The train the open card follows, if the open card is a train's. */
+  const trainCardRef = useRef<string | null>(null);
+  const movingRef = useRef(false);
+  const relayoutRef = useRef<() => void>(() => {});
+  /** Boxes the station names occupy, so train labels (placed after them) stay clear of them. */
+  const stationLabelRects = useRef<Rect[]>([]);
 
-  const { lineWidth, zoomButtons, googleMapType, theme, showLabels } =
-    useSettingsStore((s) => s.settings);
+  const { lang } = useT();
+  const settings = useSettingsStore((s) => s.settings);
+  // "System" follows the OS live: Google's basemap does not follow our theme on its own.
+  const [systemDark, setSystemDark] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-color-scheme: dark)");
+    const update = () => setSystemDark(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  const isDark = settings.theme === "system" ? systemDark : settings.theme === "dark";
 
-  const latest = useRef({
-    onSelectStation,
-    onSetStart,
-    onSetDestination,
-    path,
-    startCode,
-    destinationCode,
-    userPosition,
-    focusStation,
-    focusPlace,
-    lineWidth,
-    showLabels,
-    onLoad,
+  const pathCodes = useMemo(() => new Set(path?.legs.map((l) => l.station.code) ?? []), [path]);
+  const isRouting = path !== null;
+  const routeLineKeys = useMemo(
+    () => (path ? [...new Set(path.legs.map((l) => l.line).filter((l): l is LineKey => Boolean(l)))] : []),
+    [path],
+  );
+  const routeHopsRef = useRef<ReadonlySet<string> | null>(null);
+  useEffect(() => {
+    routeHopsRef.current = path ? routeHops(path.legs) : null;
+  }, [path]);
+
+  // The newest props and settings, for handlers created once.
+  const latest = useRef({ onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, onLoad, onError, settings, lang });
+  useEffect(() => {
+    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, onLoad, onError, settings, lang };
   });
-  latest.current = {
-    onSelectStation,
-    onSetStart,
-    onSetDestination,
-    path,
-    startCode,
-    destinationCode,
-    userPosition,
-    focusStation,
-    focusPlace,
-    lineWidth,
-    showLabels,
-    onLoad,
-  };
+
+  const reducedMotion = () => motionDuration(1) === 0;
+
+  /** Move the camera, animated unless the rider asked for less motion. */
+  function moveTo(center: google.maps.LatLngLiteral, zoom?: number) {
+    const map = mapRef.current;
+    if (!map) return;
+    movingRef.current = true;
+    if (reducedMotion()) map.moveCamera({ center, ...(zoom !== undefined ? { zoom } : {}) });
+    else {
+      map.panTo(center);
+      if (zoom !== undefined && zoom !== map.getZoom()) map.setZoom(zoom);
+    }
+  }
+
+  // ---- Cards -------------------------------------------------------------
+
+  function closeCard() {
+    const open = cardRef.current;
+    if (!open) return;
+    cardRef.current = null;
+    trainCardRef.current = null;
+    open.close();
+  }
+
+  /** One card at a time, anchored above a point. `content` is re-run to refresh it. */
+  function showCard(id: string, lat: number, lon: number, offset: number, content: (close: () => void) => ReactNode, extra?: () => void) {
+    const layer = layerRef.current;
+    if (!layer) return;
+    closeCard();
+    const g = window.google;
+    const root = document.createElement("div");
+    const card = document.createElement("div");
+    card.className = "bt-card";
+    card.style.setProperty("--bt-card-offset", `${offset}px`);
+    const body = document.createElement("div");
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "bt-card-close";
+    close.setAttribute("aria-label", strings[latest.current.lang].close);
+    close.textContent = "×";
+    card.append(body, close);
+    root.append(card);
+    // Taps and wheel/drag on the card are the card's, not the map's.
+    g.maps.OverlayView.preventMapHitsAndGesturesFrom(card);
+    layer.add(id, lat, lon, root, Z.card);
+    const react: Root = createRoot(body);
+    const dismiss = () => {
+      if (cardRef.current?.id === id) cardRef.current = null;
+      document.removeEventListener("keydown", onKey);
+      // Deferred: a close can be triggered from inside a React handler of this very root.
+      queueMicrotask(() => react.unmount());
+      layer.remove(id);
+      extra?.();
+    };
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") closeCard();
+    }
+    document.addEventListener("keydown", onKey);
+    close.addEventListener("click", () => closeCard());
+    const render = () => react.render(<>{content(() => closeCard())}</>);
+    cardRef.current = { id, close: dismiss, refresh: render };
+    render();
+    close.focus({ preventScroll: true });
+  }
+
+  function openStationCard(station: Station) {
+    showCard(
+      "card",
+      station.lat,
+      station.lon,
+      14,
+      (close) => (
+        <StationCard
+          station={station}
+          startCode={latest.current.startCode}
+          destinationCode={latest.current.destinationCode}
+          onSetStart={(s) => {
+            latest.current.onSetStart(s);
+            queueMicrotask(close);
+          }}
+          onSetDestination={(s) => {
+            latest.current.onSetDestination(s);
+            queueMicrotask(close);
+          }}
+        />
+      ),
+    );
+  }
+
+  function openPlaceCard(place: Place) {
+    const layer = layerRef.current;
+    if (!layer) return;
+    const pin = el("div", "");
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("width", "28");
+    svg.setAttribute("height", "38");
+    svg.setAttribute("viewBox", "0 0 28 38");
+    svg.style.cssText = "position:absolute;left:-14px;top:-38px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4));pointer-events:none";
+    const body = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    body.setAttribute("d", "M14 0C6.3 0 0 6.2 0 13.8 0 24 14 38 14 38s14-14 14-24.2C28 6.2 21.7 0 14 0z");
+    body.setAttribute("fill", "#dc2626");
+    const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    dot.setAttribute("cx", "14");
+    dot.setAttribute("cy", "13.5");
+    dot.setAttribute("r", "5");
+    dot.setAttribute("fill", "#ffffff");
+    svg.append(body, dot);
+    pin.append(svg);
+    showCard(
+      "card",
+      place.lat,
+      place.lon,
+      38,
+      (close) => (
+        <PlaceCard
+          place={place}
+          startCode={latest.current.startCode}
+          destinationCode={latest.current.destinationCode}
+          onSetStart={(s) => {
+            latest.current.onSetStart(s);
+            queueMicrotask(close);
+          }}
+          onSetDestination={(s) => {
+            latest.current.onSetDestination(s);
+            queueMicrotask(close);
+          }}
+        />
+      ),
+      () => layer.remove("pin"),
+    );
+    layer.add("pin", place.lat, place.lon, pin, Z.pin);
+  }
+
+  // ---- Boot --------------------------------------------------------------
 
   useEffect(() => {
     let cancelled = false;
+    let stopGeometry: (() => void) | null = null;
+    let loadTimer: ReturnType<typeof setTimeout> | undefined;
     const listeners: google.maps.MapsEventListener[] = [];
+    const base = nodes.current;
+    const trains = trainNodes.current;
+
+    const fail = (reason: string) => {
+      if (cancelled) return;
+      cancelled = true;
+      // HomeClient keeps the build-time network on screen, then swaps in MapLibre.
+      containerRef.current?.setAttribute("data-google-error", reason);
+      latest.current.onError?.(reason);
+    };
 
     async function boot() {
+      // Google calls this when the key or its restrictions are rejected: the
+      // map would otherwise stay a grey "for development purposes only" tile.
+      (window as unknown as { gm_authFailure?: () => void }).gm_authFailure = () => fail("auth");
       const g = await loadGoogleMaps();
       if (cancelled || !containerRef.current) return;
 
-      const mapId = googleMapsMapId();
-      const options: google.maps.MapOptions = {
-        center: CENTER,
+      const s = latest.current.settings;
+      const startDark = isDarkNow(s.theme);
+      const map = new g.maps.Map(containerRef.current, {
+        center: { lat: (STATION_BOUNDS.north + STATION_BOUNDS.south) / 2, lng: (STATION_BOUNDS.east + STATION_BOUNDS.west) / 2 },
         zoom: 11,
+        minZoom: 8,
         disableDefaultUI: true,
-        zoomControl: zoomButtons,
-        streetViewControl: false,
-        mapTypeControl: false,
-        fullscreenControl: false,
-        clickableIcons: false,
+        zoomControl: s.zoomButtons,
+        zoomControlOptions: { position: g.maps.ControlPosition.LEFT_TOP },
         gestureHandling: "greedy",
-        backgroundColor: "#f2efe9",
-      };
-      if (mapId) {
-        // A Map ID enables vector maps and the light/dark `colorScheme`.
-        options.mapId = mapId;
-        options.colorScheme = theme === "dark" ? "DARK" : "LIGHT";
-      } else {
-        // Without a Map ID the JS API uses raster tiles, where `colorScheme`
-        // is invalid; the map type (roadmap/hybrid/satellite) applies instead.
-        options.mapTypeId = googleMapType as google.maps.MapTypeId;
-      }
-      const map = new g.maps.Map(containerRef.current, options);
+        clickableIcons: false,
+        mapTypeId: s.googleMapType,
+        styles: googleMapStyles({ dark: startDark, basemapLabels: s.basemapLabels }),
+        backgroundColor: startDark ? "#1f2430" : "#f2efe9",
+      });
       mapRef.current = map;
-      infoRef.current = new g.maps.InfoWindow();
+      (window as unknown as { __googleMap?: google.maps.Map }).__googleMap = map;
+      map.fitBounds(STATION_BOUNDS, 24);
 
-      geometryRef.current = await fetchLineGeometry();
-      if (cancelled) return;
-
-      drawBase();
-      drawRoute(latest.current.path);
-      drawEndpoints(latest.current.startCode, latest.current.destinationCode);
-      drawGps(latest.current.userPosition);
-      if (latest.current.focusStation) focusOnStation(latest.current.focusStation);
-      if (latest.current.focusPlace) focusOnPlace(latest.current.focusPlace);
-
-      const bounds = new g.maps.LatLngBounds();
-      for (const station of allStations) {
-        bounds.extend({ lat: station.lat, lng: station.lon });
-      }
-      map.fitBounds(bounds, 48);
-
+      loadTimer = setTimeout(() => fail("timeout"), LOAD_TIMEOUT_MS);
       listeners.push(
-        map.addListener("idle", () => {
-          if (readyRef.current) return;
-          readyRef.current = true;
+        g.maps.event.addListenerOnce(map, "tilesloaded", () => clearTimeout(loadTimer)),
+        // The first view fully drawn: live times and the offline download may start.
+        g.maps.event.addListenerOnce(map, "idle", () => {
+          markMapPainted();
           latest.current.onLoad?.();
         }),
+        map.addListener("dragstart", () => {
+          movingRef.current = true;
+          if (latest.current.settings.followMe) useSettingsStore.getState().update({ followMe: false });
+        }),
+        map.addListener("idle", () => {
+          movingRef.current = false;
+          relayoutRef.current();
+        }),
+        map.addListener("zoom_changed", () => relayoutRef.current()),
+        // A tap on empty map closes the open card, like MapLibre's popups.
+        map.addListener("click", () => closeCard()),
       );
+
+      // The lines are drawn from the first frame: the curved track if it has
+      // already arrived, straight station-to-station track otherwise, with the
+      // curves swapped in when they land. Never a missing or unconnected line.
+      const known = loadedLineGeometry();
+      if (known) realGeometryRef.current = known;
+      setSegments(known ?? stationLineSegments());
+      if (!known) {
+        stopGeometry = loadLineGeometryInBackground((real) => {
+          if (cancelled) return;
+          realGeometryRef.current = real;
+          setSegments(real);
+        });
+      }
+
+      const layer = createTransitLayer(g);
+      layerRef.current = layer;
+      layer.onDraw = () => relayoutRef.current();
+      layer.onReady = () => {
+        if (!cancelled) setReady(true);
+      };
+      layer.setMap(map);
     }
 
-    void boot().catch((error: unknown) => {
-      // No key, offline, or a blocked script: HomeClient keeps the SVG
-      // network on screen instead of showing a broken map.
-      const message = error instanceof Error ? error.message : String(error);
-      containerRef.current?.setAttribute("data-google-error", message);
-    });
+    void boot().catch((error: unknown) => fail(error instanceof Error ? error.message : String(error)));
 
     return () => {
       cancelled = true;
-      for (const listener of listeners) listener.remove();
-      baseOverlays.current = [];
-      routeOverlays.current = [];
-      infoRef.current?.close();
+      clearTimeout(loadTimer);
+      stopGeometry?.();
+      for (const l of listeners) l.remove();
+      for (const line of [...baseLines.current, ...routeLines.current]) line.setMap(null);
+      baseLines.current = [];
+      routeLines.current = [];
+      gpsCircle.current?.setMap(null);
+      gpsCircle.current = null;
+      closeCard();
+      layerRef.current?.setMap(null);
+      layerRef.current = null;
+      base.clear();
+      trains.clear();
       mapRef.current = null;
+      (window as unknown as { __googleMap?: unknown }).__googleMap = undefined;
     };
-    // The map is created once; settings and props are applied by the effects
-    // below so changing a route never rebuilds the basemap.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // The map is created once; every setting and prop is applied by the effects below.
   }, []);
 
-  function detach(overlay: Overlay | null) {
-    if (!overlay) return;
-    if (overlay.setMap) overlay.setMap(null);
-    else overlay.map = null;
-  }
+  // ---- Map options: buttons, map type, theme, basemap names ---------------
 
-  function clear(list: React.RefObject<Overlay[]>) {
-    for (const overlay of list.current) detach(overlay);
-    list.current = [];
-  }
-
-  function addStationMarker(map: google.maps.Map, station: Station): Overlay {
-    const g = window.google;
-    const color = LINE_COLORS[station.lines[0]?.line ?? "sukhumvit"];
-    const big = station.lines.length > 1;
-    const size = big ? 14 : 10;
-
-    if (googleMapsMapId()) {
-      const wrap = document.createElement("button");
-      wrap.type = "button";
-      wrap.className = "flex items-center gap-1 border-0 bg-transparent p-0";
-      wrap.setAttribute("aria-label", stationName(station, "en"));
-
-      const dot = document.createElement("span");
-      dot.className = "block rounded-full border-2 border-white shadow";
-      dot.style.width = `${size}px`;
-      dot.style.height = `${size}px`;
-      dot.style.background = color;
-
-      const label = document.createElement("span");
-      label.textContent = station.nameEn;
-      label.dataset.stationLabel = "1";
-      label.className =
-        "whitespace-nowrap rounded bg-white/85 px-1 text-[10px] font-medium text-neutral-800 shadow-sm dark:bg-neutral-900/85 dark:text-neutral-100";
-      label.style.display = latest.current.showLabels ? "" : "none";
-
-      wrap.append(dot, label);
-      const marker = new g.maps.marker.AdvancedMarkerElement({
-        map,
-        position: { lat: station.lat, lng: station.lon },
-        content: wrap,
-        title: stationName(station, "en"),
-        zIndex: big ? 12 : 10,
-      });
-      marker.addListener("click", () => openStation(station, marker));
-      return marker;
-    }
-
-    const marker = new g.maps.Marker({
-      map,
-      position: { lat: station.lat, lng: station.lon },
-      title: stationName(station, "en"),
-      icon: {
-        path: g.maps.SymbolPath.CIRCLE,
-        scale: big ? 7 : 5,
-        fillColor: color,
-        fillOpacity: 1,
-        strokeColor: "#ffffff",
-        strokeWeight: 2,
-      },
-      zIndex: big ? 12 : 10,
-    });
-    marker.addListener("click", () => openStation(station, marker));
-    return marker;
-  }
-
-  function drawBase() {
-    const g = window.google;
+  const { zoomButtons, googleMapType, basemapLabels } = settings;
+  useEffect(() => {
     const map = mapRef.current;
-    if (!g || !map) return;
-    clear(baseOverlays);
+    if (!map || !ready) return;
+    map.setOptions({
+      zoomControl: zoomButtons,
+      mapTypeId: googleMapType,
+      styles: googleMapStyles({ dark: isDark, basemapLabels }),
+      backgroundColor: isDark ? "#1f2430" : "#f2efe9",
+    });
+  }, [ready, zoomButtons, googleMapType, isDark, basemapLabels]);
 
-    for (const [line, segments] of Object.entries(geometryRef.current)) {
-      const color = LINE_COLORS[line as keyof typeof LINE_COLORS] ?? "#64748b";
-      for (const segment of segments) {
-        baseOverlays.current.push(
+  // ---- Lines -------------------------------------------------------------
+
+  const { dimLines, onlyRouteLines, lineWidth, hiddenLines, routeWidth } = settings;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !segments) return;
+    const g = window.google;
+    for (const line of baseLines.current) line.setMap(null);
+    const grey = isRouting && dimLines;
+    baseLines.current = lineTracks(segments)
+      // Hidden lines, and (while routing, if asked) every line the route doesn't use.
+      .filter(({ line }) => !hiddenLines.includes(line) && !(isRouting && onlyRouteLines && !routeLineKeys.includes(line)))
+      .map(
+        ({ line, points }) =>
           new g.maps.Polyline({
             map,
-            path: segment.map(([lat, lon]) => ({ lat, lng: lon })),
-            strokeColor: color,
-            strokeOpacity: 0.9,
-            strokeWeight: latest.current.lineWidth,
+            path: points.map(([lat, lng]) => ({ lat, lng })),
+            strokeColor: grey ? "#cccccc" : LINE_COLORS[line],
+            strokeOpacity: grey ? 0.6 : 0.9,
+            strokeWeight: grey ? Math.max(2, lineWidth - 1) : lineWidth,
             clickable: false,
             zIndex: 2,
           }),
+      );
+  }, [ready, segments, isRouting, dimLines, onlyRouteLines, lineWidth, hiddenLines, routeLineKeys]);
+
+  // ---- The highlighted route ----------------------------------------------
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    for (const line of routeLines.current) line.setMap(null);
+    routeLines.current = [];
+    if (!path) return;
+    let stale = false;
+    void fetchLineGeometry().then((real) => {
+      if (stale) return;
+      const g = window.google;
+      routeLines.current = routeParts(path, real).map(({ line, walk, points }) => {
+        const pathLatLng = points.map(([lat, lng]) => ({ lat, lng }));
+        return walk
+          ? new g.maps.Polyline({
+              map,
+              path: pathLatLng,
+              strokeOpacity: 0,
+              clickable: false,
+              zIndex: 20,
+              // A dashed line: Google has no dash style, so a repeated 1px-gap symbol draws it.
+              icons: [
+                {
+                  icon: { path: "M 0,-1 0,1", strokeOpacity: 1, strokeColor: WALK_COLOR, scale: Math.max(2, routeWidth - 2) / 2 },
+                  offset: "0",
+                  repeat: "9px",
+                },
+              ],
+            })
+          : new g.maps.Polyline({
+              map,
+              path: pathLatLng,
+              strokeColor: LINE_COLORS[line as LineKey] ?? "#666666",
+              strokeOpacity: 1,
+              strokeWeight: routeWidth,
+              clickable: false,
+              zIndex: 20,
+            });
+      });
+    });
+    return () => {
+      stale = true;
+    };
+  }, [ready, path, routeWidth]);
+
+  // Keep a planned route in view, in whatever the route sheet leaves uncovered.
+  useEffect(() => {
+    const map = mapRef.current;
+    const container = containerRef.current;
+    if (!map || !container || !ready || !path) return;
+    const g = window.google;
+    const rect = container.getBoundingClientRect();
+    const [[west, south], [east, north]] = routeBounds(path);
+    movingRef.current = true;
+    map.fitBounds({ west, south, east, north }, routeFitPadding(sheetOpen, rect.bottom, rect.height, window.innerHeight));
+    const cap = mapLibreToGoogleZoom(FOCUS_ZOOM_CAP);
+    const listener = g.maps.event.addListenerOnce(map, "idle", () => {
+      if ((map.getZoom() ?? 0) > cap) map.setZoom(cap);
+    });
+    return () => listener.remove();
+  }, [ready, path, sheetOpen]);
+
+  // ---- Stations: dots, tap targets and names -------------------------------
+
+  const { markerSize, showLabels, labelCodes, labelLanguage, labelMinZoom } = settings;
+
+  function buildStationNode(station: Station): StationNode {
+    const layer = layerRef.current!;
+    const dot = el("div", "");
+    const hitRoot = el("div", "");
+    const hit = el("button", centered("width:44px;height:44px;border:0;padding:0;background:transparent;border-radius:9999px;cursor:pointer"));
+    hit.type = "button";
+    hit.tabIndex = -1;
+    hit.setAttribute("aria-label", station.nameEn);
+    hit.addEventListener("click", (e) => {
+      e.stopPropagation();
+      latest.current.onSelectStation(station);
+      openStationCard(station);
+    });
+    const ring = el("span", centered(`width:28px;height:28px;box-sizing:border-box;border:3px dashed ${ENDPOINT_COLOR};border-radius:9999px;display:none;pointer-events:none`));
+    const fill = el("span", centered("border-radius:9999px;box-sizing:border-box;pointer-events:none"));
+    dot.append(ring, fill);
+    hitRoot.append(hit);
+    layer.add(`d:${station.code}`, station.lat, station.lon, dot, Z.dot);
+    layer.add(`h:${station.code}`, station.lat, station.lon, hitRoot, Z.hit);
+
+    const label = el("div", "");
+    const text = el("div", `position:absolute;left:0;top:0;white-space:nowrap;pointer-events:none;font:700 12px/1.2 ${FONT}`);
+    label.append(text);
+    label.style.display = "none";
+    layer.add(`l:${station.code}`, station.lat, station.lon, label, Z.label);
+    return { station, dot, ring, fill, label, text, visual: undefined as unknown as StationVisual, radius: 4, shown: "" };
+  }
+
+  useEffect(() => {
+    const layer = layerRef.current;
+    if (!layer || !ready) return;
+    const visuals = stationVisuals(pathCodes, startCode, destinationCode, isRouting, hiddenLines);
+    const k = MARKER_FACTOR[markerSize];
+    const keep = new Set<string>();
+    for (const v of visuals) {
+      keep.add(v.code);
+      const node = nodes.current.get(v.code) ?? buildStationNode(v.station);
+      nodes.current.set(v.code, node);
+      node.visual = v;
+      node.radius = v.radius * k;
+      const size = node.radius * 2 + v.strokeWidth;
+      Object.assign(node.fill.style, {
+        width: `${size}px`,
+        height: `${size}px`,
+        background: v.fillColor,
+        opacity: String(v.fillOpacity),
+        border: `${v.strokeWidth}px solid ${v.strokeColor}`,
+      });
+      node.ring.style.display = v.isDestination ? "block" : "none";
+      node.shown = "";
+    }
+    for (const code of [...nodes.current.keys()]) {
+      if (keep.has(code)) continue;
+      layer.remove(`d:${code}`);
+      layer.remove(`h:${code}`);
+      layer.remove(`l:${code}`);
+      nodes.current.delete(code);
+    }
+    relayoutRef.current();
+    // buildStationNode only reads refs and the stable `latest`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, pathCodes, startCode, destinationCode, isRouting, hiddenLines, markerSize]);
+
+  // Names: which show, where, and in what text - the same rules as MapLibre's
+  // label layer (zoom threshold, sort-key priority, variable anchor, language,
+  // code on a second line once zoomed in), computed in lib/label-layout.ts.
+  useEffect(() => {
+    relayoutRef.current = () => {
+      const layer = layerRef.current;
+      const map = mapRef.current;
+      if (!layer || !map || nodes.current.size === 0) return;
+      const s = latest.current.settings;
+      const zoom = googleToMapLibreZoom(map.getZoom() ?? 11);
+      if (!s.showLabels || zoom < s.labelMinZoom) {
+        for (const node of nodes.current.values()) node.label.style.display = "none";
+        return;
+      }
+      const size = labelFontSize(zoom);
+      const withCode = s.labelCodes && zoom >= LABEL_CODE_ZOOM;
+      const candidates: LabelCandidate[] = [];
+      const texts = new Map<string, ReturnType<typeof labelText>>();
+      for (const [code, node] of nodes.current) {
+        const p = layer.pointOf(node.station.lat, node.station.lon);
+        if (!p) continue;
+        const text = labelText(node.station, latest.current.lang, s.labelLanguage, withCode);
+        texts.set(code, text);
+        const widths = [textWidth(text.primary, size)];
+        if (text.secondary) widths.push(textWidth(text.secondary, size * 0.85));
+        if (text.code) widths.push(textWidth(text.code, size * 0.8));
+        const lines = 1 + (text.secondary ? 0.85 : 0) + (text.code ? 0.8 : 0);
+        candidates.push({
+          id: code,
+          x: p.x,
+          y: p.y,
+          w: Math.max(...widths) + 2,
+          h: size * 1.2 * lines,
+          sortKey: node.visual.sortKey,
+          radius: node.radius,
+        });
+      }
+      const { anchors, rects } = layoutLabels(candidates);
+      stationLabelRects.current = rects;
+      const dark = isDarkNow(s.theme);
+      for (const [code, node] of nodes.current) {
+        const anchor = anchors.get(code);
+        const text = texts.get(code);
+        if (!anchor || !text) {
+          node.label.style.display = "none";
+          continue;
+        }
+        node.label.style.display = "block";
+        applyLabel(node, text, anchor, size, dark);
+      }
+    };
+    relayoutRef.current();
+  }, [ready, showLabels, labelCodes, labelLanguage, labelMinZoom, lang, isDark, markerSize, hiddenLines, pathCodes]);
+
+  // ---- GPS -----------------------------------------------------------------
+
+  const { showLocation, followMe } = settings;
+  useEffect(() => {
+    const layer = layerRef.current;
+    const map = mapRef.current;
+    if (!layer || !map || !ready) return;
+    const g = window.google;
+    layer.remove("gps");
+    gpsCircle.current?.setMap(null);
+    gpsCircle.current = null;
+    if (!userPosition || !showLocation) return;
+    const dot = el("div", "");
+    dot.append(el("span", centered(`width:18px;height:18px;box-sizing:border-box;border-radius:9999px;background:${GPS_COLOR};border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15)`)));
+    layer.add("gps", userPosition.lat, userPosition.lon, dot, Z.gps);
+    // The accuracy estimate as a real circle on the ground, like MapLibre's.
+    if (userPosition.accuracy > 0) {
+      gpsCircle.current = new g.maps.Circle({
+        map,
+        center: { lat: userPosition.lat, lng: userPosition.lon },
+        radius: userPosition.accuracy,
+        fillColor: GPS_COLOR,
+        fillOpacity: 0.12,
+        strokeColor: GPS_COLOR,
+        strokeOpacity: 0.35,
+        strokeWeight: 1,
+        clickable: false,
+        zIndex: 1,
+      });
+    }
+  }, [ready, userPosition, showLocation]);
+
+  // "Follow me": keep the map centred on the rider; dragging the map turns it off.
+  useEffect(() => {
+    if (!ready || !userPosition || !followMe || movingRef.current) return;
+    moveTo({ lat: userPosition.lat, lng: userPosition.lon });
+    // moveTo reads only refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, userPosition, followMe]);
+
+  // ---- Cards stay in step with the route state -----------------------------
+
+  useEffect(() => {
+    cardRef.current?.refresh();
+  }, [startCode, destinationCode]);
+
+  // ---- Camera: a picked station, a picked place ----------------------------
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const layer = layerRef.current;
+    const container = containerRef.current;
+    if (!map || !layer || !container || !ready || !focusStation) return;
+    const g = window.google;
+    const { startCode: s, destinationCode: d } = latest.current;
+    // The other end of a route in progress, if any: picking a destination
+    // must keep the start in view (and vice versa), not replace it.
+    const otherCode = [s, d].find((c) => c && c !== focusStation.code);
+    const other = otherCode ? stations.find((x) => x.code === otherCode) : undefined;
+    const rect = container.getBoundingClientRect();
+    const visible = (st: Station) => {
+      const p = layer.containerPointOf(st.lat, st.lon);
+      return (
+        !!p &&
+        p.x >= FOCUS_PADDING.left &&
+        p.x <= rect.width - FOCUS_PADDING.right &&
+        p.y >= FOCUS_PADDING.top &&
+        p.y <= rect.height - FOCUS_PADDING.bottom
+      );
+    };
+    const points = other ? [focusStation, other] : [focusStation];
+    if (!points.every(visible)) {
+      const target = { lat: focusStation.lat, lng: focusStation.lon };
+      if (!latest.current.settings.autoZoom) moveTo(target);
+      else if (other) {
+        movingRef.current = true;
+        map.fitBounds(
+          {
+            west: Math.min(focusStation.lon, other.lon),
+            east: Math.max(focusStation.lon, other.lon),
+            south: Math.min(focusStation.lat, other.lat),
+            north: Math.max(focusStation.lat, other.lat),
+          },
+          FOCUS_PADDING,
         );
+        const cap = mapLibreToGoogleZoom(FOCUS_ZOOM_CAP);
+        g.maps.event.addListenerOnce(map, "idle", () => {
+          if ((map.getZoom() ?? 0) > cap) map.setZoom(cap);
+        });
+      } else {
+        moveTo(target, Math.max(map.getZoom() ?? 11, mapLibreToGoogleZoom(FOCUS_ZOOM_FLOOR)));
+      }
+    }
+    openStationCard(focusStation);
+    // The camera and card are driven by the pick alone; the rest is read from `latest`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, focusStation]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !focusPlace) return;
+    const zoom = latest.current.settings.autoZoom ? Math.max(map.getZoom() ?? 11, mapLibreToGoogleZoom(PLACE_ZOOM)) : undefined;
+    moveTo({ lat: focusPlace.lat, lng: focusPlace.lon }, zoom);
+    openPlaceCard(focusPlace);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, focusPlace]);
+
+  // ---- Live trains ---------------------------------------------------------
+
+  // Train settings are read fresh on every frame, so a change shows within a
+  // quarter of a second and nothing here needs to restart.
+  useEffect(() => {
+    const layer = layerRef.current;
+    const container = containerRef.current;
+    if (!layer || !container || !ready) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const place = createTrainPlacer();
+    const live = trainNodes.current;
+    const list = document.createElement("ul");
+    list.className = "sr-only";
+    list.setAttribute("aria-label", strings[useLangStore.getState().lang].trainsRegion);
+    container.after(list);
+    let listSignature = "";
+
+    function openTrainCard(id: string) {
+      const node = live.get(id);
+      if (!node) return;
+      showCard(
+        "card",
+        node.at[1],
+        node.at[0],
+        20,
+        () => {
+          const current = live.get(id);
+          return current ? <TrainCard trainNo={current.train.trainNo} text={describeTrain(current.train)} /> : null;
+        },
+      );
+      trainCardRef.current = id;
+    }
+
+    function buildTrain(id: string): TrainNode {
+      const root = el("div", "");
+      const hit = el(
+        "button",
+        centered(`width:${TRAIN_TAP_RADIUS_PX * 2}px;height:${TRAIN_TAP_RADIUS_PX * 2}px;border:0;padding:0;background:transparent;border-radius:9999px;cursor:pointer`),
+      );
+      hit.type = "button";
+      hit.tabIndex = -1;
+      hit.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openTrainCard(id);
+      });
+      const arrow = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      arrow.setAttribute("viewBox", `0 0 ${TRAIN_ICON_SIZE} ${TRAIN_ICON_SIZE}`);
+      arrow.style.cssText = centered("pointer-events:none;overflow:visible;transition:transform .25s linear");
+      // Outer dark edge, then white outline, then the navy body: contrast against any basemap.
+      for (const [stroke, width, fill] of [["#0b1220", 8, "none"], ["#ffffff", 6, "none"], ["none", 0, "#0b2a6b"]] as const) {
+        const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        p.setAttribute("d", TRAIN_ARROW_PATH);
+        p.setAttribute("stroke", stroke);
+        p.setAttribute("stroke-width", String(width));
+        p.setAttribute("stroke-linejoin", "round");
+        p.setAttribute("fill", fill);
+        arrow.appendChild(p);
+      }
+      const label = el("div", `position:absolute;left:0;top:0;white-space:nowrap;pointer-events:none;font:700 13px/1.2 ${FONT};color:#0b2a6b;-webkit-text-stroke:5px #fff;paint-order:stroke fill;text-shadow:0 0 3px #fff`);
+      root.append(arrow, hit, label);
+      return { root, arrow, label, hit, train: undefined as unknown as TrainEstimate, at: [0, 0] };
+    }
+
+    function frame() {
+      if (cancelled || document.hidden) return;
+      const s = useSettingsStore.getState().settings;
+      const segs = realGeometryRef.current;
+      if (!s.showTrains || !segs) {
+        for (const [id] of live) layer!.remove(`t:${id}`);
+        live.clear();
+        paintList([]);
+        if (trainCardRef.current) closeCard();
+        return;
+      }
+      const hops = routeHopsRef.current;
+      const routing = hops !== null;
+      const zoom = googleToMapLibreZoom(mapRef.current?.getZoom() ?? 11);
+      const scale = trainScale(zoom, TRAIN_SIZE_FACTOR[s.trainSize]);
+      const seen = new Set<string>();
+      const items: { id: string; text: string }[] = [];
+      const labelCandidates: LabelCandidate[] = [];
+      for (const train of estimateTrains(useArrivalsStore.getState().map, serverNow())) {
+        const onRoute = trainOnRoute(train, hops);
+        // "Hide": a train that isn't on the route being shown doesn't exist as
+        // far as the map, the tap targets and the screen-reader list go.
+        if (!onRoute && s.otherTrains === "hide") continue;
+        const placed = place(train, segs);
+        if (!placed) continue;
+        seen.add(train.id);
+        let node = live.get(train.id);
+        if (!node) {
+          node = buildTrain(train.id);
+          live.set(train.id, node);
+          layer!.add(`t:${train.id}`, placed.at[1], placed.at[0], node.root, Z.train);
+        } else {
+          layer!.move(`t:${train.id}`, placed.at[1], placed.at[0]);
+        }
+        node.train = train;
+        node.at = placed.at;
+        const summary = summariseTrain(train);
+        items.push({ id: train.id, text: summary.sentence });
+        const greyed = routing && s.otherTrains === "dim" && !onRoute;
+        node.arrow.style.width = `${TRAIN_ICON_SIZE * scale}px`;
+        node.arrow.style.height = `${TRAIN_ICON_SIZE * scale}px`;
+        node.arrow.style.transform = `translate(-50%,-50%) rotate(${placed.bearing}deg)`;
+        // Trains ease back a little while a route is shown; the ones off it fade right back.
+        node.arrow.style.opacity = greyed ? "0.22" : routing ? "0.85" : "1";
+        // Greyed-out trains carry no text and cannot be tapped.
+        node.hit.style.display = greyed ? "none" : "block";
+        const showText = s.trainLabels && zoom >= TRAIN_LABEL_ZOOM && !greyed;
+        node.label.style.display = "none";
+        const point = showText ? layer!.pointOf(placed.at[1], placed.at[0]) : null;
+        if (point) {
+          if (node.label.textContent !== summary.label) node.label.textContent = summary.label;
+          const radius = (TRAIN_ICON_SIZE * scale) / 2;
+          node.label.style.transform = `translate(-50%, ${radius + 4}px)`;
+          labelCandidates.push({
+            id: train.id,
+            x: point.x,
+            y: point.y,
+            w: textWidth(summary.label, 13) + 2,
+            h: 13 * 1.2,
+            sortKey: onRoute ? 0 : 1,
+            radius,
+          });
+        }
+      }
+      // Like MapLibre's "text-optional" labels: the text goes where it fits
+      // (below the arrow, clear of station names and of other trains' text)
+      // and is left off where it would pile up.
+      const { anchors: shownText } = layoutLabels(labelCandidates, { anchors: ["bottom"], obstacles: stationLabelRects.current });
+      for (const [id, node] of live) node.label.style.display = shownText.has(id) ? "block" : "none";
+      for (const [id] of live) {
+        if (seen.has(id)) continue;
+        layer!.remove(`t:${id}`);
+        live.delete(id);
+      }
+      paintList(items);
+      // The open card follows its train, and closes when the train is gone.
+      if (trainCardRef.current) {
+        const node = live.get(trainCardRef.current);
+        if (!node) closeCard();
+        else {
+          layer!.move("card", node.at[1], node.at[0]);
+          cardRef.current?.refresh();
+        }
       }
     }
 
-    for (const station of allStations) {
-      baseOverlays.current.push(addStationMarker(map, station));
-    }
-  }
-
-  function drawRoute(nextPath: PathResult | null) {
-    const g = window.google;
-    const map = mapRef.current;
-    if (!g || !map) return;
-    clear(routeOverlays);
-    if (!nextPath) return;
-
-    for (let i = 1; i < nextPath.legs.length; i += 1) {
-      const leg = nextPath.legs[i];
-      const previous = nextPath.legs[i - 1].station;
-      const walk = leg.mode === "walk";
-      const points =
-        leg.mode === "ride" && leg.line
-          ? trackBetween(geometryRef.current, leg.line, previous, leg.station)
-          : [
-              [previous.lat, previous.lon] as [number, number],
-              [leg.station.lat, leg.station.lon] as [number, number],
-            ];
-
-      routeOverlays.current.push(
-        new g.maps.Polyline({
-          map,
-          path: points.map(([lat, lon]) => ({ lat, lng: lon })),
-          strokeColor: walk
-            ? WALK_COLOR
-            : leg.line
-              ? LINE_COLORS[leg.line]
-              : "#111827",
-          strokeOpacity: walk ? 0 : 1,
-          strokeWeight: walk ? 4 : 7,
-          zIndex: 20,
-          icons: walk
-            ? [
-                {
-                  icon: {
-                    path: "M 0,-1 0,1",
-                    strokeOpacity: 1,
-                    scale: 3,
-                  },
-                  offset: "0",
-                  repeat: "14px",
-                },
-              ]
-            : undefined,
+    // The same visually hidden list MapLibre keeps, so a screen reader or the
+    // keyboard can reach every train; rebuilt only when its text changes.
+    function paintList(items: { id: string; text: string }[]) {
+      const signature = items.map((i) => `${i.id}|${i.text}`).join("\n");
+      list.setAttribute("aria-label", strings[useLangStore.getState().lang].trainsRegion);
+      if (signature === listSignature) return;
+      listSignature = signature;
+      list.replaceChildren(
+        ...items.map((item) => {
+          const li = document.createElement("li");
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = item.text;
+          button.className =
+            "focus:not-sr-only focus:fixed focus:bottom-4 focus:left-4 focus:z-[2000] focus:rounded focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-neutral-900 focus:shadow-lg";
+          button.addEventListener("click", () => {
+            const node = live.get(item.id);
+            if (!node) return;
+            moveTo({ lat: node.at[1], lng: node.at[0] }, Math.max(mapRef.current?.getZoom() ?? 11, mapLibreToGoogleZoom(FOCUS_ZOOM_CAP)));
+            openTrainCard(item.id);
+          });
+          li.append(button);
+          return li;
         }),
       );
     }
-  }
 
-  function drawEndpoints(nextStart: string | null, nextDestination: string | null) {
-    const g = window.google;
-    const map = mapRef.current;
-    if (!g || !map) return;
-    detach(startOverlay.current);
-    detach(destinationOverlay.current);
-
-    for (const [code, label, color] of [
-      [nextStart, "A", "#16a34a"],
-      [nextDestination, "B", "#dc2626"],
-    ] as const) {
-      const station = code ? stationsByCode.get(code) : null;
-      if (!station) continue;
-      const marker = new g.maps.Marker({
-        map,
-        position: { lat: station.lat, lng: station.lon },
-        label: {
-          text: label,
-          color: "#ffffff",
-          fontSize: "11px",
-          fontWeight: "700",
-        },
-        icon: {
-          path: g.maps.SymbolPath.CIRCLE,
-          scale: 9,
-          fillColor: color,
-          fillOpacity: 1,
-          strokeColor: "#ffffff",
-          strokeWeight: 2,
-        },
-        zIndex: 30,
-      });
-      if (label === "A") startOverlay.current = marker;
-      else destinationOverlay.current = marker;
-    }
-  }
-
-  function drawGps(position: GeoPosition | null) {
-    const g = window.google;
-    const map = mapRef.current;
-    if (!g || !map) return;
-    detach(gpsOverlay.current);
-    if (!position) return;
-    gpsOverlay.current = new g.maps.Marker({
-      map,
-      position: { lat: position.lat, lng: position.lon },
-      icon: {
-        path: g.maps.SymbolPath.CIRCLE,
-        scale: 7,
-        fillColor: "#2563eb",
-        fillOpacity: 1,
-        strokeColor: "#ffffff",
-        strokeWeight: 3,
-      },
-      title: "You",
-      zIndex: 40,
-    });
-  }
-
-  function openStation(station: Station, anchor: Anchor) {
-    const map = mapRef.current;
-    const info = infoRef.current;
-    if (!map || !info) return;
-
-    const el = document.createElement("div");
-    el.className = "min-w-[170px] p-1 text-neutral-900";
-
-    const title = document.createElement("div");
-    title.className = "text-sm font-semibold";
-    title.textContent = stationName(station, "en");
-
-    const lines = document.createElement("div");
-    lines.className = "mt-0.5 text-xs text-neutral-500";
-    lines.textContent = station.lines.map((line) => line.name).join(" · ");
-
-    const actions = document.createElement("div");
-    actions.className = "mt-2 flex gap-2";
-
-    const makeButton = (text: string, onClick: () => void, filled = true) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = text;
-      button.className = filled
-        ? "rounded-md bg-neutral-900 px-2 py-1 text-xs font-medium text-white"
-        : "rounded-md border border-neutral-300 px-2 py-1 text-xs font-medium text-neutral-800";
-      button.onclick = () => {
-        onClick();
-        info.close();
-      };
-      return button;
+    // A timeout chain rather than an interval so the battery-saver setting
+    // takes effect on the next tick without restarting anything.
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const tick = () => {
+      if (cancelled) return;
+      frame();
+      const s = useSettingsStore.getState().settings;
+      timer = setTimeout(tick, reduced || s.reduceMotion || s.trainRate === "saver" ? TRAIN_SLOW_FRAME_MS : TRAIN_FRAME_MS);
     };
-
-    actions.append(
-      makeButton("Start", () => latest.current.onSetStart(station)),
-      makeButton("Destination", () => latest.current.onSetDestination(station)),
-      makeButton("Details", () => latest.current.onSelectStation(station), false),
-    );
-    el.append(title, lines, actions);
-
-    info.setContent(el);
-    info.open({ map, anchor });
-  }
-
-  function focusOnStation(station: Station) {
-    const map = mapRef.current;
-    if (!map) return;
-    map.panTo({ lat: station.lat, lng: station.lon });
-    map.setZoom(16);
-  }
-
-  function focusOnPlace(place: Place) {
-    const g = window.google;
-    const map = mapRef.current;
-    if (!g || !map) return;
-
-    detach(placeOverlay.current);
-    const marker = new g.maps.Marker({
-      map,
-      position: { lat: place.lat, lng: place.lon },
-      title: place.name,
-      icon: {
-        path: g.maps.SymbolPath.CIRCLE,
-        scale: 8,
-        fillColor: "#16a34a",
-        fillOpacity: 1,
-        strokeColor: "#ffffff",
-        strokeWeight: 2,
-      },
-      zIndex: 35,
+    // Trains are a second thought: the map and stations come first.
+    void whenMapPainted().then(() => {
+      if (!cancelled) tick();
     });
-    placeOverlay.current = marker;
-
-    const near = nearestStation(place.lat, place.lon);
-    const info = infoRef.current;
-    if (info) {
-      const el = document.createElement("div");
-      el.className = "min-w-[180px] p-1 text-neutral-900";
-      const title = document.createElement("div");
-      title.className = "text-sm font-semibold";
-      title.textContent = place.name;
-      const detail = document.createElement("div");
-      detail.className = "mt-0.5 text-xs text-neutral-500";
-      detail.textContent = place.detail;
-      const nearest = document.createElement("div");
-      nearest.className = "mt-1 text-xs text-neutral-600";
-      nearest.textContent = `Near ${near.station.nameEn} · ${near.meters} m`;
-      const actions = document.createElement("div");
-      actions.className = "mt-2 flex gap-2";
-      const start = document.createElement("button");
-      start.type = "button";
-      start.textContent = "Start";
-      start.className =
-        "rounded-md bg-neutral-900 px-2 py-1 text-xs font-medium text-white";
-      start.onclick = () => {
-        latest.current.onSetStart(near.station);
-        info.close();
-      };
-      const destination = document.createElement("button");
-      destination.type = "button";
-      destination.textContent = "Destination";
-      destination.className =
-        "rounded-md bg-neutral-900 px-2 py-1 text-xs font-medium text-white";
-      destination.onclick = () => {
-        latest.current.onSetDestination(near.station);
-        info.close();
-      };
-      actions.append(start, destination);
-      el.append(title, detail, nearest, actions);
-      info.setContent(el);
-      info.open({ map, anchor: marker });
-    }
-
-    map.panTo({ lat: place.lat, lng: place.lon });
-    map.setZoom(16);
-  }
-
-  useEffect(() => {
-    if (mapRef.current) drawRoute(path);
-    // Map helpers close over refs; the path is the only changing input.
+    document.addEventListener("visibilitychange", frame);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", frame);
+      for (const [id] of live) layer.remove(`t:${id}`);
+      live.clear();
+      list.remove();
+    };
+    // showCard/closeCard only read refs and `latest`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path]);
-
-  useEffect(() => {
-    if (mapRef.current) drawEndpoints(startCode, destinationCode);
-    // Endpoints are redrawn only when either code changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startCode, destinationCode]);
-
-  useEffect(() => {
-    if (mapRef.current) drawGps(userPosition);
-    // The GPS dot is redrawn only when the position changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userPosition]);
-
-  useEffect(() => {
-    if (focusStation) focusOnStation(focusStation);
-  }, [focusStation]);
-
-  useEffect(() => {
-    if (focusPlace) focusOnPlace(focusPlace);
-    // focusOnPlace closes over the map; the place is the only input.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusPlace]);
-
-  useEffect(() => {
-    mapRef.current?.setMapTypeId(googleMapType);
-  }, [googleMapType]);
-
-  useEffect(() => {
-    mapRef.current?.setOptions({
-      colorScheme: theme === "dark" ? "DARK" : "LIGHT",
-    } as google.maps.MapOptions);
-  }, [theme]);
-
-  useEffect(() => {
-    mapRef.current?.setOptions({ zoomControl: zoomButtons });
-  }, [zoomButtons]);
-
-  useEffect(() => {
-    containerRef.current?.setAttribute("data-sheet-open", sheetOpen ? "true" : "false");
-  }, [sheetOpen]);
-
-  useEffect(() => {
-    if (mapRef.current) drawBase();
-    // drawBase closes over the map and its refs; lineWidth is its only input.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lineWidth]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    for (const label of containerRef.current?.querySelectorAll<HTMLElement>(
-      "[data-station-label]",
-    ) ?? []) {
-      label.style.display = showLabels ? "" : "none";
-    }
-  }, [showLabels]);
+  }, [ready]);
 
   return (
-    <div
-      ref={containerRef}
-      className="absolute inset-0"
-      aria-label="Transit map"
-      role="application"
-    />
+    <div className="relative h-full w-full">
+      <div ref={containerRef} className="h-full w-full" />
+      {settings.locateButton && (
+        <LocateButton
+          position={userPosition}
+          onLocate={(p) => {
+            const map = mapRef.current;
+            if (!map) return;
+            moveTo({ lat: p.lat, lng: p.lon }, Math.max(map.getZoom() ?? 11, mapLibreToGoogleZoom(LOCATE_ZOOM)));
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Write a station label's text, anchor and colours. Skips the DOM work when nothing changed. */
+function applyLabel(node: StationNode, text: ReturnType<typeof labelText>, anchor: LabelAnchor, size: number, dark: boolean) {
+  const key = [text.primary, text.secondary ?? "", text.code ?? "", anchor, size.toFixed(1), dark, node.visual.labelOpacity, node.radius].join("|");
+  if (key === node.shown) return;
+  node.shown = key;
+  const d = node.radius + 4;
+  const place: Record<LabelAnchor, { transform: string; align: string }> = {
+    right: { transform: `translate(${d}px,-50%)`, align: "left" },
+    left: { transform: `translate(calc(-100% - ${d}px),-50%)`, align: "right" },
+    top: { transform: `translate(-50%,calc(-100% - ${d}px))`, align: "center" },
+    bottom: { transform: `translate(-50%,${d}px)`, align: "center" },
+  };
+  const halo = dark ? "#111827" : "#ffffff";
+  Object.assign(node.text.style, {
+    transform: place[anchor].transform,
+    textAlign: place[anchor].align,
+    fontSize: `${size}px`,
+    color: dark ? "#e5e7eb" : "#1f2937",
+    opacity: String(node.visual.labelOpacity),
+    // White (or dark) halo so names stay readable over any basemap, like MapLibre's text-halo.
+    webkitTextStroke: `3.2px ${halo}`,
+    paintOrder: "stroke fill",
+    textShadow: `0 0 2px ${halo}, 0 0 2px ${halo}`,
+  });
+  const line = (content: string, scale: number) => {
+    const row = document.createElement("div");
+    row.textContent = content;
+    if (scale !== 1) row.style.fontSize = `${size * scale}px`;
+    return row;
+  };
+  node.text.replaceChildren(
+    line(text.primary, 1),
+    ...(text.secondary ? [line(text.secondary, 0.85)] : []),
+    ...(text.code ? [line(text.code, 0.8)] : []),
   );
 }

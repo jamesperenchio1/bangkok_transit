@@ -23,7 +23,8 @@ live BTS arrivals, live at bangkok-transit.com. Read `README.md` first, then
   to the upstream, or anything that needs a paid plan. Keep the Cloudflare
   free-tier numbers in `docs/architecture.md#cost-model` true.
   - Default users stay on MapLibre/OpenFreeMap and make zero Google requests.
-    The opt-in Google map and Google Places search are the one exception: a
+    The map is cached on the device so it works offline; that is why it is
+    the default. The opt-in Google map and Google Places search are the one exception: a
     browser key restricted by HTTP referrer and API, with daily quotas and a
     budget alert. They are billed per request when enabled; never put them in
     the default path.
@@ -43,6 +44,21 @@ live BTS arrivals, live at bangkok-transit.com. Read `README.md` first, then
   cards are MapLibre popups rendered as separate React roots, which is why
   language lives in a Zustand store (`lib/i18n.ts`), not context.
   `window.__map` exposes the map for debugging and e2e.
+- `components/GoogleTransitMap.tsx` — the opt-in Google basemap (Settings →
+  Map). It must stay a *twin* of `TransitMap`, not a second app: everything
+  that decides **what** to draw lives in shared, library-free modules —
+  `lib/map-data.ts` (station visuals, line/route geometry, label text,
+  camera padding), `lib/train-model.ts` (train placement, text, arrow shape),
+  `lib/label-layout.ts` (collision), `components/map-cards.tsx` (station /
+  place / train cards) — and both maps only differ in **how** they draw it.
+  Change what the map shows in those modules first; never in one map only.
+  `lib/map-provider.ts` decides which map mounts and falls back to MapLibre
+  (offline, no key, load failure). `components/google-layer.ts` is the one
+  DOM overlay the Google map keeps its markers in (zero-size anchors, so a
+  dot is exactly on its coordinate).
+- `components/settings/` — Settings: a category list plus one section at a
+  time (full screen on phones). Rows are data in `catalog/*.ts`; every stored
+  setting is owned by one section in `SECTION_KEYS` (a test pins it).
 - `components/RoutePanel.tsx` — the route sheet (legs, walks, boarding
   direction, live times at each boarding point).
 - `lib/transit-graph.ts` — routing (see below). `lib/line-geometry.ts` —

@@ -13,13 +13,20 @@ async function openSettings(page: import("@playwright/test").Page) {
   return page.getByRole("dialog", { name: "Settings" });
 }
 
+/** On a phone a section is its own screen; the list (with "Reset to defaults") is one tap back. */
+async function toList(dialog: import("@playwright/test").Locator) {
+  const back = dialog.getByRole("button", { name: /^Back/ });
+  if (await back.isVisible()) await back.click();
+}
+
 test.describe("settings", () => {
   test("choices apply to the map at once and survive a reload", async ({ page }) => {
     await page.goto("/");
     await mapReady(page);
     const dialog = await openSettings(page);
+    await dialog.getByRole("button", { name: /^Map/ }).click();
 
-    const labels = dialog.getByRole("switch", { name: "Station names on the map" });
+    const labels = dialog.getByRole("switch", { name: "Station names" });
     await expect(labels).toHaveAttribute("aria-checked", "true");
     await labels.click();
     await expect(labels).toHaveAttribute("aria-checked", "false");
@@ -27,7 +34,8 @@ test.describe("settings", () => {
 
     await page.reload();
     const again = await openSettings(page);
-    await expect(again.getByRole("switch", { name: "Station names on the map" })).toHaveAttribute("aria-checked", "false");
+    await again.getByRole("button", { name: /^Map/ }).click();
+    await expect(again.getByRole("switch", { name: "Station names" })).toHaveAttribute("aria-checked", "false");
   });
 
   test("hiding a line filters it out of the map", async ({ page }) => {
@@ -43,9 +51,10 @@ test.describe("settings", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Settings" }).click();
     const dialog = page.getByRole("dialog", { name: "Settings" });
-    await dialog.getByRole("button", { name: /Display/ }).click();
+    await dialog.getByRole("button", { name: /^General/ }).click();
     await dialog.getByRole("radio", { name: "Dark" }).click();
     await expect.poll(() => page.evaluate(() => document.documentElement.getAttribute("data-theme"))).toBe("dark");
+    await toList(dialog);
     await dialog.getByRole("button", { name: "Reset to defaults" }).click();
     await expect.poll(() => page.evaluate(() => document.documentElement.getAttribute("data-theme"))).toBeNull();
   });
@@ -53,7 +62,7 @@ test.describe("settings", () => {
   test("text size applies to the whole page", async ({ page }) => {
     await page.goto("/");
     const dialog = await openSettings(page);
-    await dialog.getByRole("button", { name: /Display/ }).click();
+    await dialog.getByRole("button", { name: /^General/ }).click();
     const slider = dialog.getByRole("slider", { name: "Text size" });
     await slider.fill("125");
     await expect.poll(() => page.evaluate(() => document.documentElement.style.fontSize)).toBe("125%");
@@ -66,13 +75,64 @@ test.describe("settings", () => {
     await expect(dialog.getByRole("slider", { name: "Walking speed" })).toBeVisible();
   });
 
-  test("advanced options stay out of the way until asked for", async ({ page }) => {
+  test("every option is in its section, in labelled groups, with nothing hidden behind an advanced switch", async ({ page }) => {
     await page.goto("/");
     const dialog = await openSettings(page);
     await dialog.getByRole("button", { name: /^Map/ }).click();
-    await expect(dialog.getByRole("slider", { name: "Line thickness" })).toHaveCount(0);
-    await dialog.getByRole("switch", { name: "Show advanced options" }).click();
+    await expect(dialog.getByRole("heading", { name: "Markers and lines" })).toBeVisible();
     await expect(dialog.getByRole("slider", { name: "Line thickness" })).toBeVisible();
+    await expect(dialog.getByRole("switch", { name: "Show advanced options" })).toHaveCount(0);
+    // The map is the standard one unless the rider has chosen otherwise.
+    await expect(dialog.getByRole("radio", { name: "Standard (offline)" })).toBeChecked();
+  });
+
+  test("a changed option is marked, and its section can be put back on its own", async ({ page }) => {
+    await page.goto("/");
+    const dialog = await openSettings(page);
+    const general = dialog.getByRole("button", { name: /^General/ });
+    const resetSection = dialog.getByRole("button", { name: "Reset this section" });
+    const theme = () => page.evaluate(() => document.documentElement.getAttribute("data-theme"));
+    await expect(general).not.toContainText("(changed)");
+    await general.click();
+    await expect(resetSection).toHaveCount(0); // nothing to put back yet
+    await dialog.getByRole("radio", { name: "Dark" }).click();
+    await expect.poll(theme).toBe("dark");
+    await toList(dialog);
+    await expect(general).toContainText("(changed)");
+    await general.click();
+    await resetSection.click();
+    await expect.poll(theme).toBeNull();
+    await toList(dialog);
+    await expect(general).not.toContainText("(changed)");
+    await general.click();
+    await expect(resetSection).toHaveCount(0);
+  });
+
+  test("on a phone the list and a section are separate screens, with a way back", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    const dialog = await openSettings(page);
+    // The list first; no section's options yet.
+    await expect(dialog.getByRole("button", { name: /^Map/ })).toBeVisible();
+    await expect(dialog.getByRole("switch", { name: "Station names" })).toBeHidden();
+    await dialog.getByRole("button", { name: /^Map/ }).click();
+    await expect(dialog.getByRole("switch", { name: "Station names" })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: /^Lines/ })).toBeHidden();
+    await dialog.getByRole("button", { name: /^Back/ }).click();
+    await expect(dialog.getByRole("button", { name: /^Lines/ })).toBeVisible();
+    await expect(dialog.getByRole("switch", { name: "Station names" })).toBeHidden();
+  });
+
+  test("the default map makes no Google request", async ({ page }) => {
+    const google: string[] = [];
+    page.on("request", (r) => {
+      const host = new URL(r.url()).hostname;
+      if (host.endsWith("googleapis.com") || host.endsWith("gstatic.com")) google.push(r.url());
+    });
+    await page.goto("/");
+    await mapReady(page);
+    await page.waitForTimeout(1500);
+    expect(google).toEqual([]);
   });
 
   test("the panel and its sections are lazy: nothing is downloaded until they are opened", async ({ page }) => {

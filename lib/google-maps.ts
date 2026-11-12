@@ -4,15 +4,15 @@
  * The Google Maps JavaScript API is only ever downloaded when the rider picks
  * Google in Settings. Default (Standard) users make no Google requests, which
  * keeps the map offline-capable and keeps the free tier untouched.
+ *
+ * No Map ID is used: the map is a styled raster map (lib/google-map-style.ts),
+ * which is what lets Settings switch Google's own names and the dark theme
+ * at run time. A Map ID would make those fixed in the Cloud console.
  */
 type GoogleNamespace = typeof google;
 
 export function googleMapsKey(): string {
   return process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
-}
-
-export function googleMapsMapId(): string {
-  return process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID ?? "";
 }
 
 let loader: Promise<GoogleNamespace> | null = null;
@@ -45,7 +45,7 @@ export function loadGoogleMaps(): Promise<GoogleNamespace> {
     };
 
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&v=weekly&loading=async&libraries=marker&callback=${callbackName}`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&v=weekly&loading=async&callback=${callbackName}`;
     script.async = true;
     script.onerror = () => {
       loader = null;

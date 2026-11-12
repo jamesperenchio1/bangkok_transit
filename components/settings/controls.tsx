@@ -4,19 +4,64 @@ import { useId, useState } from "react";
 import type { LineKey } from "@/data/stations";
 import { LINE_COLORS, LINE_NAMES, LINE_ORDER } from "@/lib/line-colors";
 import { useLangStore, useT, type Lang } from "@/lib/i18n";
-import { useSettingsStore, type Settings } from "@/lib/settings-store";
+import { googleMapsKey } from "@/lib/google-maps";
+import { DEFAULT_SETTINGS, useSettingsStore, type Settings } from "@/lib/settings-store";
 import type { ActionId, Row, Text } from "./types";
 
 const pick = (text: Text, lang: Lang) => text[lang];
 
-function Label({ row, lang, id }: { row: { label: Text; hint?: Text }; lang: Lang; id: string }) {
+/** Which map the rider is effectively on: Google only when chosen and usable in this build. */
+export function effectiveProvider(settings: Settings): "standard" | "google" {
+  return settings.mapProvider === "google" && googleMapsKey() !== "" ? "google" : "standard";
+}
+
+/** Whether a row applies right now: not for the other map, and not without what it needs. */
+export function rowVisible(row: Row, settings: Settings): boolean {
+  if (row.requires === "googleKey" && !googleMapsKey()) return false;
+  if (row.provider && row.provider !== effectiveProvider(settings)) return false;
+  return true;
+}
+
+/** True when a stored setting differs from its default. */
+export function isChanged(key: keyof Settings, value: unknown): boolean {
+  return JSON.stringify(value) !== JSON.stringify(DEFAULT_SETTINGS[key]);
+}
+
+function Label({
+  row,
+  lang,
+  id,
+  changed = false,
+}: {
+  row: { label: Text; hint?: Text };
+  lang: Lang;
+  id: string;
+  /** Differs from the default: marked, so what you have touched is easy to see. */
+  changed?: boolean;
+}) {
   return (
     <span className="min-w-0 flex-1 py-1.5">
-      <span id={id} className="block text-sm font-medium">
+      <span id={id} className="flex items-center gap-1.5 text-sm font-medium">
         {pick(row.label, lang)}
+        {changed && (
+          <>
+            <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-green-700 dark:bg-green-500" />
+            <span className="sr-only">{lang === "th" ? "(เปลี่ยนจากค่าเริ่มต้น)" : "(changed from default)"}</span>
+          </>
+        )}
       </span>
-      {row.hint && <span className="block text-xs text-neutral-600 dark:text-neutral-400">{pick(row.hint, lang)}</span>}
+      {row.hint && <span className="mt-0.5 block text-xs text-neutral-600 dark:text-neutral-400">{pick(row.hint, lang)}</span>}
     </span>
+  );
+}
+
+/** The small heading above a group of rows. */
+export function GroupHeading({ text }: { text: Text }) {
+  const lang = useLangStore((s) => s.lang);
+  return (
+    <h4 className="px-2 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wide text-neutral-600 first:pt-1 dark:text-neutral-400">
+      {pick(text, lang)}
+    </h4>
   );
 }
 
@@ -33,7 +78,7 @@ function Toggle({ row, lang }: { row: Extract<Row, { kind: "toggle" }>; lang: La
       onClick={() => update({ [row.key]: !on })}
       className="flex min-h-11 w-full items-center gap-3 rounded-lg px-2 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800"
     >
-      <Label row={row} lang={lang} id={labelId} />
+      <Label row={row} lang={lang} id={labelId} changed={isChanged(row.key, on)} />
       <span
         aria-hidden="true"
         className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${on ? "bg-green-700" : "bg-neutral-400 dark:bg-neutral-600"}`}
@@ -48,22 +93,38 @@ function Choice({ row, lang }: { row: Extract<Row, { kind: "choice" }>; lang: La
   const value = useSettingsStore((s) => s.settings[row.key]) as string;
   const update = useSettingsStore((s) => s.update);
   const labelId = useId();
+  const options = row.options.filter((o) => o.requires !== "googleKey" || googleMapsKey() !== "");
+  // Two or three short options read best as one segmented control that fills the row.
+  const segmented = options.length <= 3;
   return (
     <div className="px-2 py-1">
-      <Label row={row} lang={lang} id={labelId} />
-      <div role="radiogroup" aria-labelledby={labelId} className="mt-1 flex flex-wrap gap-1.5">
-        {row.options.map((o) => (
+      <Label row={row} lang={lang} id={labelId} changed={isChanged(row.key, value)} />
+      <div
+        role="radiogroup"
+        aria-labelledby={labelId}
+        className={segmented ? "mt-1 grid gap-1 rounded-xl bg-neutral-100 p-1 dark:bg-neutral-800" : "mt-1 flex flex-wrap gap-1.5"}
+        style={segmented ? { gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` } : undefined}
+      >
+        {options.map((o) => (
           <button
             key={o.value}
             type="button"
             role="radio"
             aria-checked={value === o.value}
             onClick={() => update({ [row.key]: o.value })}
-            className={`min-h-11 rounded-full border px-3.5 text-sm font-medium ${
-              value === o.value
-                ? "border-green-700 bg-green-700 text-white"
-                : "border-neutral-300 hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-800"
-            }`}
+            className={
+              segmented
+                ? `min-h-11 rounded-lg px-2 text-sm font-medium ${
+                    value === o.value
+                      ? "bg-green-700 text-white shadow-sm"
+                      : "text-neutral-800 hover:bg-white dark:text-neutral-200 dark:hover:bg-neutral-700"
+                  }`
+                : `min-h-11 rounded-full border px-3.5 text-sm font-medium ${
+                    value === o.value
+                      ? "border-green-700 bg-green-700 text-white"
+                      : "border-neutral-300 hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-800"
+                  }`
+            }
           >
             {pick(o.label, lang)}
           </button>
@@ -81,7 +142,7 @@ function Range({ row, lang }: { row: Extract<Row, { kind: "range" }>; lang: Lang
   return (
     <div className="px-2 py-1">
       <div className="flex items-baseline gap-2">
-        <Label row={row} lang={lang} id={labelId} />
+        <Label row={row} lang={lang} id={labelId} changed={isChanged(row.key, value)} />
         <output className="shrink-0 text-sm tabular-nums text-neutral-700 dark:text-neutral-300">{shown}</output>
       </div>
       <input
@@ -105,7 +166,7 @@ function Lines({ row, lang }: { row: Extract<Row, { kind: "lines" }>; lang: Lang
   const labelId = useId();
   return (
     <div className="px-2 py-1">
-      <Label row={row} lang={lang} id={labelId} />
+      <Label row={row} lang={lang} id={labelId} changed={isChanged(row.key, list)} />
       <div role="group" aria-labelledby={labelId} className="mt-1 grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
         {LINE_ORDER.map((line) => {
           const listed = list.includes(line);
@@ -197,8 +258,9 @@ function Action({ row, lang }: { row: Extract<Row, { kind: "action" }>; lang: La
     clearMap: async () => {
       try {
         await caches.delete("openfreemap-tiles");
-        const { OFFLINE_DONE_KEY } = await import("@/lib/offline-warm");
+        const { OFFLINE_DONE_KEY, OFFLINE_OVERVIEW_KEY } = await import("@/lib/offline-warm");
         localStorage.removeItem(OFFLINE_DONE_KEY);
+        localStorage.removeItem(OFFLINE_OVERVIEW_KEY);
         setStatus(T("Deleted. It will be downloaded again on a later visit.", "ลบแล้ว จะดาวน์โหลดใหม่ในการเข้าครั้งถัดไป"));
       } catch {
         setStatus(T("Nothing to delete.", "ไม่มีอะไรให้ลบ"));

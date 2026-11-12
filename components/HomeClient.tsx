@@ -21,6 +21,8 @@ import { computeFare } from "@/lib/fares";
 import { useFares } from "@/lib/use-fares";
 import { restoreLang, stationName, useLangStore, useT } from "@/lib/i18n";
 import { restoreSettings, useSettingsStore } from "@/lib/settings-store";
+import { googleMapsKey } from "@/lib/google-maps";
+import { chooseMap } from "@/lib/map-provider";
 
 // Line geometry starts downloading with hydration. The map chunk itself is
 // requested when its component first renders: MapLibre by default, Google
@@ -99,7 +101,17 @@ export function HomeClient({
   // The map chunk and its first tiles are the slowest part of a cold load;
   // until the map reports first paint, the header and the build-time SVG
   // network carry the screen, with a thin indeterminate bar above them.
-  const [mapLoaded, setMapLoaded] = useState(false);
+  // Which map has painted ("standard" / "google"), so a switch shows the
+  // build-time network again until the new map reports first paint.
+  const [loadedMap, setLoadedMap] = useState<"standard" | "google" | null>(null);
+  // The map mounts once saved settings are in, so a rider who chose Google
+  // never sees the default map mount and tear down first.
+  const settingsReady = useSettingsStore((s) => s.restored);
+  // Google needs the network and a working key. When it cannot load the page
+  // falls back to the offline MapLibre map and says so, rather than leaving a
+  // grey tile; the fallback holds for the rest of the visit.
+  const [googleFailed, setGoogleFailed] = useState(false);
+  const [startedOffline] = useState(() => typeof navigator !== "undefined" && !navigator.onLine);
   const { position, error: geoError } = useGeolocation();
   const { lang, t } = useT();
 
@@ -142,6 +154,14 @@ export function HomeClient({
   }, []);
   const { compactHeader, showFare, fewerChanges, avoidWalking, avoidLines, walkSpeed, changeMinutes, mapProvider } =
     useSettingsStore((s) => s.settings);
+  const { provider: activeMap, fellBack } = chooseMap({
+    chosen: mapProvider,
+    hasGoogleKey: googleMapsKey() !== "",
+    startedOffline,
+    googleFailed,
+  });
+  const useGoogle = activeMap === "google";
+  const mapLoaded = loadedMap === activeMap;
 
   // The route lives in the URL (?from=N15&to=CEN) so a reload, a PWA
   // relaunch, or a shared link lands on the same route. Read once on mount;
@@ -357,7 +377,13 @@ export function HomeClient({
             dangerouslySetInnerHTML={{ __html: networkSvg }}
           />
         )}
-        {mapProvider === "google" ? (
+        {fellBack && (
+          <div role="status" className="absolute left-14 right-2 top-14 z-[1002] flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 shadow-md dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+            <AlertTriangle size={14} className="shrink-0" aria-hidden="true" />
+            {t.googleUnavailable}
+          </div>
+        )}
+        {!settingsReady ? null : useGoogle ? (
           <GoogleTransitMap
             onSelectStation={handleSelectStation}
             onSetStart={handleSetStart}
@@ -369,7 +395,8 @@ export function HomeClient({
             focusStation={focusStation}
             focusPlace={focusPlace}
             sheetOpen={sheetOpen && hasRoute}
-            onLoad={() => setMapLoaded(true)}
+            onLoad={() => setLoadedMap("google")}
+            onError={() => setGoogleFailed(true)}
           />
         ) : (
           <TransitMap
@@ -383,7 +410,7 @@ export function HomeClient({
             focusStation={focusStation}
             focusPlace={focusPlace}
             sheetOpen={sheetOpen && hasRoute}
-            onLoad={() => setMapLoaded(true)}
+            onLoad={() => setLoadedMap("standard")}
           />
         )}
 

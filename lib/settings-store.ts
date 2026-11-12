@@ -253,6 +253,8 @@ function persist(settings: Settings) {
 
 export const useSettingsStore = create<{
   settings: Settings;
+  /** True once saved settings have been read (they cannot be at module load; see restoreSettings). */
+  restored: boolean;
   update: (patch: Partial<Settings>) => void;
   toggleLine: (key: "hiddenLines" | "avoidLines", line: LineKey) => void;
   /** Replace everything (import / reset); unknown or invalid parts fall back to defaults. */
@@ -260,6 +262,7 @@ export const useSettingsStore = create<{
   reset: () => void;
 }>((set, get) => ({
   settings: DEFAULT_SETTINGS,
+  restored: false,
   update: (patch) => {
     const settings = { ...get().settings, ...patch };
     set({ settings });
@@ -294,9 +297,9 @@ export function restoreSettings() {
   try {
     raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
   } catch {
-    return;
+    // Storage blocked: the defaults are the settings.
   }
-  if (raw) useSettingsStore.setState({ settings: parseSettings(raw) });
+  useSettingsStore.setState(raw ? { settings: parseSettings(raw), restored: true } : { restored: true });
 }
 
 /** Camera animation length: instant when the OS or this app asks for less motion. */

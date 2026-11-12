@@ -60,9 +60,10 @@ export function SettingsMenu() {
           if (e.target === ref.current) setOpen(false); // backdrop click
         }}
         aria-labelledby="settings-title"
-        className="m-auto max-h-[85dvh] w-[min(94vw,30rem)] overflow-hidden rounded-2xl border border-neutral-200 bg-white p-0 text-neutral-900 shadow-2xl backdrop:bg-black/50 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+        // A full-screen page on phones; a roomy two-pane window on larger screens.
+        className="m-auto h-dvh max-h-none w-screen max-w-none overflow-hidden border-0 bg-white p-0 text-neutral-900 shadow-2xl backdrop:bg-black/50 dark:bg-neutral-900 dark:text-neutral-100 md:h-[min(86dvh,44rem)] md:w-[min(94vw,54rem)] md:rounded-2xl md:border md:border-neutral-200 md:dark:border-neutral-800"
       >
-        <div className="flex max-h-[85dvh] flex-col">
+        <div className="flex h-full flex-col">
           <div className="flex items-center justify-between gap-2 border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
             <h2 id="settings-title" className="text-base font-semibold">
               {t.settingsTitle}
