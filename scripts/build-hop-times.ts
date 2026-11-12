@@ -16,9 +16,10 @@
  * of stops (72 min end to end for ~30 km) and Pink has 0 min between stops
  * with a flat 1 min dwell (28 min for ~35 km, i.e. ~75 km/h with 30 stops).
  * Those are placeholders, so they stay on the formula. Light Red is left on
- * the formula as well: four stops is too little to judge. Purple is flat 2 min
- * a hop, which is plausible for a line with near-uniform spacing, so it is
- * kept. If OTP fixes a placeholder line, add it to LINES and re-run.
+ * the feed's SRT Light Red trips are measured (4 / 7 / 5 min hops that differ by
+ * direction and track the real spacing) and match SRTET's own timetable, so it
+ * is included. Purple is flat 2 min a hop, which is plausible for a line with
+ * near-uniform spacing, so it is kept. If OTP fixes a placeholder line, add it to LINES and re-run.
  *
  * How feed stops become our station codes. The feed has its own stop ids, and
  * MRT/ARL/SRT codes here are locally assigned (see AGENTS.md), so ids can't be
@@ -72,6 +73,7 @@ const LINES: LineSpec[] = [
   { line: "purple", agency: "BEM", shortName: "Purple" },
   { line: "arl", agency: "SRTET", shortName: "ARL" },
   { line: "srtDarkRed", agency: "SRTET", shortName: "Red", longName: "Dark Red" },
+  { line: "srtLightRed", agency: "SRTET", shortName: "Red", longName: "Light Red" },
 ];
 
 type Row = Record<string, string>;
@@ -265,8 +267,6 @@ function main() {
         if (!(key in hops)) missing.push(key);
       }
     }
-    // Light Red is its own line and deliberately not in the feed selection
-    // above; its hops fall back to the formula.
     const unexpected = missing;
     console.log(
       `${spec.line.padEnd(9)} routes ${routeIds.join(",")}  trips used ${used} (skipped ${skippedTrips})  ` +

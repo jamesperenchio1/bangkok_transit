@@ -86,7 +86,7 @@ type Edge =
  *
  * Riding one hop costs the scheduled running time from data/hop-times.json
  * plus that line's stop time. Lines or hops the table lacks (Yellow and Pink,
- * whose feed times are placeholders, and SRT Light Red) use the formula below
+ * whose feed times are placeholders) use the formula below
  * instead: one average speed for every line, which is why it's only a
  * fallback.
  */
