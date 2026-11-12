@@ -13,7 +13,7 @@ import {
   upcomingTrains,
   updatedAgoLabel,
 } from "@/lib/format-eta";
-import { shownCode, type Station } from "@/data/stations";
+import { shownCode, type LineKey, type Station } from "@/data/stations";
 import { terminusInDirection, type PathResult } from "@/lib/transit-graph";
 import type { GeoPosition } from "@/lib/use-geolocation";
 import { LINE_COLORS, LINE_NAMES } from "@/lib/line-colors";
@@ -65,16 +65,25 @@ function effectiveChanges(path: PathResult) {
 // wants them expanded on the next trip too.
 let showAllStops = false;
 
-export type RoutePanelState = { mode: "route"; start: Station; destination: Station; path: PathResult | null };
+export type RoutePanelState = {
+  mode: "route";
+  start: Station;
+  destination: Station;
+  path: PathResult | null;
+  /** When there is no path only because of lines turned off for routes: those lines. */
+  blockedBy?: LineKey[];
+};
 
 export interface RoutePanelProps {
   state: RoutePanelState | null;
   userPosition: GeoPosition | null;
   stopAlert: StopAlert;
   onClose: () => void;
+  /** Turn lines back on for routes (the one-tap fix when they are what is in the way). */
+  onUseLines?: (lines: LineKey[]) => void;
 }
 
-export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePanelProps) {
+export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines }: RoutePanelProps) {
   const open = state !== null;
   const { lang, t } = useT();
   const fares = useFares(!!state?.path);
@@ -112,7 +121,9 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePan
   const summary = state?.path
     ? [t.stops(state.path.stops), t.changes(changes), t.aboutMinutes(state.path.minutes), fareText(t, computeFare(state.path, fares))].filter(Boolean).join(", ")
     : state
-      ? t.noRoute
+      ? state.blockedBy?.length
+        ? t.noRouteLinesOff(state.blockedBy.map((l) => LINE_NAMES[l]).join(", "))
+        : t.noRoute
       : "";
 
   const legs = state?.path?.legs ?? [];
@@ -187,10 +198,27 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePan
               </div>
             )}
 
-            {!state.path && (
-              <p className="px-4 py-6 text-center text-sm text-neutral-600 dark:text-neutral-400">
-                {t.noRoute}
-              </p>
+            {!state.path && state.blockedBy && state.blockedBy.length > 0 ? (
+              <div className="flex flex-col items-center gap-3 px-4 py-6 text-center">
+                <p className="text-sm text-neutral-700 dark:text-neutral-300">
+                  {t.noRouteLinesOff(state.blockedBy.map((l) => LINE_NAMES[l]).join(", "))}
+                </p>
+                {onUseLines && (
+                  <button
+                    type="button"
+                    onClick={() => onUseLines(state.blockedBy!)}
+                    className="min-h-11 rounded-full bg-green-700 px-5 text-sm font-semibold text-white hover:bg-green-800"
+                  >
+                    {t.useLinesForRoutes(state.blockedBy.map((l) => LINE_NAMES[l]).join(", "))}
+                  </button>
+                )}
+              </div>
+            ) : (
+              !state.path && (
+                <p className="px-4 py-6 text-center text-sm text-neutral-600 dark:text-neutral-400">
+                  {t.noRoute}
+                </p>
+              )
             )}
 
             {state.path && (

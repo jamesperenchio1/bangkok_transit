@@ -14,7 +14,10 @@ const catalogs: Record<SectionId, () => Promise<{ rows: Row[] }>> = {
   data: () => import("@/components/settings/catalog/data"),
 };
 
-const keyOf = (row: Row): keyof Settings | null => ("key" in row ? row.key : null);
+/** The stored settings a row edits (the lines table edits two). */
+const keysOf = (row: Row): (keyof Settings)[] =>
+  "key" in row ? [row.key] : row.kind === "lineTable" ? ["hiddenLines", "unusedLines"] : [];
+const keyOf = (row: Row): keyof Settings | null => keysOf(row)[0] ?? null;
 
 async function allRows(): Promise<{ id: SectionId; row: Row }[]> {
   const out: { id: SectionId; row: Row }[] = [];
@@ -32,12 +35,12 @@ describe("the settings catalog", () => {
   it("has a catalog row for exactly the settings its section owns, and no row twice", async () => {
     const rows = await allRows();
     for (const { id } of SECTIONS) {
-      const keys = rows.filter((r) => r.id === id).map((r) => keyOf(r.row)).filter((k): k is keyof Settings => k !== null);
+      const keys = rows.filter((r) => r.id === id).flatMap((r) => keysOf(r.row));
       expect(new Set(keys).size, `${id} lists a setting twice`).toBe(keys.length);
       expect([...keys].sort(), `${id} rows`).toEqual([...SECTION_KEYS[id]].sort());
     }
-    const ids = rows.map((r) => (r.row.kind === "action" ? `a-${r.row.id}` : keyOf(r.row)));
-    expect(new Set(ids.filter((i) => i && !String(i).startsWith("a-"))).size).toBe(Object.keys(DEFAULT_SETTINGS).length);
+    const owned = rows.flatMap((r) => keysOf(r.row));
+    expect(new Set(owned).size).toBe(Object.keys(DEFAULT_SETTINGS).length);
   });
 
   it("offers only values the store accepts, and ranges that match it", async () => {

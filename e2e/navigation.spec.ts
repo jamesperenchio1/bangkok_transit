@@ -14,6 +14,24 @@ test.describe("navigation and search", () => {
     await expect(page.getByRole("dialog", { name: /Route from National Stadium to Chit Lom/ })).toBeVisible();
   });
 
+  test("when a line turned off for routes is in the way, the sheet says which and one tap puts it back", async ({ page }) => {
+    await page.addInitScript(() =>
+      localStorage.setItem("bts:settings:v1", JSON.stringify({ unusedLines: ["sukhumvit"], onlinePlaces: false })),
+    );
+    // Siam to Chit Lom is one Sukhumvit hop: with that line off there is no other way.
+    await page.goto("/?from=CEN&to=E1");
+    await page.getByRole("button", { name: "View route" }).click();
+    const sheet = page.getByRole("dialog", { name: /Route from/ });
+    await expect(sheet.getByText(/No route without BTS Sukhumvit Line/)).toBeVisible();
+    await sheet.getByRole("button", { name: "Use BTS Sukhumvit Line for routes" }).click();
+    await expect(sheet.getByText(/No route without/)).toHaveCount(0);
+    await expect(sheet.getByRole("list").first()).toBeVisible();
+    // The choice is remembered: the line is no longer off.
+    await expect
+      .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("bts:settings:v1") ?? "{}").unusedLines))
+      .toEqual([]);
+  });
+
   test("garbage in the link is ignored, not a crash", async ({ page }) => {
     await page.goto("/?from=ZZZ&to=QQQ");
     await expect(page.getByRole("heading", { name: "Bangkok Transit" })).toBeVisible();

@@ -9,7 +9,7 @@ import { StationSearch } from "@/components/StationSearch";
 import { SettingsMenu } from "@/components/SettingsMenu";
 import { StopAlertBanner } from "@/components/StopAlertControl";
 import { useStopAlert } from "@/lib/use-stop-alert";
-import { findPath } from "@/lib/transit-graph";
+import { findPath, linesInTheWay } from "@/lib/transit-graph";
 import { useGeolocation } from "@/lib/use-geolocation";
 import { startArrivalsPolling, useArrivalsStore } from "@/lib/arrivals-store";
 import { scheduleOfflineWarm } from "@/lib/offline-warm";
@@ -152,7 +152,7 @@ export function HomeClient({
     apply();
     return useSettingsStore.subscribe(apply);
   }, []);
-  const { compactHeader, showFare, fewerChanges, avoidWalking, avoidLines, walkSpeed, changeMinutes, mapProvider } =
+  const { compactHeader, showFare, fewerChanges, avoidWalking, unusedLines, walkSpeed, changeMinutes, mapProvider } =
     useSettingsStore((s) => s.settings);
   const { provider: activeMap, fellBack } = chooseMap({
     chosen: mapProvider,
@@ -198,12 +198,18 @@ export function HomeClient({
 
   // The route is derived, not staged: as soon as both ends exist the path is
   // highlighted. There is no separate confirm step to get stuck on.
+  const routeOptions = useMemo(
+    () => ({ fewerChanges, avoidWalking, unusedLines, walkSpeed, changeMinutes }),
+    [fewerChanges, avoidWalking, unusedLines, walkSpeed, changeMinutes],
+  );
   const path = useMemo(
-    () =>
-      start && destination
-        ? findPath(start.code, destination.code, { fewerChanges, avoidWalking, avoidLines, walkSpeed, changeMinutes })
-        : null,
-    [start, destination, fewerChanges, avoidWalking, avoidLines, walkSpeed, changeMinutes],
+    () => (start && destination ? findPath(start.code, destination.code, routeOptions) : null),
+    [start, destination, routeOptions],
+  );
+  // No route, but only because of lines turned off for routes: say which.
+  const blockedBy = useMemo(
+    () => (start && destination && !path ? linesInTheWay(start.code, destination.code, routeOptions) : []),
+    [start, destination, path, routeOptions],
   );
   const fares = useFares(path !== null && showFare);
   const fareLine = showFare ? fareText(t, computeFare(path, fares)) : "";
@@ -252,9 +258,9 @@ export function HomeClient({
   };
 
   const panelState: RoutePanelState | null = useMemo(() => {
-    if (start && destination) return { mode: "route", start, destination, path };
+    if (start && destination) return { mode: "route", start, destination, path, blockedBy };
     return null;
-  }, [start, destination, path]);
+  }, [start, destination, path, blockedBy]);
 
   const startCode = start?.code ?? null;
   const destinationCode = destination?.code ?? null;
@@ -444,6 +450,9 @@ export function HomeClient({
         userPosition={position}
         stopAlert={stopAlert}
         onClose={() => setSheetOpen(false)}
+        onUseLines={(lines) =>
+          useSettingsStore.getState().update({ unusedLines: unusedLines.filter((l) => !lines.includes(l)) })
+        }
       />
       {children}
     </div>

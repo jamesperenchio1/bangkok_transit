@@ -219,8 +219,12 @@ const stateKey = (s: State) => `${s.code}|${s.mode}|${s.service ?? ""}`;
  * ~200 stations, so a sorted array is a perfectly good priority queue.
  */
 export interface PathOptions {
-  /** Lines to avoid: charged extra per ride minute, so a route without them wins unless it is far slower. */
-  avoidLines?: readonly LineKey[];
+  /**
+   * Lines the route may not ride at all (Settings -> Lines -> "Used for
+   * routes"). A hard rule, unlike the preferences below: if that leaves no way
+   * between two stations, `findPath` returns null.
+   */
+  unusedLines?: readonly LineKey[];
   /** Walking speed for transfers, metres per minute (default 75). */
   walkSpeed?: number;
   /** Minutes for a change of line / platform (default 5). */
@@ -236,8 +240,20 @@ export interface PathOptions {
 // change or a walk still gets found (these are preferences, not bans).
 const FEWER_CHANGES_PENALTY_MIN = 8;
 const AVOID_WALKING_PENALTY_MIN = 15;
-/** Extra cost multiplier on the ride minutes of an avoided line (1 = no extra). */
-const AVOIDED_LINE_FACTOR = 2.5;
+
+/**
+ * Why there is no route: the lines turned off for routes that the best route
+ * would have ridden, or an empty list when they are not the reason (the
+ * stations are simply not connected, or no line is turned off).
+ */
+export function linesInTheWay(fromCode: string, toCode: string, options: PathOptions): LineKey[] {
+  const off = options.unusedLines;
+  if (!off?.length) return [];
+  if (findPath(fromCode, toCode, options)) return [];
+  const open = findPath(fromCode, toCode, { ...options, unusedLines: [] });
+  if (!open) return [];
+  return [...new Set(open.legs.map((l) => l.line).filter((l): l is LineKey => !!l && off.includes(l)))];
+}
 
 export function findPath(fromCode: string, toCode: string, options: PathOptions = {}): PathResult | null {
   const graph = getGraph();
@@ -272,11 +288,11 @@ export function findPath(fromCode: string, toCode: string, options: PathOptions 
         edgeCost = walkMinutes(edge.meters, options.walkSpeed);
         if (options.avoidWalking) penalty = AVOID_WALKING_PENALTY_MIN;
       } else {
+        if (options.unusedLines?.includes(edge.line)) continue;
         const changing = state.mode === "ride" && state.service !== edge.service;
         next = { code: edge.to, mode: "ride", line: edge.line, service: edge.service };
         edgeCost = edge.minutes + (changing ? (options.changeMinutes ?? CHANGE_MIN) : 0);
         if (changing && options.fewerChanges) penalty = FEWER_CHANGES_PENALTY_MIN;
-        if (options.avoidLines?.includes(edge.line)) penalty += edge.minutes * (AVOIDED_LINE_FACTOR - 1);
       }
       const nextCost = cost + edgeCost + penalty;
       const key = stateKey(next);

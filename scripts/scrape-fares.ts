@@ -34,7 +34,7 @@ const ROOT = path.join(import.meta.dirname, "..");
 const FILE = path.join(ROOT, "data", "fares.json");
 const MAX_CHANGE = 0.3;
 const MAX_LOST_PAIRS = 0.1;
-// 600 m like build-hop-times.ts: some coordinates in data/stations.json are off (PP06 Tha It is ~475 m from the feed stop).
+// 600 m like build-hop-times.ts: large stations have several entrances, so a feed stop can sit a couple of hundred metres from our point.
 const MAX_MATCH_METERS = 600;
 const DRY_RUN = process.argv.includes("--dry-run");
 const GTFS_URL = "https://namtang-api.otp.go.th/download/namtang-gtfs.zip";

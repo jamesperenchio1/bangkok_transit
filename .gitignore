@@ -56,3 +56,6 @@ next-env.d.ts
 
 # simulation harness output
 /sim-artifacts/
+
+# Vercel CLI: `vercel env pull` writes real environment variables here
+.vercel

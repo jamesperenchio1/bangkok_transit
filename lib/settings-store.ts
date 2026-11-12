@@ -84,8 +84,13 @@ export interface Settings {
   fewerChanges: boolean;
   /** Charge more for walking transfers. */
   avoidWalking: boolean;
-  /** Lines the planner should avoid (still used when there is no other way). */
-  avoidLines: LineKey[];
+  /**
+   * Lines the route planner may not ride. Independent of `hiddenLines`: a line
+   * can be hidden from the map and still used for routes, or drawn on the map
+   * and left out of routes. If that leaves no way between two stations the
+   * route sheet says which lines are in the way (and offers to turn them on).
+   */
+  unusedLines: LineKey[];
   /** Walking speed for transfers, metres per minute. */
   walkSpeed: number;
   /** Minutes allowed for a change of platform / line. */
@@ -157,7 +162,7 @@ export const DEFAULT_SETTINGS: Settings = {
 
   fewerChanges: false,
   avoidWalking: false,
-  avoidLines: [],
+  unusedLines: [],
   walkSpeed: 75,
   changeMinutes: 5,
   showFare: true,
@@ -209,11 +214,11 @@ export const RANGES: { [K in keyof Settings]?: readonly [number, number] } = {
 
 export const SETTINGS_STORAGE_KEY = "bts:settings:v1";
 
-const LINE_LISTS = ["hiddenLines", "avoidLines"] as const;
+const LINE_LISTS = ["hiddenLines", "unusedLines"] as const;
 
 /** Reads saved settings, ignoring anything missing, malformed, out of range or of the wrong type. */
 export function parseSettings(raw: string | null): Settings {
-  const out: Settings = { ...DEFAULT_SETTINGS, hiddenLines: [], avoidLines: [] };
+  const out: Settings = { ...DEFAULT_SETTINGS, hiddenLines: [], unusedLines: [] };
   if (!raw) return out;
   let saved: unknown;
   try {
@@ -256,7 +261,7 @@ export const useSettingsStore = create<{
   /** True once saved settings have been read (they cannot be at module load; see restoreSettings). */
   restored: boolean;
   update: (patch: Partial<Settings>) => void;
-  toggleLine: (key: "hiddenLines" | "avoidLines", line: LineKey) => void;
+  toggleLine: (key: "hiddenLines" | "unusedLines", line: LineKey) => void;
   /** Replace everything (import / reset); unknown or invalid parts fall back to defaults. */
   replace: (raw: string | null) => void;
   reset: () => void;

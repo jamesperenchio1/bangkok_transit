@@ -70,6 +70,8 @@ export const strings = {
     close: "Close",
     googleMaps: "Get directions in Google Maps",
     noRoute: "No route found between these stations yet - try Google Maps above.",
+    noRouteLinesOff: (lines: string) => `No route without ${lines}, which you turned off for routes.`,
+    useLinesForRoutes: (lines: string) => `Use ${lines} for routes`,
     changeLine: "Change line",
     boardToward: (name: string) => `Board toward ${name}`,
     // Where both directions end at the same station (MRT Blue at Tha Phra), the next stop says which platform.
@@ -180,6 +182,8 @@ export const strings = {
     close: "ปิด",
     googleMaps: "ขอเส้นทางใน Google Maps",
     noRoute: "ยังไม่พบเส้นทางระหว่างสถานีนี้ - ลองใช้ Google Maps ด้านบน",
+    noRouteLinesOff: (lines: string) => `ไม่มีเส้นทางหากไม่ใช้ ${lines} ซึ่งคุณปิดไว้ในการวางแผนเส้นทาง`,
+    useLinesForRoutes: (lines: string) => `ใช้ ${lines} ในการวางแผนเส้นทาง`,
     changeLine: "เปลี่ยนสาย",
     boardToward: (name: string) => `ขึ้นขบวนไปทาง ${name}`,
     boardTowardVia: (name: string, via: string) => `ขึ้นขบวนไปทาง ${name} (สถานีถัดไป ${via})`,

@@ -127,6 +127,21 @@ describe("interchanges", () => {
   });
 });
 
+describe("station positions agree with independent sources", () => {
+  // Stations whose position was checked against the official Namtang GTFS feed
+  // and Wikipedia, which agree with each other. PP06 was 474 m out (it sat 747 m
+  // from Sai Ma and 1,665 m from Bang Rak Yai instead of ~1,200 m from both).
+  const VERIFIED: Record<string, [number, number]> = {
+    PP06: [13.874895, 100.455992], // MRT Bang Rak Noi Tha It
+  };
+  it("keeps verified stations within 100 m of the reference point", () => {
+    for (const [code, [lat, lon]] of Object.entries(VERIFIED)) {
+      const s = stationsByCode.get(code)!;
+      expect(haversineMeters([s.lat, s.lon], [lat, lon]), code).toBeLessThan(100);
+    }
+  });
+});
+
 describe("official station codes", () => {
   // The operators' own codes (Wikipedia station lists for MRT Blue, the Airport
   // Rail Link and the SRT Red lines; EBM's Yellow Line page gives Lat Phrao as

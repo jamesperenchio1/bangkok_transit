@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CHOICES, DEFAULT_SETTINGS, RANGES, parseSettings } from "@/lib/settings-store";
-import { findPath } from "@/lib/transit-graph";
+import { findPath, linesInTheWay } from "@/lib/transit-graph";
 import { routeHops, trainOnRoute } from "@/lib/live-trains";
 
 describe("parseSettings", () => {
@@ -96,11 +96,39 @@ describe("findPath preferences", () => {
     }
   });
 
-  it("an avoided line is skipped when another way exists, but never makes a trip impossible", () => {
-    // Every route between these two uses the Sukhumvit line; avoiding it must still return one.
-    const path = findPath("N8", "CEN", { avoidLines: ["sukhumvit"] });
-    expect(path).not.toBeNull();
-    expect(path!.legs.map((l) => l.station.code)).toContain("N8");
+  it("a line turned off for routes is never ridden", () => {
+    // Siam to Chit Lom is one Sukhumvit hop: with that line off there is no way between them
+    // (a walking transfer does not connect them), and the router says so rather than riding it.
+    expect(findPath("CEN", "E1")).not.toBeNull();
+    expect(findPath("CEN", "E1", { unusedLines: ["sukhumvit"] })).toBeNull();
+  });
+
+  it("goes round a line that is off when there is another way", () => {
+    const base = findPath("W1", "BL22");
+    expect(base).not.toBeNull();
+    const rides = (p: NonNullable<typeof base>) => new Set(p.legs.map((l) => l.line).filter(Boolean));
+    // Pick a line the best route rides, turn it off, and require any route found to avoid it.
+    for (const line of rides(base!)) {
+      const detour = findPath("W1", "BL22", { unusedLines: [line!] });
+      if (detour) expect(rides(detour).has(line)).toBe(false);
+    }
+  });
+
+  it("names the lines in the way when they are the only reason there is no route", () => {
+    expect(linesInTheWay("CEN", "E1", {})).toEqual([]); // nothing turned off
+    expect(linesInTheWay("CEN", "E1", { unusedLines: ["sukhumvit"] })).toEqual(["sukhumvit"]);
+    // Turning off a line the trip does not need is not the reason for anything.
+    expect(linesInTheWay("CEN", "E1", { unusedLines: ["gold"] })).toEqual([]);
+    // Unconnected stations stay "no route" however the lines are set.
+    expect(linesInTheWay("CEN", "CEN", { unusedLines: ["sukhumvit"] })).toEqual([]);
+  });
+
+  it("hidden-on-the-map and unused-for-routes are separate settings", () => {
+    const parsed = parseSettings(JSON.stringify({ hiddenLines: ["gold"], unusedLines: ["blue", 5], avoidLines: ["silom"] }));
+    expect(parsed.hiddenLines).toEqual(["gold"]);
+    expect(parsed.unusedLines).toEqual(["blue"]);
+    // The old soft "lines to avoid" setting is gone, not silently turned into a ban.
+    expect(parsed).not.toHaveProperty("avoidLines");
   });
 });
 

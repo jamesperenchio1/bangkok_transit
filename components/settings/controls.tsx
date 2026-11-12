@@ -1,7 +1,7 @@
 "use client";
 
-import { useId, useState } from "react";
-import type { LineKey } from "@/data/stations";
+import { Fragment, useId, useState } from "react";
+import { Check } from "lucide-react";
 import { LINE_COLORS, LINE_NAMES, LINE_ORDER } from "@/lib/line-colors";
 import { useLangStore, useT, type Lang } from "@/lib/i18n";
 import { googleMapsKey } from "@/lib/google-maps";
@@ -159,39 +159,73 @@ function Range({ row, lang }: { row: Extract<Row, { kind: "range" }>; lang: Lang
   );
 }
 
-/** One chip per line. `inverted`: lit = shown (the setting stores the hidden ones); otherwise lit = selected. */
-function Lines({ row, lang }: { row: Extract<Row, { kind: "lines" }>; lang: Lang }) {
-  const list = useSettingsStore((s) => s.settings[row.key]) as LineKey[];
+/**
+ * One row per line, two switches each: whether the line is drawn on the map,
+ * and whether route planning may ride it. They are independent - a line can be
+ * hidden from the map and still used for routes, or drawn and left out of
+ * routes. Compact on purpose (one 44 px row per line) so all of them fit on a
+ * phone without a long scroll.
+ */
+function LineTable({ row, lang }: { row: Extract<Row, { kind: "lineTable" }>; lang: Lang }) {
+  const hidden = useSettingsStore((s) => s.settings.hiddenLines);
+  const unused = useSettingsStore((s) => s.settings.unusedLines);
   const toggleLine = useSettingsStore((s) => s.toggleLine);
+  const update = useSettingsStore((s) => s.update);
   const labelId = useId();
+  const T = (en: string, th: string) => (lang === "th" ? th : en);
+  const cell = (on: boolean, label: string, onClick: () => void) => (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      onClick={onClick}
+      className={`mx-auto flex h-11 w-14 items-center justify-center rounded-xl border-2 ${
+        on
+          ? "border-green-700 bg-green-700 text-white"
+          : "border-neutral-300 text-transparent hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-800"
+      }`}
+    >
+      <Check size={20} strokeWidth={3} aria-hidden="true" />
+    </button>
+  );
   return (
-    <div className="px-2 py-1">
-      <Label row={row} lang={lang} id={labelId} changed={isChanged(row.key, list)} />
-      <div role="group" aria-labelledby={labelId} className="mt-1 grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
-        {LINE_ORDER.map((line) => {
-          const listed = list.includes(line);
-          const on = row.inverted ? !listed : listed;
-          return (
-            <button
-              key={line}
-              type="button"
-              role="switch"
-              aria-checked={on}
-              onClick={() => toggleLine(row.key, line)}
-              className="flex min-h-11 items-center gap-2 rounded-lg border border-neutral-300 px-3 text-left text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
-            >
-              <span
-                aria-hidden="true"
-                className="h-3 w-3 shrink-0 rounded-full border border-black/20"
-                style={{ backgroundColor: on ? LINE_COLORS[line] : "transparent" }}
-              />
-              <span lang="en" className={row.inverted && !on ? "text-neutral-500 line-through" : ""}>
+    <div className="px-2 py-1" role="group" aria-labelledby={labelId}>
+      <Label row={row} lang={lang} id={labelId} changed={isChanged("hiddenLines", hidden) || isChanged("unusedLines", unused)} />
+      <div className="mt-1 grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem] items-center gap-x-2 min-[400px]:grid-cols-[minmax(0,1fr)_4.5rem_4.5rem]">
+        <span aria-hidden="true" />
+        <span aria-hidden="true" className="text-center text-[11px] font-semibold uppercase leading-tight tracking-wide text-neutral-600 dark:text-neutral-400">
+          {T("On map", "บนแผนที่")}
+        </span>
+        <span aria-hidden="true" className="text-center text-[11px] font-semibold uppercase leading-tight tracking-wide text-neutral-600 dark:text-neutral-400">
+          {T("Routes", "เส้นทาง")}
+        </span>
+        {LINE_ORDER.map((line) => (
+          <Fragment key={line}>
+            <span className="flex min-h-12 min-w-0 items-center gap-2 border-t border-neutral-200 text-sm dark:border-neutral-800">
+              <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-full border border-black/20" style={{ backgroundColor: LINE_COLORS[line] }} />
+              <span lang="en" className="truncate">
                 {LINE_NAMES[line]}
               </span>
-            </button>
-          );
-        })}
+            </span>
+            <span className="border-t border-neutral-200 dark:border-neutral-800">
+              {cell(!hidden.includes(line), `${LINE_NAMES[line]}: ${T("show on map", "แสดงบนแผนที่")}`, () => toggleLine("hiddenLines", line))}
+            </span>
+            <span className="border-t border-neutral-200 dark:border-neutral-800">
+              {cell(!unused.includes(line), `${LINE_NAMES[line]}: ${T("use for routes", "ใช้ในการวางแผนเส้นทาง")}`, () => toggleLine("unusedLines", line))}
+            </span>
+          </Fragment>
+        ))}
       </div>
+      {(hidden.length > 0 || unused.length > 0) && (
+        <button
+          type="button"
+          onClick={() => update({ hiddenLines: [], unusedLines: [] })}
+          className="mt-2 inline-flex min-h-11 items-center rounded-full border border-neutral-300 px-4 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-800"
+        >
+          {T("Turn every line back on", "เปิดทุกสายอีกครั้ง")}
+        </button>
+      )}
     </div>
   );
 }
@@ -354,8 +388,8 @@ export function RowView({ row }: { row: Row }) {
       return <Choice row={row} lang={lang} />;
     case "range":
       return <Range row={row} lang={lang} />;
-    case "lines":
-      return <Lines row={row} lang={lang} />;
+    case "lineTable":
+      return <LineTable row={row} lang={lang} />;
     case "language":
       return <LanguageRow row={row} lang={lang} />;
     case "action":
@@ -365,7 +399,10 @@ export function RowView({ row }: { row: Row }) {
 
 /** The key of a row, for React lists. */
 export function rowId(row: Row): string {
-  return row.kind === "action" ? `a-${row.id}` : row.kind === "language" ? "language" : String(row.key);
+  if (row.kind === "action") return `a-${row.id}`;
+  if (row.kind === "language") return "language";
+  if (row.kind === "lineTable") return "lineTable";
+  return String(row.key);
 }
 
 export type { Settings };

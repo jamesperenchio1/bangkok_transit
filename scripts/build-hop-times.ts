@@ -43,9 +43,11 @@ const OUT = path.join(ROOT, "data", "hop-times.json");
 
 /**
  * A feed stop further than this from every station of its line is an error.
- * Generous on purpose: some coordinates in data/stations.json are off (PP06
- * Tha It is ~475 m from the feed's "Bang Rak Noi Tha It"), so the match is
- * also required to be unambiguous, see AMBIGUITY.
+ * Generous on purpose (large stations have several entrances, and Bang Sue and
+ * Itsaraphap sit 150-220 m from the feed's stop), so the match is also required
+ * to be unambiguous, see AMBIGUITY. (PP06 Tha It was 475 m off until it was
+ * corrected to the feed's "Bang Rak Noi Tha It" position, which Wikipedia
+ * agrees with to ~7 m.)
  */
 const MAX_MATCH_METERS = 600;
 /** The nearest station must be at least this many times closer than the runner-up. */

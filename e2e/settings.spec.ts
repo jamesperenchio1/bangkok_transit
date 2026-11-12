@@ -42,9 +42,27 @@ test.describe("settings", () => {
     await page.goto("/");
     await mapReady(page);
     const dialog = await openSettings(page);
-    await dialog.getByRole("button", { name: /Lines/ }).first().click();
-    await dialog.getByRole("switch", { name: /Sukhumvit/ }).first().click();
+    await dialog.getByRole("button", { name: /^Lines/ }).click();
+    await dialog.getByRole("switch", { name: /Sukhumvit.*show on map/i }).click();
     await expect.poll(() => map(page, (m) => m.getFilter("transit-lines-layer"))).toBeTruthy();
+  });
+
+  test("a line can be hidden from the map and still used for routes, or the other way round", async ({ page }) => {
+    await page.goto("/");
+    await mapReady(page);
+    const dialog = await openSettings(page);
+    await dialog.getByRole("button", { name: /^Lines/ }).click();
+    const onMap = dialog.getByRole("switch", { name: /Gold.*show on map/i });
+    const forRoutes = dialog.getByRole("switch", { name: /Gold.*use for routes/i });
+    await expect(onMap).toHaveAttribute("aria-checked", "true");
+    await expect(forRoutes).toHaveAttribute("aria-checked", "true");
+    await onMap.click();
+    await expect(onMap).toHaveAttribute("aria-checked", "false");
+    await expect(forRoutes).toHaveAttribute("aria-checked", "true"); // independent
+    await expect(dialog.getByRole("button", { name: "Turn every line back on" })).toBeVisible();
+    await dialog.getByRole("button", { name: "Turn every line back on" }).click();
+    await expect(onMap).toHaveAttribute("aria-checked", "true");
+    await expect(dialog.getByRole("button", { name: "Turn every line back on" })).toHaveCount(0);
   });
 
   test("reset puts everything back", async ({ page }) => {

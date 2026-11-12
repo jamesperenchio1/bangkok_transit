@@ -35,7 +35,8 @@ export type Row =
   | (Base & { kind: "toggle"; key: keyof Settings })
   | (Base & { kind: "choice"; key: keyof Settings; options: ChoiceOption[] })
   | (Base & { kind: "range"; key: keyof Settings; min: number; max: number; step: number; unit?: string; percent?: boolean })
-  | (Base & { kind: "lines"; key: "hiddenLines" | "avoidLines"; inverted?: boolean })
+  /** One row per line with two switches: drawn on the map, and used for routes (two independent settings). */
+  | (Base & { kind: "lineTable" })
   | (Base & { kind: "language" })
   | (Base & { kind: "action"; id: ActionId });
 
@@ -92,10 +93,10 @@ export const SECTION_KEYS: Record<SectionId, (keyof Settings)[]> = {
     "locateButton",
     "rotateGestures",
   ],
-  lines: ["hiddenLines", "onlyRouteLines"],
+  lines: ["hiddenLines", "unusedLines", "onlyRouteLines"],
   trains: ["showTrains", "otherTrains", "trainSize", "trainLabels", "trainRate"],
   live: ["showLiveTimes", "upcomingCount", "clock", "pauseLive"],
-  routing: ["fewerChanges", "avoidWalking", "avoidLines", "walkSpeed", "changeMinutes", "showFare"],
+  routing: ["fewerChanges", "avoidWalking", "walkSpeed", "changeMinutes", "showFare"],
   alerts: ["alertVolume", "alertRepeats", "alertKeepAwake", "alertNotify"],
   places: ["onlinePlaces", "placeResults"],
   data: ["dataSaver"],
