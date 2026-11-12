@@ -189,9 +189,9 @@ describe("hop times", () => {
   const adjacent = (line: LineKey) =>
     new Set(sequences[line].flatMap((seg) => seg.slice(0, -1).map((c, i) => hopKey(c, seg[i + 1]))));
 
-  // Yellow and Pink are placeholders in the feed (uniform times), Light Red is
-  // not in the selection; they must stay on the distance formula.
-  const SCHEDULED: LineKey[] = ["sukhumvit", "silom", "gold", "blue", "purple", "arl", "srtDarkRed"];
+  // Yellow and Pink are placeholders in the feed (uniform times); they must
+  // stay on the distance formula.
+  const SCHEDULED: LineKey[] = ["sukhumvit", "silom", "gold", "blue", "purple", "arl", "srtDarkRed", "srtLightRed"];
 
   it("only covers lines with trustworthy feed times", () => {
     expect(Object.keys(tables).sort()).toEqual([...SCHEDULED].sort());
@@ -218,7 +218,7 @@ describe("hop times", () => {
       expect(table.dwell, line).toBeLessThanOrEqual(2);
       for (const [key, minutes] of Object.entries(table.hops)) {
         expect(minutes, `${line} ${key}`).toBeGreaterThanOrEqual(0.5);
-        expect(minutes, `${line} ${key}`).toBeLessThanOrEqual(6);
+        expect(minutes, `${line} ${key}`).toBeLessThanOrEqual(8); // Light Red Bang Son - Bang Bamru is 7
       }
     }
   });
