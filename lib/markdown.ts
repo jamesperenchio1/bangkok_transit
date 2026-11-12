@@ -75,6 +75,58 @@ export function routesIndexMarkdown(): string {
   return page("Bangkok BTS and MRT routes between major stations", "/routes", `${routePairs.length} step-by-step routes between airports, interchanges and busy stations.\n\n${rows.join("\n")}`);
 }
 
+export function infoMarkdown(): string {
+  return page(
+    "Bangkok transit rules, fares and etiquette",
+    "/info",
+    `Each operator sets its own rules, fares and ticket conditions. Checked 12 November 2026; confirm current fares and notices at the station.
+
+## Quick comparison
+| Operator | Hours | Paid-area limit | Children | Food and drink | Pets and bikes |
+| --- | --- | --- | --- | --- | --- |
+| BTS | 06:00–24:00 | 300 minutes | Under 90 cm | No food or drink in the paid area or on trains | Guide dogs only; standard bikes in limited windows, foldables anytime |
+| MRT Blue / Purple | 06:00–24:00 | 180 minutes | Under 90 cm, carried through the gate | No food, drinks or snacks in the paid area | No pets, no bicycles |
+| SRT Red | 05:30–24:00 | 120 minutes | 4 years or under and 90 cm or under | Follow station notices | Follow station notices |
+| Airport Rail Link | About 05:30–24:00 | Check station notices | 90 cm or under with an adult | Follow station notices | Follow station notices |
+
+## BTS
+Trains run 06:00–24:00. Children under 90 cm travel free and are carried through the gate. The paid-area limit is 300 minutes; overstaying is charged the maximum single-journey fare. Eating and drinking are not allowed in the paid area or on trains. Pets are not allowed except guide dogs. Smoking, weapons, dangerous goods, alcohol, loud devices, selling, begging, leaflets and loitering are prohibited.
+
+Standard bicycles are allowed on weekdays 06:00–06:30 and 22:00–24:00, and on weekends and public holidays 06:00–09:00 and 22:00–24:00. Foldables are allowed during all operating hours. Fold at ground level, use the right side of the stairs, leave the bike in front of the manual gate, ask staff, and hold it at all times. Riding inside is prohibited.
+
+Single Journey tickets are valid on the purchase date only. Leaving the paid area at the same station within five minutes can be refunded at the ticket office. A lost ticket is charged the maximum fare, and fare evasion can be fined up to 20 times the maximum fare. A negative Rabbit balance blocks travel until top-up.
+
+Fines: damaging or defacing system property up to 5,000 THB; spitting, littering, smoking or unauthorised selling up to 2,000 THB; animals, unreasonable noise, alcohol or lewd behaviour up to 500 THB; deliberate pushing, panic or disturbance up to 1 month or 1,000 THB, or both.
+
+## MRT Blue and Purple
+BEM operates the Blue and Purple lines. A Single Journey Token is valid only on the issue date and at the issuing station, and must be returned at the destination gate. The paid-area limit is 180 minutes; overstaying is charged the maximum fare.
+
+Food, drinks and snacks are not allowed anywhere in the paid area. Pets, bicycles and roller shoes are not allowed. Queue behind the yellow line, let passengers leave first, hold a rail or strap, and do not lean on or block the doors. Lift luggage above the gate and pass one person at a time.
+
+Contactless EMV bank cards charge the standard adult fare, one card per traveller. Tap the same card in and out; forgetting to tap out or using a different card charges the maximum fare. Mastercard may show a 1 THB pre-authorisation on first use. Ticket offices do not top up bank cards, and disputes must be raised within 14 days.
+
+## SRT Red
+Trains run 05:30–24:00. Fares are 1.50 THB per kilometre: 12–42 THB for adults, 11–38 THB for students and 6–21 THB for seniors. Children aged four or under and 90 cm or under travel free. Disabled passengers travel free with a government-issued disability card.
+
+The paid-area limit is 120 minutes; overstaying is charged the maximum fare. Single Journey tokens are valid on the purchase date and are not refundable. A stored-value card costs 300 THB (200 THB value, 50 THB deposit, 50 THB issuance). A 30-day, 30-trip card costs 800 THB. A through ticket is available between Rangsit and Taling Chan; change platforms at Krung Thep Aphiwat.
+
+## Airport Rail Link
+Phaya Thai to Suvarnabhumi, eight stations, fares 15–45 THB. Trains run from about 05:30 to 24:00, with the last train often leaving before midnight. Children 90 cm or under travel free with an adult.
+
+Rabbit cards are not accepted. Contactless EMV bank cards have been accepted at all eight stations since 8 November 2025; each traveller needs their own card and must tap the same card in and out. The Airport Rail Link charges a separate fare from BTS and MRT, even at interchanges such as Phaya Thai, Makkasan and Hua Mak.
+
+## Across operators
+There is no single Bangkok transit ticket. BTS, MRT, SRT Red and the Airport Rail Link each charge their own fare. From December 2025 to November 2026, MRT Purple and SRT Red journeys paid with a contactless EMV Visa, Mastercard or UnionPay card are capped at 40 THB per day for unlimited journeys; the cap applies to each line or both together, and a lower actual fare is charged as normal.
+
+## Official sources
+- [BTS FAQ](https://www.bts.co.th/eng/faq/faq-howto.html) and [BTS regulations](https://www.bts.co.th/eng/service/AnnouncementandRegulations.html)
+- [BTS ticket conditions](https://btsapp1.bts.co.th/website/eng/tickets/ticket-conditions.html)
+- [BEM terms of use](https://metro.bemplc.co.th/Terms-of-Use?lang=en) and [ticket types](https://metro.bemplc.co.th/Ticket-Type?lang=en)
+- [SRT Red FAQ](https://www.srtet.co.th/en/faq), [ticket types](https://www.srtet.co.th/en/ticket-types) and [fares](https://www.srtet.co.th/en/fare-information)
+- [MRTA daily fare policy](https://www.mrta.co.th/en/ticket-transaction)`,
+  );
+}
+
 export function lineMarkdown(line: LineInfo): string {
   const list = lineStations(line.key);
   const termini = lineTermini(line.key);
@@ -172,6 +224,7 @@ export function markdownPages(): { segments: string[]; body: string }[] {
     { segments: ["lines.md"], body: linesIndexMarkdown() },
     { segments: ["stations.md"], body: stationsIndexMarkdown() },
     { segments: ["routes.md"], body: routesIndexMarkdown() },
+    { segments: ["info.md"], body: infoMarkdown() },
   ];
   for (const l of LINES) out.push({ segments: ["lines", `${l.slug}.md`], body: lineMarkdown(l) });
   for (const s of stations) out.push({ segments: ["stations", `${stationSlug(s)}.md`], body: stationMarkdown(s) });
