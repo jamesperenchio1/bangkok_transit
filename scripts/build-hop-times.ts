@@ -30,9 +30,9 @@
  * What a figure means. For two consecutive stops A then B on a trip, the hop
  * is arrival(B) - departure(A): pure running time, in minutes. Each line also
  * gets one `dwell` (median stop time at intermediate stops), which the router
- * adds per stop. Where the feed skips a station we list (Sukhumvit's N6 Sena
- * Ruam, which was never built, is in line-sequences.json), the run is split
- * between the hops in proportion to their straight-line length. A hop seen on
+ * adds per stop. Where the feed skips a station we list, the run is split between the hops
+ * in proportion to their straight-line length. (Sukhumvit's N6 Sena Ruam was
+ * never built and is not in line-sequences.json, so N5 to N7 is one hop.) A hop seen on
  * several trips (both directions, short-turn patterns) takes the median.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";

@@ -137,12 +137,12 @@ describe("routeHops / trainOnRoute", () => {
   const hops = routeHops(path.legs);
 
   it("lists the directed hops of the ride legs", () => {
-    expect([...hops]).toEqual(["N8>N7", "N7>N6", "N6>N5"]);
+    expect([...hops]).toEqual(["N8>N7", "N7>N5"]);
   });
 
   it("a train heading along the route is on it; one heading the other way, or elsewhere, is not", () => {
-    expect(trainOnRoute({ heading: ["N7", "N6"] }, hops)).toBe(true);
-    expect(trainOnRoute({ heading: ["N6", "N7"] }, hops)).toBe(false);
+    expect(trainOnRoute({ heading: ["N7", "N5"] }, hops)).toBe(true);
+    expect(trainOnRoute({ heading: ["N5", "N7"] }, hops)).toBe(false);
     expect(trainOnRoute({ heading: ["E4", "E5"] }, hops)).toBe(false);
   });
 

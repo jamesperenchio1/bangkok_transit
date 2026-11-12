@@ -35,8 +35,7 @@ describe("fare data", () => {
   });
 
   it("prices (nearly) every station pair on each line", () => {
-    // The feed has no figure for a station that was never built (N6), and the
-    // Gold Line is priced only within itself.
+    // The Gold Line is priced only within itself.
     for (const key of ["arl", "srtRed", "purple", "yellow", "pink"]) {
       const sys = data.systems[key];
       const n = new Set(Object.keys(sys.pairs!).flatMap((k) => k.split("|"))).size;

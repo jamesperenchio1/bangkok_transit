@@ -49,11 +49,19 @@ describe("stations", () => {
     }
   });
 
-  it("marks exactly the 61 BTS Sukhumvit/Silom stations as live", () => {
-    expect(liveStations).toHaveLength(61);
+  it("marks exactly the 60 BTS Sukhumvit/Silom stations as live", () => {
+    expect(liveStations).toHaveLength(60);
     for (const s of liveStations) {
       expect(s.lines.every((l) => l.line === "sukhumvit" || l.line === "silom"), s.code).toBe(true);
     }
+  });
+
+  it("does not list N6 Sena Ruam, a BTS station that was planned and never built", () => {
+    // The upstream API still serves arrivals for it, and the old BTS numbering
+    // skips it (N5 is followed by N7). Listing it drew a station that does not
+    // exist and put a phantom stop in every Sukhumvit route.
+    expect(stationsByCode.has("N6")).toBe(false);
+    expect(sequences.sukhumvit.some((seg) => seg.some((_, i) => seg[i] === "N7" && (seg[i + 1] === "N5" || seg[i - 1] === "N5")))).toBe(true);
   });
 
   it("only uses lines that have a brand color", () => {

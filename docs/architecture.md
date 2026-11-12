@@ -11,7 +11,7 @@
 Live arrivals come from `bts-api.topmile.com`, an undocumented third-party API:
 
 - **No CORS header** — browsers can't call it.
-- **No batch endpoint** — one request per station (61 BTS Sukhumvit/Silom codes). Probed: `/arrivals/all`, comma lists, `/arrivals/batch`, multi-segment paths all 400/404.
+- **No batch endpoint** — one request per station (60 BTS Sukhumvit/Silom codes). Probed: `/arrivals/all`, comma lists, `/arrivals/batch`, multi-segment paths all 400/404.
 - **Rate limited** — HTTP 429 at around 180 calls/minute.
 - **Quirks** — `timestamp` is UTC with no `Z` (parse it as local time and every countdown is 7 hours off); stations outside its coverage can return `200` with no `platforms`.
 - **No SLA** — as of 2026-10-15 every data endpoint returns 500 while `/health` says ok.
@@ -25,7 +25,7 @@ cron * * * * *  ──► Worker.scheduled() ──► ArrivalsPoller.ensureRunn
                                                 │ re-arms the alarm if none is set
                                                 ▼
                      ArrivalsPoller.alarm()  ── every 10 s (5 min overnight; backoff when down)
-                       1. pick the 31 stalest of 61 stations (3 while the upstream is down)
+                       1. pick the 31 stalest of 60 stations (3 while the upstream is down)
                        2. fetch them, 6 at a time, within a 9.5 s budget; stop at the first 429
                        3. merge with previous readings (failures keep their last reading)
                        4. update upstream health (ok / degraded / down + outage history)

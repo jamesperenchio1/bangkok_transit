@@ -15,7 +15,7 @@
 - **Works offline.** After one visit the app shell, route data and the rail-network basemap are cached on the device (service worker precache + a one-time background map warm-up), so it opens instantly with no connection and routing, search, the map and station cards all keep working. Only live times pause, with an "Offline" notice.
 - **"Your station" alert.** Turn on *Alert me near my stop* in the route sheet to get a chime, vibration and on-screen/screen-reader alert N stops before (0–3) and at your destination, optionally at line changes. It runs entirely on-device from GPS, so it works offline (keep the screen on; GPS is weak underground). The chime is requested as a playback sound so the iPhone silent switch does not mute it; iPhones have no web vibration API, so there it is sound and on-screen only.
 - **Accessible.** WCAG 2.2 AA target: zoomable page, skip link and landmarks, a keyboard/screen-reader station list as an alternative to the map canvas, an ARIA combobox search, a labelled route dialog with announcements, contrast-checked colours, 44 px targets, reduced-motion support, text (not colour alone) for lines, and axe checks in the e2e suite.
-- **Real routing.** 193 stations, branches and the MRT Blue loop modelled explicitly, curated walking interchanges, Dijkstra over (station, line) states with a minutes-based cost model.
+- **Real routing.** 192 stations, branches and the MRT Blue loop modelled explicitly, curated walking interchanges, Dijkstra over (station, line) states with a minutes-based cost model.
 - **Resilient backend.** The poller backs off when the upstream is down, keeps an outage history, skips writes when nothing changed, and is restarted by a cron watchdog if its alarm chain ever stops.
 - **Tested end to end.** Unit tests for routing, data invariants and the client's clock/merge logic; the poller is tested inside the real Workers runtime; Playwright drives the production build on desktop and mobile, runs the station alert on more than 25 phone profiles (real WebKit for every iPhone, Chromium for Android), and fails on any console error or CSP violation. A scheduled job checks production every 30 minutes.
 
@@ -81,8 +81,8 @@ To point the site at a local copy of the live document, set `NEXT_PUBLIC_ARRIVAL
 
 ## Data
 
-`data/stations.json` (193 stations), `data/line-sequences.json` (per-line stop order as segments) and `data/interchanges.json` (walking transfers) are hand-maintained and guarded by `tests/data.test.ts`. Track geometry comes from the Bangkok Metropolitan Administration's public GIS service; see [`scripts/README.md`](scripts/README.md).
+`data/stations.json` (192 stations), `data/line-sequences.json` (per-line stop order as segments) and `data/interchanges.json` (walking transfers) are hand-maintained and guarded by `tests/data.test.ts`. Track geometry comes from the Bangkok Metropolitan Administration's public GIS service; see [`scripts/README.md`](scripts/README.md).
 
-Live arrivals cover BTS Sukhumvit and Silom (61 stations) — the only lines with a live feed.
+Live arrivals cover BTS Sukhumvit and Silom (60 stations) — the only lines with a live feed.
 
 Ride times in route estimates come from `data/hop-times.json`: scheduled minutes between adjacent stations for BTS Sukhumvit, Silom and Gold, MRT Blue and Purple, the Airport Rail Link and both SRT Red lines, derived from the open GTFS feed of the Office of Transport and Traffic Policy and Planning (สนข./OTP, Ministry of Transport; [Namtang](https://namtang-api.otp.go.th/opendata), CC-BY 4.0). These are timetable figures, not live data. Yellow and Pink fall back to a distance/speed formula because their feed times are placeholders. Regenerate with `scripts/build-hop-times.ts`.
