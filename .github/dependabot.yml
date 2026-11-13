@@ -1,0 +1,18 @@
+# Weekly dependency and GitHub Actions updates. Actions are pinned to commit
+# SHAs (see .github/workflows), which Dependabot keeps current.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: npm
+    directory: /cloudflare/poller
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

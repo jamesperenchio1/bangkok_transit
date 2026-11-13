@@ -40,6 +40,16 @@ test.describe("security headers", () => {
     expect(headers["x-content-type-options"]).toBe("nosniff");
     expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
     expect(headers["permissions-policy"]).toBe("geolocation=(self)");
+    expect(headers["cross-origin-opener-policy"]).toBe("same-origin");
+  });
+
+  test("security.txt is served as plain text with a contact and an expiry", async ({ request }) => {
+    const res = await request.get("/.well-known/security.txt");
+    expect(res.status()).toBe(200);
+    expect(res.headers()["content-type"]).toContain("text/plain");
+    const body = await res.text();
+    expect(body).toMatch(/^Contact: https:\/\//m);
+    expect(body).toMatch(/^Expires: /m);
   });
 
   test("the home page, and only the home page, names the map's first downloads for Early Hints and where agents find the API catalog", async ({ request }) => {
