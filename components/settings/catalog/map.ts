@@ -27,9 +27,10 @@ export const rows: Row[] = [
     key: "googleMapType",
     provider: "google",
     label: { en: "Google map style", th: "รูปแบบแผนที่ Google" },
-    keywords: "satellite hybrid roadmap",
+    keywords: "satellite hybrid roadmap terrain",
     options: [
       { value: "roadmap", label: { en: "Roadmap", th: "แผนที่ถนน" } },
+      { value: "terrain", label: { en: "Terrain", th: "ภูมิประเทศ" } },
       { value: "hybrid", label: { en: "Hybrid", th: "ไฮบริด" } },
       { value: "satellite", label: { en: "Satellite", th: "ดาวเทียม" } },
     ],

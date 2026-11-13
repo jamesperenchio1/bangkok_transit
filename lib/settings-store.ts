@@ -22,7 +22,7 @@ export interface Settings {
   /** Basemap provider. Standard is MapLibre (offline); Google is opt-in. */
   mapProvider: "standard" | "google";
   /** Google basemap style, used only when the provider is Google. */
-  googleMapType: "roadmap" | "hybrid" | "satellite";
+  googleMapType: "roadmap" | "terrain" | "hybrid" | "satellite";
   /** Station names on the map. */
   showLabels: boolean;
   /** Add the station code under the name. */
@@ -187,7 +187,7 @@ export const DEFAULT_SETTINGS: Settings = {
 /** Allowed values of the choice settings (anything else in storage is ignored). */
 export const CHOICES: { [K in keyof Settings]?: readonly string[] } = {
   mapProvider: ["standard", "google"],
-  googleMapType: ["roadmap", "hybrid", "satellite"],
+  googleMapType: ["roadmap", "terrain", "hybrid", "satellite"],
   labelLanguage: ["ui", "en", "th", "both"],
   markerSize: ["small", "medium", "large"],
   otherTrains: ["hide", "dim", "show"],
