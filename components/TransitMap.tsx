@@ -829,7 +829,7 @@ export function TransitMap({
     // Not while the camera is already travelling (a route fit, a station
     // pick): the next GPS fix must not cancel it.
     if (!map || !userPosition || !settings.followMe || map.isMoving()) return;
-    map.easeTo({ center: [userPosition.lon, userPosition.lat], duration: motionMs(500) });
+    map.easeTo({ center: [userPosition.lon, userPosition.lat], duration: motionMs(100) });
   }, [userPosition, settings.followMe]);
 
   // Bring a station into view on demand (a search result, "nearest station")

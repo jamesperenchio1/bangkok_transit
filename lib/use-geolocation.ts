@@ -3,14 +3,6 @@
 import { useEffect, useState } from "react";
 import { haversineMeters } from "@/lib/line-geometry";
 
-/**
- * Fixes closer than this to the last one (with similar accuracy) are GPS
- * jitter, not movement. Skipping them avoids re-rendering the whole page -
- * map sources, route sheet, nearest-station lookup - several times a second
- * while the user is standing still.
- */
-const MIN_MOVE_METERS = 5;
-
 export interface GeoPosition {
   lat: number;
   lon: number;
@@ -38,36 +30,133 @@ export function useGeolocation(): UseGeolocationResult {
   useEffect(() => {
     if (!supported) return;
 
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        setError(null);
-        const next = {
-          lat: pos.coords.latitude,
-          lon: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-        };
-        setPosition((prev) =>
-          prev &&
-          haversineMeters([prev.lat, prev.lon], [next.lat, next.lon]) < MIN_MOVE_METERS &&
-          Math.abs(prev.accuracy - next.accuracy) < MIN_MOVE_METERS
-            ? prev
-            : next,
-        );
-      },
-      (err) => {
-        if (err.code === err.PERMISSION_DENIED) setError("denied");
-        else if (err.code === err.TIMEOUT) setError("timeout");
-        else setError("timeout");
-      },
-      // maximumAge: 0 forces a fresh GPS fix on every update instead of ever
-      // handing back a cached one - with a cache allowed, the browser can
-      // keep reporting the same stale fix for its whole maximumAge window
-      // while the user is actually walking, which is the opposite of "real
-      // time" tracking.
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 },
-    );
+    let watchId: number | null = null;
+    let stopped = false;
+    let restartTimer: ReturnType<typeof setTimeout> | undefined;
+    let tweenTimer: ReturnType<typeof setInterval> | undefined;
+    // Where the dot is drawn now, and the latest real fix it is gliding to.
+    let shown: GeoPosition | null = null;
+    let tween: { from: GeoPosition; to: GeoPosition; start: number } | null = null;
+    let lastFixAt = 0;
+    let wakeLock: { release: () => Promise<void> } | null = null;
 
-    return () => navigator.geolocation.clearWatch(watchId);
+    const stopTween = () => {
+      if (tweenTimer) clearInterval(tweenTimer);
+      tweenTimer = undefined;
+      tween = null;
+    };
+
+    // Glide the dot to each new fix over about the time between fixes instead
+    // of jumping, at ~12 Hz so the page isn't re-rendered every frame.
+    const onFix = (next: GeoPosition) => {
+      const now = performance.now();
+      const interval = Math.min(Math.max(now - lastFixAt, 400), 2000);
+      lastFixAt = now;
+      if (!shown) {
+        shown = next;
+        setPosition(next);
+        return;
+      }
+      const dist = haversineMeters([shown.lat, shown.lon], [next.lat, next.lon]);
+      if (dist > 200) {
+        // A jump (resumed from background, first good fix): don't fly across the city.
+        stopTween();
+        shown = next;
+        setPosition(next);
+        return;
+      }
+      const from = shown;
+      tween = { from, to: next, start: now };
+      if (!tweenTimer) {
+        tweenTimer = setInterval(() => {
+          if (!tween) return stopTween();
+          const t = Math.min((performance.now() - tween.start) / interval, 1);
+          const { from: a, to: b } = tween;
+          shown = {
+            lat: a.lat + (b.lat - a.lat) * t,
+            lon: a.lon + (b.lon - a.lon) * t,
+            accuracy: a.accuracy + (b.accuracy - a.accuracy) * t,
+          };
+          setPosition(shown);
+          if (t >= 1) stopTween();
+        }, 80);
+      } else {
+        tween.start = now;
+      }
+    };
+
+    const start = () => {
+      if (stopped || watchId !== null) return;
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          setError(null);
+          onFix({
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+          });
+        },
+        (err) => {
+          if (err.code === err.PERMISSION_DENIED) {
+            setError("denied");
+            return;
+          }
+          setError("timeout");
+          // Some browsers (Safari) stop the watch after an error; restart it so
+          // tracking never just quietly ends.
+          restart(1000);
+        },
+        // maximumAge: 0 forces a fresh fix every update, never a cached one.
+        // A long timeout so a slow fix isn't reported as a failure.
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 30_000 },
+      );
+    };
+
+    const stop = () => {
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+    };
+
+    const restart = (delay: number) => {
+      stop();
+      clearTimeout(restartTimer);
+      restartTimer = setTimeout(start, delay);
+    };
+
+    // Keep the screen on so the OS doesn't suspend tracking (battery is not a
+    // concern here). The lock is released by the browser when the tab hides.
+    const requestWake = async () => {
+      try {
+        const nav = navigator as Navigator & {
+          wakeLock?: { request: (type: "screen") => Promise<{ release: () => Promise<void> }> };
+        };
+        if (!nav.wakeLock || wakeLock) return;
+        wakeLock = await nav.wakeLock.request("screen");
+        const lock = wakeLock as unknown as EventTarget;
+        lock.addEventListener?.("release", () => (wakeLock = null));
+      } catch {
+        wakeLock = null;
+      }
+    };
+
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      restart(0); // a fresh watch picks up immediately after returning
+      void requestWake();
+    };
+
+    start();
+    void requestWake();
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      stopped = true;
+      document.removeEventListener("visibilitychange", onVisible);
+      clearTimeout(restartTimer);
+      stopTween();
+      stop();
+      void wakeLock?.release().catch(() => {});
+    };
   }, [supported]);
 
   return { position, error };
