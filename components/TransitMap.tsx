@@ -30,7 +30,8 @@ import {
 } from "@/lib/map-data";
 import { markMapPainted } from "@/lib/map-ready";
 import type { GeoPosition } from "@/lib/use-geolocation";
-import type { PathResult } from "@/lib/transit-graph";
+import type { PathOptions, PathResult } from "@/lib/transit-graph";
+import type { FinalWalk } from "@/lib/place-station";
 import { PlaceCard, StationCard } from "@/components/map-cards";
 import type { Place } from "@/lib/google-places";
 import { applyTrainStyle, startLiveTrainsWhenIdle } from "@/components/live-trains-layer";
@@ -140,11 +141,16 @@ maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
 export interface TransitMapProps {
   onSelectStation: (station: Station) => void;
-  onSetStart: (station: Station) => void;
-  onSetDestination: (station: Station) => void;
+  /** A place card passes its place, so the route can end with the walk to it. */
+  onSetStart: (station: Station, place?: Place) => void;
+  onSetDestination: (station: Station, place?: Place) => void;
   startCode: string | null;
   destinationCode: string | null;
   path: PathResult | null;
+  /** The walk from the destination station to a place picked as the destination. */
+  finalWalk?: FinalWalk | null;
+  /** Route preferences, so a place card picks its station the same way the route does. */
+  pathOptions?: PathOptions;
   userPosition: GeoPosition | null;
   /** Set (e.g. from a search result) to fly the map to a station on demand. */
   focusStation: Station | null;
@@ -194,10 +200,11 @@ function baseLinesGeoJSON(segmentsByLine: LineSegments): GeoJSON.FeatureCollecti
 function routeGeoJSON(
   path: PathResult,
   segmentsByLine: LineSegments,
+  finalWalk?: FinalWalk | null,
 ): GeoJSON.FeatureCollection<GeoJSON.LineString> {
   return {
     type: "FeatureCollection",
-    features: routeParts(path, segmentsByLine).map(({ line, walk, points }) => ({
+    features: routeParts(path, segmentsByLine, finalWalk).map(({ line, walk, points }) => ({
       type: "Feature" as const,
       properties: { line, walk },
       geometry: { type: "LineString" as const, coordinates: points.map(([lat, lon]) => [lon, lat]) },
@@ -282,6 +289,8 @@ export function TransitMap({
   startCode,
   destinationCode,
   path,
+  finalWalk,
+  pathOptions,
   userPosition,
   focusStation,
   focusPlace,
@@ -327,9 +336,10 @@ export function TransitMap({
     onSetDestination,
     startCode,
     destinationCode,
+    pathOptions,
   });
   useEffect(() => {
-    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode };
+    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions };
   });
 
   // Create the map once per mount. Like the Leaflet canvas renderer this
@@ -689,7 +699,9 @@ export function TransitMap({
     const applyWith = (segmentsByLine: LineSegments) => {
       const apply = () => {
         const source = map.getSource<maplibregl.GeoJSONSource>(ROUTE_SOURCE);
-        source?.setData(path ? routeGeoJSON(path, segmentsByLine) : { type: "FeatureCollection", features: [] });
+        source?.setData(
+          path ? routeGeoJSON(path, segmentsByLine, finalWalk) : { type: "FeatureCollection", features: [] },
+        );
       };
       if (loadedRef.current) apply();
       else map.once("style.load", apply);
@@ -704,7 +716,7 @@ export function TransitMap({
         applyWith(segmentsByLine);
       });
     }
-  }, [path]);
+  }, [path, finalWalk]);
 
   // Keep a planned route in view: fitted to whatever part of the map the
   // route sheet (fixed to the bottom of the screen, up to 70vh) leaves
@@ -714,7 +726,7 @@ export function TransitMap({
     if (!map || !path) return;
     const apply = () => {
       const rect = map.getContainer().getBoundingClientRect();
-      map.fitBounds(routeBounds(path), {
+      map.fitBounds(routeBounds(path, finalWalk), {
         padding: routeFitPadding(sheetOpen, rect.bottom, rect.height, window.innerHeight),
         maxZoom: FOCUS_ZOOM_CAP,
         duration: motionMs(600),
@@ -722,7 +734,7 @@ export function TransitMap({
     };
     if (loadedRef.current) apply();
     else map.once("style.load", apply);
-  }, [path, sheetOpen]);
+  }, [path, finalWalk, sheetOpen]);
 
   // Station marker styling (start/destination/on-path/dimmed).
   useEffect(() => {
@@ -1023,10 +1035,11 @@ function openPlacePopup(
   popupsRef: RefObject<Map<string, { popup: maplibregl.Popup; root: Root; render: () => void }>>,
   place: Place,
   latest: RefObject<{
-    onSetStart: (s: Station) => void;
-    onSetDestination: (s: Station) => void;
+    onSetStart: (s: Station, place?: Place) => void;
+    onSetDestination: (s: Station, place?: Place) => void;
     startCode: string | null;
     destinationCode: string | null;
+    pathOptions?: PathOptions;
   }>,
 ) {
   // One card at a time, same as station cards.
@@ -1068,12 +1081,13 @@ function openPlacePopup(
         place={place}
         startCode={latest.current.startCode}
         destinationCode={latest.current.destinationCode}
+        pathOptions={latest.current.pathOptions}
         onSetStart={(s) => {
-          latest.current.onSetStart(s);
+          latest.current.onSetStart(s, place);
           queueMicrotask(() => popup.remove());
         }}
         onSetDestination={(s) => {
-          latest.current.onSetDestination(s);
+          latest.current.onSetDestination(s, place);
           queueMicrotask(() => popup.remove());
         }}
       />,

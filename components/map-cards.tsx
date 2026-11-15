@@ -6,8 +6,10 @@ import { GooglePlaceMap } from "@/components/GooglePlaceMap";
 import { readableTextColor } from "@/lib/line-colors";
 import { stationName, useT } from "@/lib/i18n";
 import { stationLineColor } from "@/lib/map-data";
-import { distanceLabel, nearestStation } from "@/lib/nearest-station";
+import { distanceLabel } from "@/lib/nearest-station";
+import { chooseStationForPlace } from "@/lib/place-station";
 import type { Place } from "@/lib/google-places";
+import type { PathOptions } from "@/lib/transit-graph";
 import type { TrainDescription } from "@/lib/train-model";
 
 /**
@@ -20,8 +22,11 @@ import type { TrainDescription } from "@/lib/train-model";
 export interface CardRouteState {
   startCode: string | null;
   destinationCode: string | null;
-  onSetStart: (station: Station) => void;
-  onSetDestination: (station: Station) => void;
+  /** Compared when a place card decides which station to route through. */
+  pathOptions?: PathOptions;
+  /** A place card passes its place along, so the route ends with the walk to it. */
+  onSetStart: (station: Station, place?: Place) => void;
+  onSetDestination: (station: Station, place?: Place) => void;
 }
 
 // Its own component so the name re-renders when the language changes - a card
@@ -55,7 +60,9 @@ export function StationCard({ station, ...route }: { station: Station } & CardRo
 
 export function PlaceCard({ place, ...route }: { place: Place } & CardRouteState) {
   const { lang, t } = useT();
-  const { station, meters } = nearestStation(place.lat, place.lon);
+  // The station that gets there soonest, not the one nearest as the crow
+  // flies: see lib/place-station.ts.
+  const { station, meters } = chooseStationForPlace(route.startCode, place, route.pathOptions);
   const color = stationLineColor(station);
   return (
     <div className="flex flex-col gap-2 py-0.5">
@@ -69,7 +76,7 @@ export function PlaceCard({ place, ...route }: { place: Place } & CardRouteState
       </div>
       <GooglePlaceMap place={place} />
       <p className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-700 dark:text-neutral-300">
-        {t.placeNearest}:
+        {route.startCode ? t.placeStation : t.placeNearest}:
         <span
           className="shrink-0 rounded px-1.5 py-0.5 font-semibold"
           style={{ backgroundColor: color, color: readableTextColor(color) }}
@@ -79,7 +86,13 @@ export function PlaceCard({ place, ...route }: { place: Place } & CardRouteState
         <span lang={lang}>{stationName(station, lang)}</span>
         <span>· {t.placeAway(distanceLabel(meters))}</span>
       </p>
-      <StationActions station={station} {...route} />
+      <StationActions
+        station={station}
+        startCode={route.startCode}
+        destinationCode={route.destinationCode}
+        onSetStart={(s) => route.onSetStart(s, place)}
+        onSetDestination={(s) => route.onSetDestination(s, place)}
+      />
     </div>
   );
 }

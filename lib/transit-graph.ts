@@ -108,9 +108,16 @@ function scheduledRideMinutes(line: LineKey, a: string, b: string): number | und
   return run === undefined ? undefined : run + table!.dwell;
 }
 
-function walkMinutes(meters: number, speed = WALK_M_PER_MIN): number {
+/**
+ * Minutes to walk `meters`: the same model the router uses for a walking
+ * transfer, so a station chosen for the walk after it is priced consistently
+ * with the rest of the trip. The fixed part is stairs, gates and crossing.
+ */
+export function walkEstimate(meters: number, speed = WALK_M_PER_MIN): number {
   return WALK_TRANSFER_MIN + meters / speed;
 }
+
+const walkMinutes = walkEstimate;
 
 const sequences = lineSequences as Record<LineKey, string[][]>;
 

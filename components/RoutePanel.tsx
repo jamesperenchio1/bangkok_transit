@@ -20,6 +20,7 @@ import { LINE_COLORS, LINE_NAMES } from "@/lib/line-colors";
 import { stationName, useT } from "@/lib/i18n";
 import { distanceLabel } from "@/lib/nearest-station";
 import { StopAlertControl } from "@/components/StopAlertControl";
+import type { FinalWalk } from "@/lib/place-station";
 import type { StopAlert } from "@/lib/use-stop-alert";
 
 function directionsUrl(
@@ -72,6 +73,8 @@ export type RoutePanelState = {
   path: PathResult | null;
   /** When there is no path only because of lines turned off for routes: those lines. */
   blockedBy?: LineKey[];
+  /** The walk from the last station to a destination picked as a place. */
+  finalWalk?: FinalWalk | null;
 };
 
 export interface RoutePanelProps {
@@ -116,10 +119,20 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
   }, [open]);
 
   const from = state ? stationName(state.start, lang) : "";
-  const to = state ? stationName(state.destination, lang) : "";
+  const to = state ? (state.finalWalk?.name ?? stationName(state.destination, lang)) : "";
   const changes = state?.path ? effectiveChanges(state.path) : 0;
+  const finalWalk = state?.finalWalk ?? null;
+  // The walk to the place is part of the trip, so it counts in the total.
+  const totalMinutes = state?.path ? state.path.minutes + (finalWalk?.minutes ?? 0) : 0;
+  const totalWalkMeters = (state?.path?.walkMeters ?? 0) + (finalWalk?.meters ?? 0);
   const summary = state?.path
-    ? [t.stops(state.path.stops), t.changes(changes), t.aboutMinutes(state.path.minutes), fareText(t, computeFare(state.path, fares))].filter(Boolean).join(", ")
+    ? [
+        t.stops(state.path.stops),
+        t.changes(changes),
+        totalWalkMeters > 0 ? t.walk(distanceLabel(totalWalkMeters, lang)) : "",
+        t.aboutMinutes(totalMinutes),
+        fareText(t, computeFare(state.path, fares)),
+      ].filter(Boolean).join(", ")
     : state
       ? state.blockedBy?.length
         ? t.noRouteLinesOff(state.blockedBy.map((l) => LINE_NAMES[l]).join(", "))
@@ -177,7 +190,7 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
                   </p>
                   {state.path && (
                     <p className="mt-0.5 text-2xl font-semibold tracking-tight">
-                      {t.aboutMinutes(state.path.minutes)}
+                      {t.aboutMinutes(totalMinutes)}
                     </p>
                   )}
                 </div>
@@ -189,7 +202,7 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
                   <X size={20} aria-hidden="true" />
                 </button>
               </div>
-              {state.path && <RouteSummary path={state.path} changes={changes} />}
+              {state.path && <RouteSummary path={state.path} changes={changes} finalWalk={finalWalk} />}
             </div>
 
             {state.path && (
@@ -360,6 +373,23 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
               </ul>
             )}
 
+            {state.path && finalWalk && (
+              <div className="flex items-stretch gap-3 px-4">
+                <div className="relative w-4 shrink-0">
+                  <span className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-l-2 border-dotted border-neutral-400" />
+                  <span className="absolute top-1/2 left-1/2 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white dark:bg-neutral-900">
+                    <MapPin size={12} className="text-green-700 dark:text-green-500" aria-hidden="true" />
+                  </span>
+                </div>
+                <div className="flex-1 py-1.5">
+                  <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{finalWalk.name}</p>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                    {t.walked(distanceLabel(finalWalk.meters, lang))} · {t.aboutMinutes(finalWalk.minutes)}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {state.path && collapsible && expanded && (
               <div className="px-4 pb-1">
                 <button
@@ -394,11 +424,20 @@ export function fareText(t: ReturnType<typeof useT>["t"], fare: FareResult | nul
   return fare.total > 0 ? t.farePartial(fare.total) : t.fareUnavailable;
 }
 
-function RouteSummary({ path, changes }: { path: PathResult; changes: number }) {
+function RouteSummary({
+  path,
+  changes,
+  finalWalk,
+}: {
+  path: PathResult;
+  changes: number;
+  finalWalk?: FinalWalk | null;
+}) {
   const { lang, t } = useT();
   const parts = [t.stops(path.stops), t.changes(changes)];
-  if (path.walkMeters > 0) parts.push(t.walk(distanceLabel(path.walkMeters, lang)));
-  parts.push(t.aboutMinutes(path.minutes));
+  const walkMeters = path.walkMeters + (finalWalk?.meters ?? 0);
+  if (walkMeters > 0) parts.push(t.walk(distanceLabel(walkMeters, lang)));
+  parts.push(t.aboutMinutes(path.minutes + (finalWalk?.minutes ?? 0)));
   const showFare = useSettingsStore((s) => s.settings.showFare);
   const fares = useFares(showFare);
   const fare = showFare ? computeFare(path, fares) : null;

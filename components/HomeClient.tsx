@@ -9,13 +9,14 @@ import { StationSearch } from "@/components/StationSearch";
 import { SettingsMenu } from "@/components/SettingsMenu";
 import { StopAlertBanner } from "@/components/StopAlertControl";
 import { useStopAlert } from "@/lib/use-stop-alert";
-import { findPath, linesInTheWay } from "@/lib/transit-graph";
+import { findPath, linesInTheWay, walkEstimate } from "@/lib/transit-graph";
 import { useGeolocation } from "@/lib/use-geolocation";
 import { startArrivalsPolling, useArrivalsStore } from "@/lib/arrivals-store";
 import { scheduleOfflineWarm } from "@/lib/offline-warm";
-import { fetchLineGeometry } from "@/lib/line-geometry";
+import { fetchLineGeometry, haversineMeters } from "@/lib/line-geometry";
 import { whenMapPainted } from "@/lib/map-ready";
 import { distanceLabel, nearestStation } from "@/lib/nearest-station";
+import type { FinalWalk } from "@/lib/place-station";
 import type { Place } from "@/lib/google-places";
 import { computeFare } from "@/lib/fares";
 import { useFares } from "@/lib/use-fares";
@@ -98,6 +99,10 @@ export function HomeClient({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [focusStation, setFocusStation] = useState<Station | null>(null);
   const [focusPlace, setFocusPlace] = useState<Place | null>(null);
+  // The place a route ends (or starts) at. Kept beside the station so the last
+  // walk can be shown and measured, and cleared when a plain station is picked.
+  const [startPlace, setStartPlace] = useState<Place | null>(null);
+  const [destinationPlace, setDestinationPlace] = useState<Place | null>(null);
   // The map chunk and its first tiles are the slowest part of a cold load;
   // until the map reports first paint, the header and the build-time SVG
   // network carry the screen, with a thin indeterminate bar above them.
@@ -112,7 +117,7 @@ export function HomeClient({
   // grey tile; the fallback holds for the rest of the visit.
   const [googleFailed, setGoogleFailed] = useState(false);
   const [startedOffline] = useState(() => typeof navigator !== "undefined" && !navigator.onLine);
-  const { position, error: geoError } = useGeolocation();
+  const { position, settled, error: geoError } = useGeolocation();
   const { lang, t } = useT();
 
   useEffect(() => {
@@ -191,9 +196,12 @@ export function HomeClient({
     window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
   }, [urlRead, start, destination]);
 
+  // The dot follows every fix; anything that decides something for the rider
+  // (nearest station, stop alerts) waits for `settled`, so a jittery fix can't
+  // flip the destination station on the card.
   const nearest = useMemo(
-    () => (position ? nearestStation(position.lat, position.lon) : null),
-    [position],
+    () => (settled ? nearestStation(settled.lat, settled.lon) : null),
+    [settled],
   );
 
   // The route is derived, not staged: as soon as both ends exist the path is
@@ -206,6 +214,24 @@ export function HomeClient({
     () => (start && destination ? findPath(start.code, destination.code, routeOptions) : null),
     [start, destination, routeOptions],
   );
+  // When the destination was picked as a place, the trip ends with a walk from
+  // the station chosen for it (lib/place-station.ts) to the place itself.
+  const finalWalk = useMemo<FinalWalk | null>(() => {
+    if (!destination || !destinationPlace) return null;
+    const meters = haversineMeters(
+      [destination.lat, destination.lon],
+      [destinationPlace.lat, destinationPlace.lon],
+    );
+    return {
+      from: { lat: destination.lat, lon: destination.lon },
+      to: { lat: destinationPlace.lat, lon: destinationPlace.lon },
+      meters,
+      minutes: walkEstimate(meters, walkSpeed),
+      name: destinationPlace.name,
+    };
+  }, [destination, destinationPlace, walkSpeed]);
+  const totalMinutes = (path?.minutes ?? 0) + (finalWalk?.minutes ?? 0);
+
   // No route, but only because of lines turned off for routes: say which.
   const blockedBy = useMemo(
     () => (start && destination && !path ? linesInTheWay(start.code, destination.code, routeOptions) : []),
@@ -214,14 +240,19 @@ export function HomeClient({
   const fares = useFares(path !== null && showFare);
   const fareLine = showFare ? fareText(t, computeFare(path, fares)) : "";
 
-  const handleSetStart = (station: Station) => {
+  const handleSetStart = (station: Station, place?: Place) => {
     setStart(station);
-    if (destination?.code === station.code) setDestination(null);
+    setStartPlace(place ?? null);
+    if (destination?.code === station.code) {
+      setDestination(null);
+      setDestinationPlace(null);
+    }
   };
 
-  const handleSetDestination = (station: Station) => {
+  const handleSetDestination = (station: Station, place?: Place) => {
     if (start?.code === station.code) return;
     setDestination(station);
+    setDestinationPlace(place ?? null);
     setSheetOpen(true);
   };
 
@@ -235,6 +266,8 @@ export function HomeClient({
   const clearRoute = () => {
     setStart(null);
     setDestination(null);
+    setStartPlace(null);
+    setDestinationPlace(null);
     setSheetOpen(false);
   };
 
@@ -255,17 +288,19 @@ export function HomeClient({
   const swapRoute = () => {
     setStart(destination);
     setDestination(start);
+    setStartPlace(destinationPlace);
+    setDestinationPlace(startPlace);
   };
 
   const panelState: RoutePanelState | null = useMemo(() => {
-    if (start && destination) return { mode: "route", start, destination, path, blockedBy };
+    if (start && destination) return { mode: "route", start, destination, path, blockedBy, finalWalk };
     return null;
-  }, [start, destination, path, blockedBy]);
+  }, [start, destination, path, blockedBy, finalWalk]);
 
   const startCode = start?.code ?? null;
   const destinationCode = destination?.code ?? null;
   const hasRoute = start !== null && destination !== null;
-  const stopAlert = useStopAlert(path, position);
+  const stopAlert = useStopAlert(path, settled);
 
   const subtitle = !start && !destination
     ? t.hintIdle
@@ -291,7 +326,7 @@ export function HomeClient({
               <span lang={lang} title={stationName(start, lang)}>{stationName(start, lang)}</span>
               <span aria-hidden="true"> → </span>
               <span lang={lang} title={stationName(destination, lang)}>{stationName(destination, lang)}</span>
-              {path && <span> · {t.aboutMinutes(path.minutes)}</span>}
+              {path && <span> · {t.aboutMinutes(totalMinutes)}</span>}
               {path && fareLine && <span data-testid="header-fare"> · {fareLine}</span>}
             </p>
           ) : start || destination ? (
@@ -397,6 +432,7 @@ export function HomeClient({
             startCode={startCode}
             destinationCode={destinationCode}
             path={path}
+            pathOptions={routeOptions}
             userPosition={position}
             focusStation={focusStation}
             focusPlace={focusPlace}
@@ -412,6 +448,7 @@ export function HomeClient({
             startCode={startCode}
             destinationCode={destinationCode}
             path={path}
+            pathOptions={routeOptions}
             userPosition={position}
             focusStation={focusStation}
             focusPlace={focusPlace}

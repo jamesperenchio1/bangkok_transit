@@ -3,18 +3,31 @@ import { haversineMeters } from "@/lib/line-geometry";
 import { useSettingsStore } from "@/lib/settings-store";
 import { useLangStore } from "@/lib/i18n";
 
+export interface StationDistance {
+  station: Station;
+  meters: number;
+}
+
 /** The station closest to a point (straight-line), with the distance in metres. */
-export function nearestStation(lat: number, lon: number): { station: Station; meters: number } {
-  let best = stations[0];
-  let bestMeters = Infinity;
-  for (const s of stations) {
-    const meters = haversineMeters([lat, lon], [s.lat, s.lon]);
-    if (meters < bestMeters) {
-      best = s;
-      bestMeters = meters;
-    }
-  }
-  return { station: best, meters: bestMeters };
+export function nearestStation(lat: number, lon: number): StationDistance {
+  return nearestStations(lat, lon, { limit: 1 })[0];
+}
+
+/**
+ * The few stations closest to a point, nearest first. A place pin can be a few
+ * metres from the boundary between two stations, so the caller needs the
+ * runners-up: the closest station is not always the quickest way there.
+ */
+export function nearestStations(
+  lat: number,
+  lon: number,
+  { limit = 3, withinMeters = Infinity }: { limit?: number; withinMeters?: number } = {},
+): StationDistance[] {
+  return stations
+    .map((station) => ({ station, meters: haversineMeters([lat, lon], [station.lat, station.lon]) }))
+    .filter((s) => s.meters <= withinMeters)
+    .sort((a, b) => a.meters - b.meters)
+    .slice(0, limit);
 }
 
 const UNIT_WORDS = {
