@@ -187,7 +187,6 @@ export function GoogleTransitMap({
   const nodes = useRef(new Map<string, StationNode>());
   const trainNodes = useRef(new Map<string, TrainNode>());
   const cardRef = useRef<OpenCard | null>(null);
-  const cardSeq = useRef(0);
   /** The train the open card follows, if the open card is a train's. */
   const trainCardRef = useRef<string | null>(null);
   const movingRef = useRef(false);
@@ -322,15 +321,19 @@ export function GoogleTransitMap({
     const move = panToReveal({ x: width / 2 + (at.x - mid.x) * scale, y: height / 2 + (at.y - mid.y) * scale }, { width, height });
     if (!move) return;
     movingRef.current = true;
-    map.panBy(move.dx, move.dy);
+    if (reducedMotion()) {
+      // panBy always animates; jump to the same place instead.
+      const to = projection.fromPointToLatLng(new g.maps.Point(mid.x + move.dx / scale, mid.y + move.dy / scale));
+      if (to) map.moveCamera({ center: to });
+    } else map.panBy(move.dx, move.dy);
   }
 
   function openStationCard(station: Station) {
-    const token = ++cardSeq.current;
     // After a choice the card lingers a beat so the button's tick is seen; it
-    // only closes if it is still the same card (not one opened since).
-    const closeSoon = (close: () => void) => setTimeout(() => cardSeq.current === token && close(), motionDuration(380));
-    setSelected(station.code);
+    // only closes if this very card is still the open one (not one opened, or
+    // closed and replaced, since).
+    let mine: OpenCard | null = null;
+    const closeSoon = (close: () => void) => setTimeout(() => cardRef.current === mine && close(), motionDuration(380));
     showCard(
       "card",
       station.lat,
@@ -353,6 +356,9 @@ export function GoogleTransitMap({
       ),
       () => setSelected(null),
     );
+    // After showCard: it closes the previous card first, whose cleanup clears the ring.
+    mine = cardRef.current;
+    setSelected(station.code);
   }
 
   function openPlaceCard(place: Place) {
@@ -856,7 +862,12 @@ export function GoogleTransitMap({
       // Centre the station in the free part of the map: the camera centre sits
       // below it by half of (covered bottom - card room above).
       const projection = map.getProjection();
-      const zoom = map.getZoom() ?? 11;
+      // The shift is in screen pixels, so measure it at the zoom the camera
+      // will end at (a lone pick is raised to the focus floor), not the current one.
+      const zoom =
+        latest.current.settings.autoZoom && !other
+          ? Math.max(map.getZoom() ?? 11, mapLibreToGoogleZoom(FOCUS_ZOOM_FLOOR))
+          : (map.getZoom() ?? 11);
       const target = (() => {
         const shiftPx = (padding.bottom - padding.top) / 2;
         if (!projection || shiftPx === 0) return base;
