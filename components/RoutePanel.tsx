@@ -4,6 +4,7 @@ import { useSettingsStore } from "@/lib/settings-store";
 import { computeFare, type FareResult } from "@/lib/fares";
 import { useFares } from "@/lib/use-fares";
 import { useEffect, useId, useRef, useState } from "react";
+import { useSheetDrag } from "@/lib/use-sheet-drag";
 import { X, MapPin, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import { useArrivals } from "@/lib/use-arrivals";
 import {
@@ -95,8 +96,7 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onFocusSta
   const headingRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const [expanded, setExpanded] = useState(showAllStops);
-  const [dragY, setDragY] = useState<number | null>(null);
-  const dragStart = useRef<{ y: number; t: number } | null>(null);
+  const { dragY, handleProps } = useSheetDrag(onClose);
   const listId = useId();
   // Latest onClose without re-running the focus effect on every parent render.
   const onCloseRef = useRef(onClose);
@@ -168,7 +168,7 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onFocusSta
         role="dialog"
         aria-modal="false"
         aria-label={open ? t.routeDialog(from, to) : undefined}
-        className={`fixed inset-x-0 bottom-0 z-50 rounded-t-2xl pb-[env(safe-area-inset-bottom)] border-t border-neutral-200 bg-white shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:border-neutral-800 dark:bg-neutral-900 ${
+        className={`fixed inset-x-0 bottom-0 z-50 rounded-t-2xl pb-[env(safe-area-inset-bottom)] border-t border-neutral-200 bg-white shadow-2xl transition-transform duration-300 ease-(--ease-out) dark:border-neutral-800 dark:bg-neutral-900 ${
           open ? "translate-y-0" : "translate-y-full"
         }`}
         style={{
@@ -183,26 +183,7 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onFocusSta
             <div
               // Grab bar: drag down to dismiss, like any native sheet.
               className="flex h-5 shrink-0 cursor-grab touch-none items-center justify-center"
-              onPointerDown={(e) => {
-                e.currentTarget.setPointerCapture(e.pointerId);
-                dragStart.current = { y: e.clientY, t: e.timeStamp };
-                setDragY(0);
-              }}
-              onPointerMove={(e) => {
-                if (dragStart.current) setDragY(Math.max(0, e.clientY - dragStart.current.y));
-              }}
-              onPointerUp={(e) => {
-                const start = dragStart.current;
-                dragStart.current = null;
-                const dy = start ? e.clientY - start.y : 0;
-                const fast = start ? dy / Math.max(1, e.timeStamp - start.t) > 0.6 : false;
-                setDragY(null);
-                if (dy > 90 || (fast && dy > 30)) onClose();
-              }}
-              onPointerCancel={() => {
-                dragStart.current = null;
-                setDragY(null);
-              }}
+              {...handleProps}
               aria-hidden="true"
             >
               <span className="h-1 w-10 rounded-full bg-neutral-300 dark:bg-neutral-700" />

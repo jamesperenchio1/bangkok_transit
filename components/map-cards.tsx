@@ -61,9 +61,10 @@ export function StationCard({ station, ...route }: { station: Station } & CardRo
 
 /** Every line that stops here, by name and colour, so an interchange reads as one at a glance. */
 function StationLines({ station }: { station: Station }) {
+  const { t } = useT();
   const lines = [...new Set(station.lines.map((l) => l.line))];
   return (
-    <ul className="flex flex-wrap gap-1.5" aria-label="Lines">
+    <ul className="flex flex-wrap gap-1.5" aria-label={t.linesAtStation}>
       {lines.map((line) => (
         <li
           key={line}

@@ -18,6 +18,7 @@ import {
   FOCUS_ZOOM_CAP,
   FOCUS_ZOOM_FLOOR,
   focusPadding,
+  focusShiftPx,
   panToReveal,
   STATION_HIT_PAD,
   type RoutePart,
@@ -41,7 +42,8 @@ import { applyTrainStyle, startLiveTrainsWhenIdle } from "@/components/live-trai
 import { routeHops } from "@/lib/live-trains";
 import { LINE_COLORS } from "@/lib/line-colors";
 import { useLangStore, useT, type Lang } from "@/lib/i18n";
-import { easeOut, revealParts, ROUTE_DRAW_MS } from "@/lib/route-reveal";
+import { CARD_LINGER_MS, easeOut, ROUTE_DRAW_MS } from "@/lib/motion";
+import { revealParts } from "@/lib/route-reveal";
 import { motionDuration, useSettingsStore } from "@/lib/settings-store";
 
 // MapLibre uses [lon, lat] everywhere, the opposite of Leaflet's [lat, lon] -
@@ -951,7 +953,7 @@ export function TransitMap({
       // off screen); the rider's zoom level is never changed.
       const move = focusCamera(map, focusStation, other, padding, useSettingsStore.getState().settings.autoZoom);
       // `offset` centres the station in the free part of the map, not the whole of it.
-      if (move) map.stop().easeTo({ ...move, offset: [0, (padding.top - padding.bottom) / 2], duration: motionMs(600) });
+      if (move) map.stop().easeTo({ ...move, offset: [0, -focusShiftPx(padding)], duration: motionMs(600) });
       openPopup(map, popupsRef, focusStation, latest);
     };
     if (loadedRef.current) apply();
@@ -1036,9 +1038,6 @@ function focusCamera(
   }
   return { center: [target.lon, target.lat], zoom: Math.max(map.getZoom(), FOCUS_ZOOM_FLOOR) };
 }
-
-/** How long a card stays after Start/Destination is tapped, so the tick is seen. */
-const CARD_LINGER_MS = 380;
 
 /** Ring on the tapped station, or none. The radius animates from the dot outwards. */
 function setSelected(map: maplibregl.Map, station: Station | null) {

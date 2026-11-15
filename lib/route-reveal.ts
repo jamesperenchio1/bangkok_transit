@@ -1,14 +1,6 @@
 import type { LatLon } from "@/lib/line-geometry";
 import type { RoutePart } from "@/lib/map-data";
 
-/**
- * Shared motion vocabulary, so the sheet, the camera and the route line all
- * ease the same way. `EASE_OUT` is easeOutExpo: fast start, long soft landing.
- */
-export const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
-export const easeOut = (t: number): number => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * t));
-export const ROUTE_DRAW_MS = 700;
-
 /** Planar length of a [lat, lon] step, good enough at city scale for ordering a draw-in. */
 function stepLength(a: LatLon, b: LatLon): number {
   const k = Math.cos(((a[0] + b[0]) / 2) * (Math.PI / 180));

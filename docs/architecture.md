@@ -99,6 +99,17 @@ The default map is MapLibre with OpenFreeMap tiles, cached on the device (see *O
 
 `chooseMap` decides which one mounts: Google only when chosen, keyed, online at load and not already failed; otherwise MapLibre, with a notice if the rider had asked for Google. A bad or blocked key (`gm_authFailure`) or a 15 s load timeout falls back too. Settings rows that only make sense on one map (`provider` in the catalog) are hidden on the other.
 
+## Motion and interaction (`lib/motion.ts`, `lib/route-reveal.ts`, `lib/use-sheet-drag.ts`, `app/globals.css`)
+
+Everything that moves is one small system, so the app feels like one thing rather than a set of independent effects.
+
+- **One vocabulary.** CSS uses the `--ease-out` token; JS-driven animation uses `easeOut` and the durations in `lib/motion.ts`. Add a new animation by reusing these, not by writing a new curve.
+- **Reduced motion is a rule, not a per-feature check.** The OS setting and the in-app *Reduce motion* both zero every CSS animation, transition and delay (`app/globals.css`); JS animation reads `motionDuration()` (`lib/settings-store.ts`), which returns 0. A new animation must go through one of the two.
+- **Route draw-in.** `revealParts` (pure, tested) returns the route as drawn at a fraction of its length, origin first; MapLibre feeds it into the GeoJSON source and Google into the polylines' paths, one `requestAnimationFrame` loop each. The geometry is computed once per animation, not per frame.
+- **Route sheet.** Opens with an eased slide; its grab bar (`useSheetDrag`, with the pure `shouldDismiss`) drags it down to dismiss; rows ease in one after another (`.bt-rise`). Tapping a stop shows that station on the map and leaves the sheet open.
+- **Station tap.** The tapped station gets a ring that grows out of its dot and lasts as long as its card. The card lists every line there. Tap targets are 44 px or more (`STATION_HIT_PAD` on MapLibre, the 44 px buttons on Google) and where two overlap the nearest dot wins. The camera pans just enough to keep the dot and its card on screen (`panToReveal`), and when a station is brought into view with the route sheet open, the part of the map the sheet covers counts as hidden (`focusPadding`, `focusShiftPx`). Choosing Start or Destination ticks the button and the card closes a moment later (`CARD_LINGER_MS`), only if it is still the same card.
+- **Both maps, one decision.** Padding, reveal distance, hit size, timings and the route draw-in fraction are in shared modules; each map only applies them (MapLibre `easeTo` offset and GeoJSON, Google `panBy`/polylines and a DOM ring).
+
 ## Station alert (`lib/stop-alert.ts`, `lib/use-stop-alert.ts`, `lib/alert-output.ts`)
 
 Pure target selection (`alertTargets`, `dueTarget`) is separate from the browser outputs. The destination always rings, plus optionally the station 1–3 rode stops before it and line changes; a fix within ~300–500 m (widened to its accuracy, ignored past 1 km) triggers a target once. Outputs are a synthesised Web Audio chime (no asset, no CSP change; unlocked by the tap that enables alerts), `navigator.vibrate`, an assertive on-screen alert, a service-worker notification if permitted, and a screen wake lock while a trip is watched. Nothing leaves the device.

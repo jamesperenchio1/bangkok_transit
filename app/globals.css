@@ -108,7 +108,7 @@ svg circle {
    bottom-anchored, etc.) - overriding all four covers every anchor without
    needing a rule per direction. */
 .maplibregl-popup-content {
-  animation: bt-pop 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: bt-pop 180ms var(--ease-out) both;
   background: var(--background) !important;
   color: var(--foreground) !important;
   /* Roomier card; the right inset clears the enlarged close target. */
@@ -249,19 +249,22 @@ button {
 }
 
 .bt-rise {
-  animation: bt-rise 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: bt-rise 280ms var(--ease-out) both;
   animation-delay: calc(var(--i, 0) * 30ms);
 }
 
-/* Pressed feedback and soft hover on every button: the UI answers a tap. */
-button {
-  transition:
-    transform 100ms ease-out,
-    background-color 150ms ease-out;
-}
+/* Pressed feedback on every button: the UI answers a tap. In the base layer
+   so any component's own transition utilities still win over this default. */
+@layer base {
+  button {
+    transition:
+      transform 100ms ease-out,
+      background-color 150ms ease-out;
+  }
 
-button:active:not(:disabled) {
-  transform: scale(0.97);
+  button:active:not(:disabled) {
+    transform: scale(0.97);
+  }
 }
 
 /* Keyboard focus must always be visible (WCAG 2.4.7); inputs and buttons

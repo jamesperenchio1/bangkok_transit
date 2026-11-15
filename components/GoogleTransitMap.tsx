@@ -27,6 +27,7 @@ import {
   FOCUS_ZOOM_CAP,
   FOCUS_ZOOM_FLOOR,
   focusPadding,
+  focusShiftPx,
   panToReveal,
   LABEL_CODE_ZOOM,
   LOCATE_ZOOM,
@@ -42,7 +43,8 @@ import {
   stationVisuals,
   type StationVisual,
 } from "@/lib/map-data";
-import { easeOut, revealParts, ROUTE_DRAW_MS } from "@/lib/route-reveal";
+import { CARD_LINGER_MS, easeOut, ROUTE_DRAW_MS } from "@/lib/motion";
+import { revealParts } from "@/lib/route-reveal";
 import { motionDuration, useSettingsStore } from "@/lib/settings-store";
 import type { PathOptions, PathResult } from "@/lib/transit-graph";
 import type { FinalWalk } from "@/lib/place-station";
@@ -333,7 +335,7 @@ export function GoogleTransitMap({
     // only closes if this very card is still the open one (not one opened, or
     // closed and replaced, since).
     let mine: OpenCard | null = null;
-    const closeSoon = (close: () => void) => setTimeout(() => cardRef.current === mine && close(), motionDuration(380));
+    const closeSoon = (close: () => void) => setTimeout(() => cardRef.current === mine && close(), motionDuration(CARD_LINGER_MS));
     showCard(
       "card",
       station.lat,
@@ -869,7 +871,7 @@ export function GoogleTransitMap({
           ? Math.max(map.getZoom() ?? 11, mapLibreToGoogleZoom(FOCUS_ZOOM_FLOOR))
           : (map.getZoom() ?? 11);
       const target = (() => {
-        const shiftPx = (padding.bottom - padding.top) / 2;
+        const shiftPx = focusShiftPx(padding);
         if (!projection || shiftPx === 0) return base;
         const world = projection.fromLatLngToPoint(new g.maps.LatLng(base.lat, base.lng));
         const moved = world && projection.fromPointToLatLng(new g.maps.Point(world.x, world.y + shiftPx / Math.pow(2, zoom)));

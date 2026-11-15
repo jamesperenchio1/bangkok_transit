@@ -237,7 +237,7 @@ export const STATION_HIT_PAD = 22;
 export function panToReveal(
   point: { x: number; y: number },
   size: { width: number; height: number },
-  card = { above: 230, half: 170, below: 90 },
+  card = { above: FOCUS_PADDING.top, half: 170, below: FOCUS_PADDING.bottom },
 ): { dx: number; dy: number } | null {
   const minX = card.half;
   const maxX = size.width - card.half;
@@ -268,4 +268,14 @@ export function focusPadding(
   // Never pad away the whole map: keep at least 140px for the station itself.
   const room = Math.max(0, mapHeight - FOCUS_PADDING.top - 140);
   return { ...FOCUS_PADDING, bottom: Math.min(bottom, room) };
+}
+
+/**
+ * Pixels the camera centre sits below a focused station so the station lands
+ * in the free part of the map (room for its card above, the sheet below).
+ * Positive = centre below the station. MapLibre passes the negative as an
+ * easeTo `offset`; Google shifts the target by it.
+ */
+export function focusShiftPx(padding: { top: number; bottom: number }): number {
+  return (padding.bottom - padding.top) / 2;
 }

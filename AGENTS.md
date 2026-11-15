@@ -32,7 +32,11 @@ live BTS arrivals, live at bangkok-transit.com. Read `README.md` first, then
   endpoint and a ~180/min rate limit; only `cloudflare/poller` talks to it.
 - **Honest live data.** Old readings are shown as last-known with their age
   (amber), dropped after 30 min, and an upstream outage is named as such.
-- **The UI is considered done** — change it only to fix bugs or when asked.
+- **UI changes go through the shared modules and the motion system.** Visual
+  or interaction changes are fine when asked for; keep them in the shared
+  modules (see Layout) so both maps match, and keep every animation behind
+  `motionDuration()` / the CSS reduce-motion rules (see "Motion and
+  interaction" in `docs/architecture.md`).
 - No AI features in the app.
 
 ## Layout
@@ -48,7 +52,8 @@ live BTS arrivals, live at bangkok-transit.com. Read `README.md` first, then
   Map). It must stay a *twin* of `TransitMap`, not a second app: everything
   that decides **what** to draw lives in shared, library-free modules —
   `lib/map-data.ts` (station visuals, line/route geometry, label text,
-  camera padding), `lib/train-model.ts` (train placement, text, arrow shape),
+  camera padding, tap-target size, card reveal), `lib/route-reveal.ts` (route
+  draw-in), `lib/train-model.ts` (train placement, text, arrow shape),
   `lib/label-layout.ts` (collision), `components/map-cards.tsx` (station /
   place / train cards) — and both maps only differ in **how** they draw it.
   Change what the map shows in those modules first; never in one map only.
@@ -60,7 +65,11 @@ live BTS arrivals, live at bangkok-transit.com. Read `README.md` first, then
   time (full screen on phones). Rows are data in `catalog/*.ts`; every stored
   setting is owned by one section in `SECTION_KEYS` (a test pins it).
 - `components/RoutePanel.tsx` — the route sheet (legs, walks, boarding
-  direction, live times at each boarding point).
+  direction, live times at each boarding point). Drag-down-to-dismiss is
+  `lib/use-sheet-drag.ts`; tapping a stop asks the map to show it.
+- `lib/motion.ts` — the shared motion constants (easing, route draw-in time,
+  how long a card lingers after a choice). Durations are design values: wrap
+  them in `motionDuration()` where used.
 - `lib/transit-graph.ts` — routing (see below). `lib/line-geometry.ts` —
   curved track between stations from `public/line-geometry.json`.
 - `lib/arrivals-store.ts` / `lib/use-arrivals.ts` — the one client polling
@@ -94,8 +103,8 @@ returns legs with `mode: "start" | "ride" | "walk"`.
 A place picked from search routes through the station that gets there soonest,
 not the geographically nearest: `lib/place-station.ts` compares the closest few
 by `findPath(...).minutes + walkEstimate(meters)` (one minute of tie-break in
-favour of the nearest). The route then ends with the walk to the place, dashed
-on both maps and counted in the sheet's total (`finalWalk`).
+favour of the nearest). The route then ends with the walk to the place, a trail of round
+dots on both maps and counted in the sheet's total (`finalWalk`).
 
 A station's `code` is a stable **internal id**: it is in `?from=`/`?to=` links,
 page slugs and the fare/hop data, so never renumber it. For BTS/Gold/Yellow/Pink

@@ -73,6 +73,7 @@ export const strings = {
     noRouteLinesOff: (lines: string) => `No route without ${lines}, which you turned off for routes.`,
     useLinesForRoutes: (lines: string) => `Use ${lines} for routes`,
     changeLine: "Change line",
+    linesAtStation: "Lines at this station",
     boardToward: (name: string) => `Board toward ${name}`,
     // Where both directions end at the same station (MRT Blue at Tha Phra), the next stop says which platform.
     boardTowardVia: (name: string, via: string) => `Board toward ${name} (first stop ${via})`,
@@ -186,6 +187,7 @@ export const strings = {
     noRouteLinesOff: (lines: string) => `ไม่มีเส้นทางหากไม่ใช้ ${lines} ซึ่งคุณปิดไว้ในการวางแผนเส้นทาง`,
     useLinesForRoutes: (lines: string) => `ใช้ ${lines} ในการวางแผนเส้นทาง`,
     changeLine: "เปลี่ยนสาย",
+    linesAtStation: "สายที่ผ่านสถานีนี้",
     boardToward: (name: string) => `ขึ้นขบวนไปทาง ${name}`,
     boardTowardVia: (name: string, via: string) => `ขึ้นขบวนไปทาง ${name} (สถานีถัดไป ${via})`,
     walked: (d: string) => `เดิน ${d} จากสถานีก่อนหน้า`,
