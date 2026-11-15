@@ -86,6 +86,19 @@ svg circle {
   touch-action: manipulation;
 }
 
+/* Cards grow out of the station they belong to instead of appearing whole.
+   Only the content moves: MapLibre positions .maplibregl-popup itself. */
+@keyframes bt-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* MapLibre's popup chrome doesn't follow the page theme on its own - it's
    plain white in both light and dark mode, which makes the `dark:` classes
    on the popup's own content (station name, action buttons) land on the
@@ -95,6 +108,7 @@ svg circle {
    bottom-anchored, etc.) - overriding all four covers every anchor without
    needing a rule per direction. */
 .maplibregl-popup-content {
+  animation: bt-pop 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
   background: var(--background) !important;
   color: var(--foreground) !important;
   /* Roomier card; the right inset clears the enlarged close target. */
