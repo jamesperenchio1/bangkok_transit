@@ -17,3 +17,17 @@ describe("panToReveal", () => {
     expect(panToReveal({ x: 100, y: 300 }, { width: 300, height: 300 })).not.toBeNull();
   });
 });
+
+import { focusPadding, FOCUS_PADDING } from "@/lib/map-data";
+
+describe("focusPadding", () => {
+  it("is the plain card padding with no sheet", () => {
+    expect(focusPadding(false, 800, 800, 800)).toEqual({ ...FOCUS_PADDING });
+  });
+  it("grows the bottom by what the sheet covers, but never pads the map away", () => {
+    const open = focusPadding(true, 800, 800, 800);
+    expect(open.bottom).toBeGreaterThan(FOCUS_PADDING.bottom);
+    const tiny = focusPadding(true, 400, 400, 400);
+    expect(tiny.top + tiny.bottom).toBeLessThanOrEqual(400 - 140);
+  });
+});

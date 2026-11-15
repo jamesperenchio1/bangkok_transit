@@ -250,3 +250,22 @@ export function panToReveal(
   const dy = point.y - y;
   return Math.abs(dx) < 1 && Math.abs(dy) < 1 ? null : { dx, dy };
 }
+
+/**
+ * Padding for bringing one station into view with its card above it. With the
+ * route sheet open the bottom grows by what the sheet covers, so a stop behind
+ * the sheet counts as hidden and the camera moves it into the free part.
+ */
+export function focusPadding(
+  sheetOpen: boolean,
+  mapBottom: number,
+  mapHeight: number,
+  viewportHeight: number,
+): { top: number; bottom: number; left: number; right: number } {
+  const bottom = sheetOpen
+    ? Math.max(FOCUS_PADDING.bottom, routeFitPadding(true, mapBottom, mapHeight, viewportHeight).bottom)
+    : FOCUS_PADDING.bottom;
+  // Never pad away the whole map: keep at least 140px for the station itself.
+  const room = Math.max(0, mapHeight - FOCUS_PADDING.top - 140);
+  return { ...FOCUS_PADDING, bottom: Math.min(bottom, room) };
+}

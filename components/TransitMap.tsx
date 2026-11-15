@@ -15,11 +15,12 @@ import {
 } from "@/lib/line-geometry";
 import {
   ENDPOINT_COLOR,
-  FOCUS_PADDING,
   FOCUS_ZOOM_CAP,
   FOCUS_ZOOM_FLOOR,
+  focusPadding,
   panToReveal,
   STATION_HIT_PAD,
+  type RoutePart,
   LOCATE_ZOOM,
   MARKER_FACTOR,
   PLACE_ZOOM,
@@ -170,6 +171,14 @@ const LINES_LAYER = "transit-lines-layer";
 const ROUTE_SOURCE = "highlighted-route";
 const ROUTE_LAYER = "highlighted-route-layer";
 const ROUTE_WALK_LAYER = "highlighted-route-walk-layer";
+/** Pixels from one walking dot to the next. */
+const WALK_DOT_SPACING_PX = 8;
+/**
+ * MapLibre measures dash gaps in multiples of the line's own width, so two
+ * layers of different widths need different numbers to keep the same pixel
+ * spacing; otherwise the white halo dots drift away from the dark ones.
+ */
+const walkDashes = (widthPx: number): [number, number] => [0, WALK_DOT_SPACING_PX / widthPx];
 const STATIONS_SOURCE = "stations";
 const STATIONS_HIT_LAYER = "stations-hit-layer";
 const STATIONS_LAYER = "stations-layer";
@@ -207,10 +216,13 @@ function routeGeoJSON(
   segmentsByLine: LineSegments,
   finalWalk?: FinalWalk | null,
   fraction = 1,
+  // The geometry does not change while the route draws in, so the animation
+  // computes it once and passes it back in for every frame.
+  parts: RoutePart[] = routeParts(path, segmentsByLine, finalWalk),
 ): GeoJSON.FeatureCollection<GeoJSON.LineString> {
   return {
     type: "FeatureCollection",
-    features: revealParts(routeParts(path, segmentsByLine, finalWalk), fraction)
+    features: revealParts(parts, fraction)
       .filter((part) => part.points.length > 1)
       .map(({ line, walk, points }) => ({
       type: "Feature" as const,
@@ -345,9 +357,10 @@ export function TransitMap({
     startCode,
     destinationCode,
     pathOptions,
+    sheetOpen,
   });
   useEffect(() => {
-    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions };
+    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions, sheetOpen };
   });
 
   // Create the map once per mount. Like the Leaflet canvas renderer this
@@ -469,7 +482,7 @@ export function TransitMap({
         source: ROUTE_SOURCE,
         filter: ["==", ["get", "walk"], true],
         layout: { "line-cap": "round" },
-        paint: { "line-color": "#ffffff", "line-width": 7, "line-dasharray": [0, 1.6] },
+        paint: { "line-color": "#ffffff", "line-width": 7, "line-dasharray": walkDashes(7) },
       });
       map.addLayer({
         id: ROUTE_WALK_LAYER,
@@ -477,7 +490,7 @@ export function TransitMap({
         source: ROUTE_SOURCE,
         filter: ["==", ["get", "walk"], true],
         layout: { "line-cap": "round" },
-        paint: { "line-color": "#404040", "line-width": 4.5, "line-dasharray": [0, 1.6] },
+        paint: { "line-color": "#404040", "line-width": 4.5, "line-dasharray": walkDashes(4.5) },
       });
 
       map.addSource(STATIONS_SOURCE, {
@@ -759,11 +772,12 @@ export function TransitMap({
           source.setData(routeGeoJSON(path, segmentsByLine, finalWalk));
           return;
         }
+        const parts = routeParts(path, segmentsByLine, finalWalk);
         const t0 = performance.now();
         const step = (now: number) => {
           if (cancelled) return;
           const t = Math.min(1, (now - t0) / total);
-          source.setData(routeGeoJSON(path, segmentsByLine, finalWalk, easeOut(t)));
+          source.setData(routeGeoJSON(path, segmentsByLine, finalWalk, easeOut(t), parts));
           if (t < 1) raf = requestAnimationFrame(step);
         };
         raf = requestAnimationFrame(step);
@@ -834,6 +848,8 @@ export function TransitMap({
       map.setPaintProperty(ROUTE_LAYER, "line-width", routeWidth);
       map.setPaintProperty(ROUTE_WALK_LAYER, "line-width", Math.max(3.5, routeWidth - 0.5));
       map.setPaintProperty(`${ROUTE_WALK_LAYER}-halo`, "line-width", Math.max(3.5, routeWidth - 0.5) + 2.5);
+      map.setPaintProperty(ROUTE_WALK_LAYER, "line-dasharray", walkDashes(Math.max(3.5, routeWidth - 0.5)));
+      map.setPaintProperty(`${ROUTE_WALK_LAYER}-halo`, "line-dasharray", walkDashes(Math.max(3.5, routeWidth - 0.5) + 2.5));
       for (const id of basemapLabelLayers) {
         if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", basemapLabels ? "visible" : "none");
       }
@@ -928,11 +944,14 @@ export function TransitMap({
       const otherCode = [startCode, destinationCode].find((c) => c && c !== focusStation.code);
       const other = otherCode ? stations.find((s) => s.code === otherCode) : undefined;
       // Room for the card above the marker, and for the header/pills.
-      const padding = FOCUS_PADDING;
+      // With the route sheet open, what it covers is not free map.
+      const rect = map.getContainer().getBoundingClientRect();
+      const padding = focusPadding(latest.current.sheetOpen, rect.bottom, rect.height, window.innerHeight);
       // With "zoom in" off the camera only pans (and only when the station is
       // off screen); the rider's zoom level is never changed.
       const move = focusCamera(map, focusStation, other, padding, useSettingsStore.getState().settings.autoZoom);
-      if (move) map.stop().easeTo({ ...move, duration: motionMs(600) });
+      // `offset` centres the station in the free part of the map, not the whole of it.
+      if (move) map.stop().easeTo({ ...move, offset: [0, (padding.top - padding.bottom) / 2], duration: motionMs(600) });
       openPopup(map, popupsRef, focusStation, latest);
     };
     if (loadedRef.current) apply();

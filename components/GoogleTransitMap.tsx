@@ -24,9 +24,9 @@ import { estimateTrains, routeHops, trainOnRoute, type TrainEstimate } from "@/l
 import { markMapPainted, whenMapPainted } from "@/lib/map-ready";
 import {
   ENDPOINT_COLOR,
-  FOCUS_PADDING,
   FOCUS_ZOOM_CAP,
   FOCUS_ZOOM_FLOOR,
+  focusPadding,
   panToReveal,
   LABEL_CODE_ZOOM,
   LOCATE_ZOOM,
@@ -220,9 +220,9 @@ export function GoogleTransitMap({
   }, [path]);
 
   // The newest props and settings, for handlers created once.
-  const latest = useRef({ onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions, onLoad, onError, settings, lang });
+  const latest = useRef({ onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions, onLoad, onError, settings, lang, sheetOpen });
   useEffect(() => {
-    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions, onLoad, onError, settings, lang };
+    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions, onLoad, onError, settings, lang, sheetOpen };
   });
 
   const reducedMotion = () => motionDuration(1) === 0;
@@ -838,19 +838,32 @@ export function GoogleTransitMap({
     const otherCode = [s, d].find((c) => c && c !== focusStation.code);
     const other = otherCode ? stations.find((x) => x.code === otherCode) : undefined;
     const rect = container.getBoundingClientRect();
+    // With the route sheet open, what it covers is not free map.
+    const padding = focusPadding(latest.current.sheetOpen, rect.bottom, rect.height, window.innerHeight);
     const visible = (st: Station) => {
       const p = layer.containerPointOf(st.lat, st.lon);
       return (
         !!p &&
-        p.x >= FOCUS_PADDING.left &&
-        p.x <= rect.width - FOCUS_PADDING.right &&
-        p.y >= FOCUS_PADDING.top &&
-        p.y <= rect.height - FOCUS_PADDING.bottom
+        p.x >= padding.left &&
+        p.x <= rect.width - padding.right &&
+        p.y >= padding.top &&
+        p.y <= rect.height - padding.bottom
       );
     };
     const points = other ? [focusStation, other] : [focusStation];
     if (!points.every(visible)) {
-      const target = { lat: focusStation.lat, lng: focusStation.lon };
+      const base = { lat: focusStation.lat, lng: focusStation.lon };
+      // Centre the station in the free part of the map: the camera centre sits
+      // below it by half of (covered bottom - card room above).
+      const projection = map.getProjection();
+      const zoom = map.getZoom() ?? 11;
+      const target = (() => {
+        const shiftPx = (padding.bottom - padding.top) / 2;
+        if (!projection || shiftPx === 0) return base;
+        const world = projection.fromLatLngToPoint(new g.maps.LatLng(base.lat, base.lng));
+        const moved = world && projection.fromPointToLatLng(new g.maps.Point(world.x, world.y + shiftPx / Math.pow(2, zoom)));
+        return moved ? { lat: moved.lat(), lng: moved.lng() } : base;
+      })();
       if (!latest.current.settings.autoZoom) moveTo(target);
       else if (other) {
         movingRef.current = true;
@@ -861,7 +874,7 @@ export function GoogleTransitMap({
             south: Math.min(focusStation.lat, other.lat),
             north: Math.max(focusStation.lat, other.lat),
           },
-          FOCUS_PADDING,
+          padding,
         );
         const cap = mapLibreToGoogleZoom(FOCUS_ZOOM_CAP);
         g.maps.event.addListenerOnce(map, "idle", () => {
