@@ -31,3 +31,13 @@ describe("focusPadding", () => {
     expect(tiny.top + tiny.bottom).toBeLessThanOrEqual(400 - 140);
   });
 });
+
+import { cardRoom } from "@/lib/map-data";
+
+describe("cardRoom", () => {
+  it("grows with the measured card, so a taller card gets more room", () => {
+    expect(cardRoom(260, 14).above).toBeGreaterThan(cardRoom(140, 14).above);
+    expect(panToReveal({ x: 400, y: 300 }, size, cardRoom(260, 14))).not.toBeNull();
+    expect(panToReveal({ x: 400, y: 300 }, size, cardRoom(140, 14))).toBeNull();
+  });
+});

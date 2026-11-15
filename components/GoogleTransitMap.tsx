@@ -26,6 +26,7 @@ import {
   ENDPOINT_COLOR,
   FOCUS_ZOOM_CAP,
   FOCUS_ZOOM_FLOOR,
+  cardRoom,
   focusPadding,
   focusShiftPx,
   panToReveal,
@@ -103,6 +104,9 @@ const FONT = `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans 
 // A station's tap target sits above the trains (a station under the finger wins,
 // as in MapLibre), while its drawn dot and the names stay below/above as drawn.
 const Z = { dot: 10, train: 20, hit: 25, label: 30, pin: 40, gps: 45, card: 100 } as const;
+
+/** Gap between a station dot and its card on the Google map. */
+const STATION_CARD_GAP_PX = 14;
 
 interface StationNode {
   station: Station;
@@ -309,6 +313,11 @@ export function GoogleTransitMap({
 
   /** Pan just enough that the tapped station and its card are fully on screen. */
   function revealStation(station: Station) {
+    // The card renders a frame after it opens; measure it, then pan to fit it.
+    requestAnimationFrame(() => revealMeasured(station));
+  }
+
+  function revealMeasured(station: Station) {
     const map = mapRef.current;
     const container = containerRef.current;
     const projection = map?.getProjection();
@@ -320,7 +329,12 @@ export function GoogleTransitMap({
     const mid = projection.fromLatLngToPoint(center);
     if (!at || !mid) return;
     const { width, height } = container.getBoundingClientRect();
-    const move = panToReveal({ x: width / 2 + (at.x - mid.x) * scale, y: height / 2 + (at.y - mid.y) * scale }, { width, height });
+    const cardHeight = container.querySelector(".bt-card")?.getBoundingClientRect().height ?? 0;
+    const move = panToReveal(
+      { x: width / 2 + (at.x - mid.x) * scale, y: height / 2 + (at.y - mid.y) * scale },
+      { width, height },
+      cardRoom(cardHeight, STATION_CARD_GAP_PX),
+    );
     if (!move) return;
     movingRef.current = true;
     if (reducedMotion()) {
@@ -340,7 +354,7 @@ export function GoogleTransitMap({
       "card",
       station.lat,
       station.lon,
-      14,
+      STATION_CARD_GAP_PX,
       (close) => (
         <StationCard
           station={station}

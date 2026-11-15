@@ -237,7 +237,7 @@ export const STATION_HIT_PAD = 22;
 export function panToReveal(
   point: { x: number; y: number },
   size: { width: number; height: number },
-  card = { above: FOCUS_PADDING.top, half: 170, below: FOCUS_PADDING.bottom },
+  card: { above: number; half: number; below: number } = { above: FOCUS_PADDING.top, half: 170, below: FOCUS_PADDING.bottom },
 ): { dx: number; dy: number } | null {
   const minX = card.half;
   const maxX = size.width - card.half;
@@ -278,4 +278,14 @@ export function focusPadding(
  */
 export function focusShiftPx(padding: { top: number; bottom: number }): number {
   return (padding.bottom - padding.top) / 2;
+}
+
+/**
+ * Room a tapped station needs above it: the card as actually measured, the gap
+ * between card and dot, and the map chrome (header, notices) that overlaps the
+ * top. Measuring beats a fixed number: a card with live times is taller than
+ * one without, and the Google and MapLibre cards sit at different offsets.
+ */
+export function cardRoom(cardHeight: number, gap: number) {
+  return { above: cardHeight + gap + 56, half: 170, below: FOCUS_PADDING.bottom };
 }

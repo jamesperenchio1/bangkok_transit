@@ -17,6 +17,7 @@ import {
   ENDPOINT_COLOR,
   FOCUS_ZOOM_CAP,
   FOCUS_ZOOM_FLOOR,
+  cardRoom,
   focusPadding,
   focusShiftPx,
   panToReveal,
@@ -665,9 +666,18 @@ export function TransitMap({
         latest.current.onSelectStation(station);
         openPopup(map, popupsRef, station, latest);
         // Bring the dot and its card fully on screen, panning no more than needed.
-        const { width, height } = map.getCanvas().getBoundingClientRect();
-        const move = panToReveal(map.project([station.lon, station.lat]), { width, height });
-        if (move) map.panBy([move.dx, move.dy], { duration: motionMs(350) });
+        // The card renders a frame after it opens; measure it, then pan to fit it.
+        requestAnimationFrame(() => {
+          const card = popupsRef.current.get(station.code)?.popup.getElement();
+          if (!card) return;
+          const { width, height } = map.getCanvas().getBoundingClientRect();
+          const move = panToReveal(
+            map.project([station.lon, station.lat]),
+            { width, height },
+            cardRoom(card.getBoundingClientRect().height, POPUP_GAP_PX),
+          );
+          if (move) map.panBy([move.dx, move.dy], { duration: motionMs(350) });
+        });
       });
       map.on(
         "mouseenter",
@@ -1039,6 +1049,9 @@ function focusCamera(
   return { center: [target.lon, target.lat], zoom: Math.max(map.getZoom(), FOCUS_ZOOM_FLOOR) };
 }
 
+/** MapLibre popup offset above the station dot (see openPopup). */
+const POPUP_GAP_PX = 12;
+
 /** Ring on the tapped station, or none. The radius animates from the dot outwards. */
 function setSelected(map: maplibregl.Map, station: Station | null) {
   const source = map.getSource<maplibregl.GeoJSONSource>(SELECTED_SOURCE);
@@ -1080,7 +1093,7 @@ function openPopup(
   // whole app shifted sideways. It is focused below without scrolling, which
   // keeps the keyboard behaviour.
   const popup = new maplibregl.Popup({
-    offset: 12,
+    offset: POPUP_GAP_PX,
     maxWidth: "min(300px, calc(100vw - 24px))",
     closeButton: true,
     focusAfterOpen: false,
