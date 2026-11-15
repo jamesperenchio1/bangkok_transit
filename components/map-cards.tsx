@@ -64,17 +64,19 @@ function StationLines({ station }: { station: Station }) {
   const { t } = useT();
   const lines = [...new Set(station.lines.map((l) => l.line))];
   return (
-    <ul className="flex flex-wrap gap-1.5" aria-label={t.linesAtStation}>
+    // A labelled group, not a list: the card's only <ul>/listitems are the
+    // arrivals, and the e2e suite counts them.
+    <div role="group" className="flex flex-wrap gap-1.5" aria-label={t.linesAtStation}>
       {lines.map((line) => (
-        <li
+        <span
           key={line}
           className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
         >
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: LINE_COLORS[line] }} aria-hidden="true" />
           {LINE_NAMES[line]}
-        </li>
+        </span>
       ))}
-    </ul>
+    </div>
   );
 }
 
