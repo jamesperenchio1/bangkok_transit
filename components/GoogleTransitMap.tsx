@@ -24,9 +24,12 @@ import { estimateTrains, routeHops, trainOnRoute, type TrainEstimate } from "@/l
 import { markMapPainted, whenMapPainted } from "@/lib/map-ready";
 import {
   ENDPOINT_COLOR,
-  FOCUS_PADDING,
   FOCUS_ZOOM_CAP,
   FOCUS_ZOOM_FLOOR,
+  cardRoom,
+  focusPadding,
+  focusShiftPx,
+  panToReveal,
   LABEL_CODE_ZOOM,
   LOCATE_ZOOM,
   MARKER_FACTOR,
@@ -41,6 +44,8 @@ import {
   stationVisuals,
   type StationVisual,
 } from "@/lib/map-data";
+import { CARD_LINGER_MS, easeOut, ROUTE_DRAW_MS } from "@/lib/motion";
+import { revealParts } from "@/lib/route-reveal";
 import { motionDuration, useSettingsStore } from "@/lib/settings-store";
 import type { PathOptions, PathResult } from "@/lib/transit-graph";
 import type { FinalWalk } from "@/lib/place-station";
@@ -100,10 +105,15 @@ const FONT = `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans 
 // as in MapLibre), while its drawn dot and the names stay below/above as drawn.
 const Z = { dot: 10, train: 20, hit: 25, label: 30, pin: 40, gps: 45, card: 100 } as const;
 
+/** Gap between a station dot and its card on the Google map. */
+const STATION_CARD_GAP_PX = 14;
+
 interface StationNode {
   station: Station;
   dot: HTMLElement;
   ring: HTMLElement;
+  /** The "this card belongs to me" ring, shown while the station's card is open. */
+  sel: HTMLElement;
   fill: HTMLElement;
   label: HTMLElement;
   text: HTMLElement;
@@ -215,9 +225,9 @@ export function GoogleTransitMap({
   }, [path]);
 
   // The newest props and settings, for handlers created once.
-  const latest = useRef({ onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions, onLoad, onError, settings, lang });
+  const latest = useRef({ onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions, onLoad, onError, settings, lang, sheetOpen });
   useEffect(() => {
-    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions, onLoad, onError, settings, lang };
+    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions, onLoad, onError, settings, lang, sheetOpen };
   });
 
   const reducedMotion = () => motionDuration(1) === 0;
@@ -285,12 +295,66 @@ export function GoogleTransitMap({
     close.focus({ preventScroll: true });
   }
 
+  /** Ring on the tapped station (or none); it grows out of the dot like the MapLibre one. */
+  function setSelected(code: string | null) {
+    for (const [c, node] of nodes.current) {
+      const on = c === code;
+      if (on && node.sel.style.display !== "block") {
+        node.sel.style.display = "block";
+        if (!reducedMotion()) {
+          node.sel.animate(
+            [{ transform: "translate(-50%,-50%) scale(0.4)", opacity: 0.4 }, { transform: "translate(-50%,-50%) scale(1)", opacity: 1 }],
+            { duration: 220, easing: "cubic-bezier(0.22,1,0.36,1)" },
+          );
+        }
+      } else if (!on) node.sel.style.display = "none";
+    }
+  }
+
+  /** Pan just enough that the tapped station and its card are fully on screen. */
+  function revealStation(station: Station) {
+    // The card renders a frame after it opens; measure it, then pan to fit it.
+    requestAnimationFrame(() => revealMeasured(station));
+  }
+
+  function revealMeasured(station: Station) {
+    const map = mapRef.current;
+    const container = containerRef.current;
+    const projection = map?.getProjection();
+    const center = map?.getCenter();
+    if (!map || !container || !projection || !center) return;
+    const g = window.google;
+    const scale = Math.pow(2, map.getZoom() ?? 0);
+    const at = projection.fromLatLngToPoint(new g.maps.LatLng(station.lat, station.lon));
+    const mid = projection.fromLatLngToPoint(center);
+    if (!at || !mid) return;
+    const { width, height } = container.getBoundingClientRect();
+    const cardHeight = container.querySelector(".bt-card")?.getBoundingClientRect().height ?? 0;
+    const move = panToReveal(
+      { x: width / 2 + (at.x - mid.x) * scale, y: height / 2 + (at.y - mid.y) * scale },
+      { width, height },
+      cardRoom(cardHeight, STATION_CARD_GAP_PX),
+    );
+    if (!move) return;
+    movingRef.current = true;
+    if (reducedMotion()) {
+      // panBy always animates; jump to the same place instead.
+      const to = projection.fromPointToLatLng(new g.maps.Point(mid.x + move.dx / scale, mid.y + move.dy / scale));
+      if (to) map.moveCamera({ center: to });
+    } else map.panBy(move.dx, move.dy);
+  }
+
   function openStationCard(station: Station) {
+    // After a choice the card lingers a beat so the button's tick is seen; it
+    // only closes if this very card is still the open one (not one opened, or
+    // closed and replaced, since).
+    let mine: OpenCard | null = null;
+    const closeSoon = (close: () => void) => setTimeout(() => cardRef.current === mine && close(), motionDuration(CARD_LINGER_MS));
     showCard(
       "card",
       station.lat,
       station.lon,
-      14,
+      STATION_CARD_GAP_PX,
       (close) => (
         <StationCard
           station={station}
@@ -298,15 +362,19 @@ export function GoogleTransitMap({
           destinationCode={latest.current.destinationCode}
           onSetStart={(s) => {
             latest.current.onSetStart(s);
-            queueMicrotask(close);
+            closeSoon(close);
           }}
           onSetDestination={(s) => {
             latest.current.onSetDestination(s);
-            queueMicrotask(close);
+            closeSoon(close);
           }}
         />
       ),
+      () => setSelected(null),
     );
+    // After showCard: it closes the previous card first, whose cleanup clears the ring.
+    mine = cardRef.current;
+    setSelected(station.code);
   }
 
   function openPlaceCard(place: Place) {
@@ -514,10 +582,12 @@ export function GoogleTransitMap({
     routeLines.current = [];
     if (!path) return;
     let stale = false;
+    let raf = 0;
     void fetchLineGeometry().then((real) => {
       if (stale) return;
       const g = window.google;
-      routeLines.current = routeParts(path, real, finalWalk).map(({ line, walk, points }) => {
+      const fullParts = routeParts(path, real, finalWalk);
+      routeLines.current = fullParts.map(({ line, walk, points }) => {
         const pathLatLng = points.map(([lat, lng]) => ({ lat, lng }));
         return walk
           ? new g.maps.Polyline({
@@ -526,12 +596,19 @@ export function GoogleTransitMap({
               strokeOpacity: 0,
               clickable: false,
               zIndex: 20,
-              // A dashed line: Google has no dash style, so a repeated 1px-gap symbol draws it.
+              // Dots: Google has no dash style, so a repeated circle symbol draws it.
               icons: [
                 {
-                  icon: { path: "M 0,-1 0,1", strokeOpacity: 1, strokeColor: WALK_COLOR, scale: Math.max(2, routeWidth - 2) / 2 },
+                  icon: {
+                    path: g.maps.SymbolPath.CIRCLE,
+                    fillOpacity: 1,
+                    fillColor: WALK_COLOR,
+                    strokeColor: "#ffffff",
+                    strokeWeight: 1,
+                    scale: Math.max(2.5, routeWidth / 2 - 0.5),
+                  },
                   offset: "0",
-                  repeat: "9px",
+                  repeat: "10px",
                 },
               ],
             })
@@ -545,9 +622,22 @@ export function GoogleTransitMap({
               zIndex: 20,
             });
       });
+      // Same draw-in as the MapLibre twin: the route travels origin to destination.
+      const total = motionDuration(ROUTE_DRAW_MS);
+      if (total === 0) return;
+      const toLatLng = (pts: [number, number][]) => pts.map(([lat, lng]) => ({ lat, lng }));
+      const t0 = performance.now();
+      const step = (now: number) => {
+        if (stale) return;
+        const t = Math.min(1, (now - t0) / total);
+        revealParts(fullParts, easeOut(t)).forEach((part, i) => routeLines.current[i]?.setPath(toLatLng(part.points)));
+        if (t < 1) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
     });
     return () => {
       stale = true;
+      cancelAnimationFrame(raf);
     };
   }, [ready, path, finalWalk, routeWidth]);
 
@@ -584,10 +674,12 @@ export function GoogleTransitMap({
       e.stopPropagation();
       latest.current.onSelectStation(station);
       openStationCard(station);
+      revealStation(station);
     });
     const ring = el("span", centered(`width:28px;height:28px;box-sizing:border-box;border:3px dashed ${ENDPOINT_COLOR};border-radius:9999px;display:none;pointer-events:none`));
     const fill = el("span", centered("border-radius:9999px;box-sizing:border-box;pointer-events:none"));
-    dot.append(ring, fill);
+    const sel = el("span", centered(`width:34px;height:34px;box-sizing:border-box;border:3px solid ${ENDPOINT_COLOR};background:rgba(22,163,74,.18);border-radius:9999px;display:none;pointer-events:none`));
+    dot.append(sel, ring, fill);
     hitRoot.append(hit);
     layer.add(`d:${station.code}`, station.lat, station.lon, dot, Z.dot);
     layer.add(`h:${station.code}`, station.lat, station.lon, hitRoot, Z.hit);
@@ -597,7 +689,7 @@ export function GoogleTransitMap({
     label.append(text);
     label.style.display = "none";
     layer.add(`l:${station.code}`, station.lat, station.lon, label, Z.label);
-    return { station, dot, ring, fill, label, text, visual: undefined as unknown as StationVisual, radius: 4, shown: "" };
+    return { station, dot, ring, sel, fill, label, text, visual: undefined as unknown as StationVisual, radius: 4, shown: "" };
   }
 
   useEffect(() => {
@@ -768,19 +860,37 @@ export function GoogleTransitMap({
     const otherCode = [s, d].find((c) => c && c !== focusStation.code);
     const other = otherCode ? stations.find((x) => x.code === otherCode) : undefined;
     const rect = container.getBoundingClientRect();
+    // With the route sheet open, what it covers is not free map.
+    const padding = focusPadding(latest.current.sheetOpen, rect.bottom, rect.height, window.innerHeight);
     const visible = (st: Station) => {
       const p = layer.containerPointOf(st.lat, st.lon);
       return (
         !!p &&
-        p.x >= FOCUS_PADDING.left &&
-        p.x <= rect.width - FOCUS_PADDING.right &&
-        p.y >= FOCUS_PADDING.top &&
-        p.y <= rect.height - FOCUS_PADDING.bottom
+        p.x >= padding.left &&
+        p.x <= rect.width - padding.right &&
+        p.y >= padding.top &&
+        p.y <= rect.height - padding.bottom
       );
     };
     const points = other ? [focusStation, other] : [focusStation];
     if (!points.every(visible)) {
-      const target = { lat: focusStation.lat, lng: focusStation.lon };
+      const base = { lat: focusStation.lat, lng: focusStation.lon };
+      // Centre the station in the free part of the map: the camera centre sits
+      // below it by half of (covered bottom - card room above).
+      const projection = map.getProjection();
+      // The shift is in screen pixels, so measure it at the zoom the camera
+      // will end at (a lone pick is raised to the focus floor), not the current one.
+      const zoom =
+        latest.current.settings.autoZoom && !other
+          ? Math.max(map.getZoom() ?? 11, mapLibreToGoogleZoom(FOCUS_ZOOM_FLOOR))
+          : (map.getZoom() ?? 11);
+      const target = (() => {
+        const shiftPx = focusShiftPx(padding);
+        if (!projection || shiftPx === 0) return base;
+        const world = projection.fromLatLngToPoint(new g.maps.LatLng(base.lat, base.lng));
+        const moved = world && projection.fromPointToLatLng(new g.maps.Point(world.x, world.y + shiftPx / Math.pow(2, zoom)));
+        return moved ? { lat: moved.lat(), lng: moved.lng() } : base;
+      })();
       if (!latest.current.settings.autoZoom) moveTo(target);
       else if (other) {
         movingRef.current = true;
@@ -791,7 +901,7 @@ export function GoogleTransitMap({
             south: Math.min(focusStation.lat, other.lat),
             north: Math.max(focusStation.lat, other.lat),
           },
-          FOCUS_PADDING,
+          padding,
         );
         const cap = mapLibreToGoogleZoom(FOCUS_ZOOM_CAP);
         g.maps.event.addListenerOnce(map, "idle", () => {

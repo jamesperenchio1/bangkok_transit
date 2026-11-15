@@ -15,9 +15,14 @@ import {
 } from "@/lib/line-geometry";
 import {
   ENDPOINT_COLOR,
-  FOCUS_PADDING,
   FOCUS_ZOOM_CAP,
   FOCUS_ZOOM_FLOOR,
+  cardRoom,
+  focusPadding,
+  focusShiftPx,
+  panToReveal,
+  STATION_HIT_PAD,
+  type RoutePart,
   LOCATE_ZOOM,
   MARKER_FACTOR,
   PLACE_ZOOM,
@@ -38,6 +43,8 @@ import { applyTrainStyle, startLiveTrainsWhenIdle } from "@/components/live-trai
 import { routeHops } from "@/lib/live-trains";
 import { LINE_COLORS } from "@/lib/line-colors";
 import { useLangStore, useT, type Lang } from "@/lib/i18n";
+import { CARD_LINGER_MS, easeOut, ROUTE_DRAW_MS } from "@/lib/motion";
+import { revealParts } from "@/lib/route-reveal";
 import { motionDuration, useSettingsStore } from "@/lib/settings-store";
 
 // MapLibre uses [lon, lat] everywhere, the opposite of Leaflet's [lat, lon] -
@@ -167,9 +174,19 @@ const LINES_LAYER = "transit-lines-layer";
 const ROUTE_SOURCE = "highlighted-route";
 const ROUTE_LAYER = "highlighted-route-layer";
 const ROUTE_WALK_LAYER = "highlighted-route-walk-layer";
+/** Pixels from one walking dot to the next. */
+const WALK_DOT_SPACING_PX = 8;
+/**
+ * MapLibre measures dash gaps in multiples of the line's own width, so two
+ * layers of different widths need different numbers to keep the same pixel
+ * spacing; otherwise the white halo dots drift away from the dark ones.
+ */
+const walkDashes = (widthPx: number): [number, number] => [0, WALK_DOT_SPACING_PX / widthPx];
 const STATIONS_SOURCE = "stations";
 const STATIONS_HIT_LAYER = "stations-hit-layer";
 const STATIONS_LAYER = "stations-layer";
+const SELECTED_SOURCE = "station-selected";
+const SELECTED_LAYER = "station-selected-layer";
 const STATIONS_LABEL_LAYER = "stations-label-layer";
 const DEST_RING_ICON = "destination-ring-icon";
 const DEST_RING_LAYER = "destination-ring-layer";
@@ -201,14 +218,20 @@ function routeGeoJSON(
   path: PathResult,
   segmentsByLine: LineSegments,
   finalWalk?: FinalWalk | null,
+  fraction = 1,
+  // The geometry does not change while the route draws in, so the animation
+  // computes it once and passes it back in for every frame.
+  parts: RoutePart[] = routeParts(path, segmentsByLine, finalWalk),
 ): GeoJSON.FeatureCollection<GeoJSON.LineString> {
   return {
     type: "FeatureCollection",
-    features: routeParts(path, segmentsByLine, finalWalk).map(({ line, walk, points }) => ({
+    features: revealParts(parts, fraction)
+      .filter((part) => part.points.length > 1)
+      .map(({ line, walk, points }) => ({
       type: "Feature" as const,
       properties: { line, walk },
       geometry: { type: "LineString" as const, coordinates: points.map(([lat, lon]) => [lon, lat]) },
-    })),
+      })),
   };
 }
 
@@ -337,9 +360,10 @@ export function TransitMap({
     startCode,
     destinationCode,
     pathOptions,
+    sheetOpen,
   });
   useEffect(() => {
-    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions };
+    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions, sheetOpen };
   });
 
   // Create the map once per mount. Like the Leaflet canvas renderer this
@@ -453,13 +477,23 @@ export function TransitMap({
           "line-opacity": 1,
         },
       });
+      // Walking reads as a trail of round dots (zero-length dashes with round
+      // caps), under a white halo so it stays visible over busy tiles.
+      map.addLayer({
+        id: `${ROUTE_WALK_LAYER}-halo`,
+        type: "line",
+        source: ROUTE_SOURCE,
+        filter: ["==", ["get", "walk"], true],
+        layout: { "line-cap": "round" },
+        paint: { "line-color": "#ffffff", "line-width": 7, "line-dasharray": walkDashes(7) },
+      });
       map.addLayer({
         id: ROUTE_WALK_LAYER,
         type: "line",
         source: ROUTE_SOURCE,
         filter: ["==", ["get", "walk"], true],
         layout: { "line-cap": "round" },
-        paint: { "line-color": "#525252", "line-width": 3, "line-dasharray": [0.5, 1.5] },
+        paint: { "line-color": "#404040", "line-width": 4.5, "line-dasharray": walkDashes(4.5) },
       });
 
       map.addSource(STATIONS_SOURCE, {
@@ -475,7 +509,7 @@ export function TransitMap({
         type: "circle",
         source: STATIONS_SOURCE,
         paint: {
-          "circle-radius": ["+", ["get", "radius"], 12],
+          "circle-radius": ["+", ["get", "radius"], STATION_HIT_PAD],
           "circle-opacity": 0,
         },
       });
@@ -489,6 +523,22 @@ export function TransitMap({
           "circle-opacity": ["get", "fillOpacity"],
           "circle-stroke-color": ["get", "strokeColor"],
           "circle-stroke-width": ["get", "strokeWidth"],
+        },
+      });
+      // The tapped station: a ring that grows out of the dot, so it is always
+      // clear which station the open card belongs to.
+      map.addSource(SELECTED_SOURCE, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addLayer({
+        id: SELECTED_LAYER,
+        type: "circle",
+        source: SELECTED_SOURCE,
+        paint: {
+          "circle-radius": 8,
+          "circle-radius-transition": { duration: 220, delay: 0 },
+          "circle-color": "#16a34a",
+          "circle-opacity": 0.18,
+          "circle-stroke-color": "#16a34a",
+          "circle-stroke-width": 3,
         },
       });
       // A dashed ring on the destination marker specifically, so it reads
@@ -602,11 +652,32 @@ export function TransitMap({
       });
 
       map.on("click", STATIONS_HIT_LAYER, (e: maplibregl.MapLayerMouseEvent) => {
-        const code = e.features?.[0]?.properties?.code as string | undefined;
-        const station = code ? stations.find((s) => s.code === code) : undefined;
+        // Where hit areas overlap (interchanges, stacked stations) the nearest
+        // dot to the finger wins, not whichever feature the query lists first.
+        let best: { code?: string; d: number } = { d: Infinity };
+        for (const f of e.features ?? []) {
+          const g = f.geometry as GeoJSON.Point;
+          const p = map.project(g.coordinates as [number, number]);
+          const d = Math.hypot(p.x - e.point.x, p.y - e.point.y);
+          if (d < best.d) best = { code: f.properties?.code as string | undefined, d };
+        }
+        const station = best.code ? stations.find((s) => s.code === best.code) : undefined;
         if (!station) return;
         latest.current.onSelectStation(station);
         openPopup(map, popupsRef, station, latest);
+        // Bring the dot and its card fully on screen, panning no more than needed.
+        // The card renders a frame after it opens; measure it, then pan to fit it.
+        requestAnimationFrame(() => {
+          const card = popupsRef.current.get(station.code)?.popup.getElement();
+          if (!card) return;
+          const { width, height } = map.getCanvas().getBoundingClientRect();
+          const move = panToReveal(
+            map.project([station.lon, station.lat]),
+            { width, height },
+            cardRoom(card.getBoundingClientRect().height, POPUP_GAP_PX),
+          );
+          if (move) map.panBy([move.dx, move.dy], { duration: motionMs(350) });
+        });
       });
       map.on(
         "mouseenter",
@@ -696,12 +767,32 @@ export function TransitMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    let cancelled = false;
+    let raf = 0;
     const applyWith = (segmentsByLine: LineSegments) => {
       const apply = () => {
         const source = map.getSource<maplibregl.GeoJSONSource>(ROUTE_SOURCE);
-        source?.setData(
-          path ? routeGeoJSON(path, segmentsByLine, finalWalk) : { type: "FeatureCollection", features: [] },
-        );
+        if (!source) return;
+        if (!path) {
+          source.setData({ type: "FeatureCollection", features: [] });
+          return;
+        }
+        // The route travels from origin to destination instead of appearing;
+        // reduce-motion (duration 0) and a stale effect both skip straight to the end.
+        const total = motionMs(ROUTE_DRAW_MS);
+        if (total === 0) {
+          source.setData(routeGeoJSON(path, segmentsByLine, finalWalk));
+          return;
+        }
+        const parts = routeParts(path, segmentsByLine, finalWalk);
+        const t0 = performance.now();
+        const step = (now: number) => {
+          if (cancelled) return;
+          const t = Math.min(1, (now - t0) / total);
+          source.setData(routeGeoJSON(path, segmentsByLine, finalWalk, easeOut(t), parts));
+          if (t < 1) raf = requestAnimationFrame(step);
+        };
+        raf = requestAnimationFrame(step);
       };
       if (loadedRef.current) apply();
       else map.once("style.load", apply);
@@ -716,6 +807,10 @@ export function TransitMap({
         applyWith(segmentsByLine);
       });
     }
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
   }, [path, finalWalk]);
 
   // Keep a planned route in view: fitted to whatever part of the map the
@@ -761,9 +856,12 @@ export function TransitMap({
       map.setLayerZoomRange(STATIONS_LABEL_LAYER, labelMinZoom, 24);
       const k = MARKER_FACTOR[markerSize];
       map.setPaintProperty(STATIONS_LAYER, "circle-radius", ["*", ["get", "radius"], k]);
-      map.setPaintProperty(STATIONS_HIT_LAYER, "circle-radius", ["+", ["*", ["get", "radius"], k], 12]);
+      map.setPaintProperty(STATIONS_HIT_LAYER, "circle-radius", ["+", ["*", ["get", "radius"], k], STATION_HIT_PAD]);
       map.setPaintProperty(ROUTE_LAYER, "line-width", routeWidth);
-      map.setPaintProperty(ROUTE_WALK_LAYER, "line-width", Math.max(2, routeWidth - 2));
+      map.setPaintProperty(ROUTE_WALK_LAYER, "line-width", Math.max(3.5, routeWidth - 0.5));
+      map.setPaintProperty(`${ROUTE_WALK_LAYER}-halo`, "line-width", Math.max(3.5, routeWidth - 0.5) + 2.5);
+      map.setPaintProperty(ROUTE_WALK_LAYER, "line-dasharray", walkDashes(Math.max(3.5, routeWidth - 0.5)));
+      map.setPaintProperty(`${ROUTE_WALK_LAYER}-halo`, "line-dasharray", walkDashes(Math.max(3.5, routeWidth - 0.5) + 2.5));
       for (const id of basemapLabelLayers) {
         if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", basemapLabels ? "visible" : "none");
       }
@@ -858,11 +956,14 @@ export function TransitMap({
       const otherCode = [startCode, destinationCode].find((c) => c && c !== focusStation.code);
       const other = otherCode ? stations.find((s) => s.code === otherCode) : undefined;
       // Room for the card above the marker, and for the header/pills.
-      const padding = FOCUS_PADDING;
+      // With the route sheet open, what it covers is not free map.
+      const rect = map.getContainer().getBoundingClientRect();
+      const padding = focusPadding(latest.current.sheetOpen, rect.bottom, rect.height, window.innerHeight);
       // With "zoom in" off the camera only pans (and only when the station is
       // off screen); the rider's zoom level is never changed.
       const move = focusCamera(map, focusStation, other, padding, useSettingsStore.getState().settings.autoZoom);
-      if (move) map.stop().easeTo({ ...move, duration: motionMs(600) });
+      // `offset` centres the station in the free part of the map, not the whole of it.
+      if (move) map.stop().easeTo({ ...move, offset: [0, -focusShiftPx(padding)], duration: motionMs(600) });
       openPopup(map, popupsRef, focusStation, latest);
     };
     if (loadedRef.current) apply();
@@ -948,6 +1049,27 @@ function focusCamera(
   return { center: [target.lon, target.lat], zoom: Math.max(map.getZoom(), FOCUS_ZOOM_FLOOR) };
 }
 
+/** MapLibre popup offset above the station dot (see openPopup). */
+const POPUP_GAP_PX = 12;
+
+/** Ring on the tapped station, or none. The radius animates from the dot outwards. */
+function setSelected(map: maplibregl.Map, station: Station | null) {
+  const source = map.getSource<maplibregl.GeoJSONSource>(SELECTED_SOURCE);
+  if (!source || !map.getLayer(SELECTED_LAYER)) return;
+  map.setPaintProperty(SELECTED_LAYER, "circle-radius-transition", { duration: motionMs(220), delay: 0 });
+  if (!station) {
+    map.setPaintProperty(SELECTED_LAYER, "circle-radius", 8);
+    source.setData({ type: "FeatureCollection", features: [] });
+    return;
+  }
+  map.setPaintProperty(SELECTED_LAYER, "circle-radius", 8);
+  source.setData({
+    type: "FeatureCollection",
+    features: [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: [station.lon, station.lat] } }],
+  });
+  requestAnimationFrame(() => map.getLayer(SELECTED_LAYER) && map.setPaintProperty(SELECTED_LAYER, "circle-radius", 17));
+}
+
 function openPopup(
   map: maplibregl.Map,
   popupsRef: RefObject<Map<string, { popup: maplibregl.Popup; root: Root; render: () => void }>>,
@@ -971,7 +1093,7 @@ function openPopup(
   // whole app shifted sideways. It is focused below without scrolling, which
   // keeps the keyboard behaviour.
   const popup = new maplibregl.Popup({
-    offset: 12,
+    offset: POPUP_GAP_PX,
     maxWidth: "min(300px, calc(100vw - 24px))",
     closeButton: true,
     focusAfterOpen: false,
@@ -994,7 +1116,9 @@ function openPopup(
     closeButton.focus({ preventScroll: true });
   }
 
+  setSelected(map, station);
   popup.on("close", () => {
+    if (popupsRef.current.get(station.code)?.popup === popup) setSelected(map, null);
     // Deferred: a close can now be triggered from inside a React effect (the
     // focus effect replacing this card), where a synchronous unmount of
     // another root is unsafe.
@@ -1014,12 +1138,13 @@ function openPopup(
           latest.current.onSetStart(s);
           // Deferred: popup.remove() unmounts this very React root, which
           // is unsafe to do synchronously from inside its own event
-          // handler while React is still flushing this click.
-          queueMicrotask(() => popup.remove());
+          // handler while React is still flushing this click. The short
+          // delay lets the button show its tick before the card goes.
+          setTimeout(() => popup.remove(), motionMs(CARD_LINGER_MS));
         }}
         onSetDestination={(s) => {
           latest.current.onSetDestination(s);
-          queueMicrotask(() => popup.remove());
+          setTimeout(() => popup.remove(), motionMs(CARD_LINGER_MS));
         }}
       />,
     );

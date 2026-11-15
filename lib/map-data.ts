@@ -225,3 +225,67 @@ export const FOCUS_ZOOM_CAP = 15;
 /** Zoom the "locate me" button and a picked place fly to at least. (MapLibre scale.) */
 export const LOCATE_ZOOM = 16;
 export const PLACE_ZOOM = 15;
+
+/** Extra pixels around a station dot that still count as a tap: 22 + the dot makes a 44px+ target. */
+export const STATION_HIT_PAD = 22;
+
+/**
+ * How far to pan so a tapped station and the card above it are fully on screen,
+ * or null when they already are. Moves as little as it can (never zooms): the
+ * rider's framing is theirs. `point` is the station in container pixels.
+ */
+export function panToReveal(
+  point: { x: number; y: number },
+  size: { width: number; height: number },
+  card: { above: number; half: number; below: number } = { above: FOCUS_PADDING.top, half: 170, below: FOCUS_PADDING.bottom },
+): { dx: number; dy: number } | null {
+  const minX = card.half;
+  const maxX = size.width - card.half;
+  const minY = card.above;
+  const maxY = size.height - card.below;
+  // A narrow window can't satisfy both sides; centre then.
+  const x = minX > maxX ? size.width / 2 : Math.min(Math.max(point.x, minX), maxX);
+  const y = minY > maxY ? size.height / 2 : Math.min(Math.max(point.y, minY), maxY);
+  const dx = point.x - x;
+  const dy = point.y - y;
+  return Math.abs(dx) < 1 && Math.abs(dy) < 1 ? null : { dx, dy };
+}
+
+/**
+ * Padding for bringing one station into view with its card above it. With the
+ * route sheet open the bottom grows by what the sheet covers, so a stop behind
+ * the sheet counts as hidden and the camera moves it into the free part.
+ */
+export function focusPadding(
+  sheetOpen: boolean,
+  mapBottom: number,
+  mapHeight: number,
+  viewportHeight: number,
+): { top: number; bottom: number; left: number; right: number } {
+  const bottom = sheetOpen
+    ? Math.max(FOCUS_PADDING.bottom, routeFitPadding(true, mapBottom, mapHeight, viewportHeight).bottom)
+    : FOCUS_PADDING.bottom;
+  // Never pad away the whole map: keep at least 140px for the station itself.
+  const room = Math.max(0, mapHeight - FOCUS_PADDING.top - 140);
+  return { ...FOCUS_PADDING, bottom: Math.min(bottom, room) };
+}
+
+/**
+ * Pixels the camera centre sits below a focused station so the station lands
+ * in the free part of the map (room for its card above, the sheet below).
+ * Positive = centre below the station. MapLibre passes the negative as an
+ * easeTo `offset`; Google shifts the target by it.
+ */
+export function focusShiftPx(padding: { top: number; bottom: number }): number {
+  return (padding.bottom - padding.top) / 2;
+}
+
+/**
+ * Room a tapped station needs above it: the card as actually measured, the gap
+ * between card and dot, and the map chrome (header, notices) that overlaps the
+ * top. Measuring beats a fixed number: a card with live times is taller than
+ * one without, and the Google and MapLibre cards sit at different offsets.
+ */
+export function cardRoom(cardHeight: number, gap: number) {
+  return { above: cardHeight + gap + 56, half: 170, below: FOCUS_PADDING.bottom };
+}

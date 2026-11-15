@@ -230,7 +230,7 @@ export function HomeClient({
       name: destinationPlace.name,
     };
   }, [destination, destinationPlace, walkSpeed]);
-  const totalMinutes = (path?.minutes ?? 0) + (finalWalk?.minutes ?? 0);
+  const totalMinutes = Math.round((path?.minutes ?? 0) + (finalWalk?.minutes ?? 0));
 
   // No route, but only because of lines turned off for routes: say which.
   const blockedBy = useMemo(
@@ -487,6 +487,7 @@ export function HomeClient({
         userPosition={position}
         stopAlert={stopAlert}
         onClose={() => setSheetOpen(false)}
+        onFocusStation={(station) => setFocusStation({ ...station })}
         onUseLines={(lines) =>
           useSettingsStore.getState().update({ unusedLines: unusedLines.filter((l) => !lines.includes(l)) })
         }

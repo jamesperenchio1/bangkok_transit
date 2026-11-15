@@ -86,6 +86,19 @@ svg circle {
   touch-action: manipulation;
 }
 
+/* Cards grow out of the station they belong to instead of appearing whole.
+   Only the content moves: MapLibre positions .maplibregl-popup itself. */
+@keyframes bt-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* MapLibre's popup chrome doesn't follow the page theme on its own - it's
    plain white in both light and dark mode, which makes the `dark:` classes
    on the popup's own content (station name, action buttons) land on the
@@ -95,6 +108,7 @@ svg circle {
    bottom-anchored, etc.) - overriding all four covers every anchor without
    needing a rule per direction. */
 .maplibregl-popup-content {
+  animation: bt-pop 180ms var(--ease-out) both;
   background: var(--background) !important;
   color: var(--foreground) !important;
   /* Roomier card; the right inset clears the enlarged close target. */
@@ -221,6 +235,38 @@ button {
   }
 }
 
+/* Route sheet rows ease in one after another, so the trip reads top to
+   bottom as it opens. The reduce-motion rules below collapse it to nothing. */
+@keyframes bt-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.bt-rise {
+  animation: bt-rise 280ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 30ms);
+}
+
+/* Pressed feedback on every button: the UI answers a tap. In the base layer
+   so any component's own transition utilities still win over this default. */
+@layer base {
+  button {
+    transition:
+      transform 100ms ease-out,
+      background-color 150ms ease-out;
+  }
+
+  button:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+}
+
 /* Keyboard focus must always be visible (WCAG 2.4.7); inputs and buttons
    that remove the default outline rely on this instead. */
 :focus-visible {
@@ -246,6 +292,7 @@ button {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
@@ -257,6 +304,7 @@ button {
 :root[data-reduce-motion] *::after {
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
+  animation-delay: 0s !important;
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
 }
