@@ -18,6 +18,8 @@ import {
   FOCUS_PADDING,
   FOCUS_ZOOM_CAP,
   FOCUS_ZOOM_FLOOR,
+  panToReveal,
+  STATION_HIT_PAD,
   LOCATE_ZOOM,
   MARKER_FACTOR,
   PLACE_ZOOM,
@@ -171,6 +173,8 @@ const ROUTE_WALK_LAYER = "highlighted-route-walk-layer";
 const STATIONS_SOURCE = "stations";
 const STATIONS_HIT_LAYER = "stations-hit-layer";
 const STATIONS_LAYER = "stations-layer";
+const SELECTED_SOURCE = "station-selected";
+const SELECTED_LAYER = "station-selected-layer";
 const STATIONS_LABEL_LAYER = "stations-label-layer";
 const DEST_RING_ICON = "destination-ring-icon";
 const DEST_RING_LAYER = "destination-ring-layer";
@@ -489,7 +493,7 @@ export function TransitMap({
         type: "circle",
         source: STATIONS_SOURCE,
         paint: {
-          "circle-radius": ["+", ["get", "radius"], 12],
+          "circle-radius": ["+", ["get", "radius"], STATION_HIT_PAD],
           "circle-opacity": 0,
         },
       });
@@ -503,6 +507,22 @@ export function TransitMap({
           "circle-opacity": ["get", "fillOpacity"],
           "circle-stroke-color": ["get", "strokeColor"],
           "circle-stroke-width": ["get", "strokeWidth"],
+        },
+      });
+      // The tapped station: a ring that grows out of the dot, so it is always
+      // clear which station the open card belongs to.
+      map.addSource(SELECTED_SOURCE, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      map.addLayer({
+        id: SELECTED_LAYER,
+        type: "circle",
+        source: SELECTED_SOURCE,
+        paint: {
+          "circle-radius": 8,
+          "circle-radius-transition": { duration: 220, delay: 0 },
+          "circle-color": "#16a34a",
+          "circle-opacity": 0.18,
+          "circle-stroke-color": "#16a34a",
+          "circle-stroke-width": 3,
         },
       });
       // A dashed ring on the destination marker specifically, so it reads
@@ -616,11 +636,23 @@ export function TransitMap({
       });
 
       map.on("click", STATIONS_HIT_LAYER, (e: maplibregl.MapLayerMouseEvent) => {
-        const code = e.features?.[0]?.properties?.code as string | undefined;
-        const station = code ? stations.find((s) => s.code === code) : undefined;
+        // Where hit areas overlap (interchanges, stacked stations) the nearest
+        // dot to the finger wins, not whichever feature the query lists first.
+        let best: { code?: string; d: number } = { d: Infinity };
+        for (const f of e.features ?? []) {
+          const g = f.geometry as GeoJSON.Point;
+          const p = map.project(g.coordinates as [number, number]);
+          const d = Math.hypot(p.x - e.point.x, p.y - e.point.y);
+          if (d < best.d) best = { code: f.properties?.code as string | undefined, d };
+        }
+        const station = best.code ? stations.find((s) => s.code === best.code) : undefined;
         if (!station) return;
         latest.current.onSelectStation(station);
         openPopup(map, popupsRef, station, latest);
+        // Bring the dot and its card fully on screen, panning no more than needed.
+        const { width, height } = map.getCanvas().getBoundingClientRect();
+        const move = panToReveal(map.project([station.lon, station.lat]), { width, height });
+        if (move) map.panBy([move.dx, move.dy], { duration: motionMs(350) });
       });
       map.on(
         "mouseenter",
@@ -798,7 +830,7 @@ export function TransitMap({
       map.setLayerZoomRange(STATIONS_LABEL_LAYER, labelMinZoom, 24);
       const k = MARKER_FACTOR[markerSize];
       map.setPaintProperty(STATIONS_LAYER, "circle-radius", ["*", ["get", "radius"], k]);
-      map.setPaintProperty(STATIONS_HIT_LAYER, "circle-radius", ["+", ["*", ["get", "radius"], k], 12]);
+      map.setPaintProperty(STATIONS_HIT_LAYER, "circle-radius", ["+", ["*", ["get", "radius"], k], STATION_HIT_PAD]);
       map.setPaintProperty(ROUTE_LAYER, "line-width", routeWidth);
       map.setPaintProperty(ROUTE_WALK_LAYER, "line-width", Math.max(3.5, routeWidth - 0.5));
       map.setPaintProperty(`${ROUTE_WALK_LAYER}-halo`, "line-width", Math.max(3.5, routeWidth - 0.5) + 2.5);
@@ -986,6 +1018,27 @@ function focusCamera(
   return { center: [target.lon, target.lat], zoom: Math.max(map.getZoom(), FOCUS_ZOOM_FLOOR) };
 }
 
+/** How long a card stays after Start/Destination is tapped, so the tick is seen. */
+const CARD_LINGER_MS = 380;
+
+/** Ring on the tapped station, or none. The radius animates from the dot outwards. */
+function setSelected(map: maplibregl.Map, station: Station | null) {
+  const source = map.getSource<maplibregl.GeoJSONSource>(SELECTED_SOURCE);
+  if (!source || !map.getLayer(SELECTED_LAYER)) return;
+  map.setPaintProperty(SELECTED_LAYER, "circle-radius-transition", { duration: motionMs(220), delay: 0 });
+  if (!station) {
+    map.setPaintProperty(SELECTED_LAYER, "circle-radius", 8);
+    source.setData({ type: "FeatureCollection", features: [] });
+    return;
+  }
+  map.setPaintProperty(SELECTED_LAYER, "circle-radius", 8);
+  source.setData({
+    type: "FeatureCollection",
+    features: [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: [station.lon, station.lat] } }],
+  });
+  requestAnimationFrame(() => map.getLayer(SELECTED_LAYER) && map.setPaintProperty(SELECTED_LAYER, "circle-radius", 17));
+}
+
 function openPopup(
   map: maplibregl.Map,
   popupsRef: RefObject<Map<string, { popup: maplibregl.Popup; root: Root; render: () => void }>>,
@@ -1032,7 +1085,9 @@ function openPopup(
     closeButton.focus({ preventScroll: true });
   }
 
+  setSelected(map, station);
   popup.on("close", () => {
+    if (popupsRef.current.get(station.code)?.popup === popup) setSelected(map, null);
     // Deferred: a close can now be triggered from inside a React effect (the
     // focus effect replacing this card), where a synchronous unmount of
     // another root is unsafe.
@@ -1052,12 +1107,13 @@ function openPopup(
           latest.current.onSetStart(s);
           // Deferred: popup.remove() unmounts this very React root, which
           // is unsafe to do synchronously from inside its own event
-          // handler while React is still flushing this click.
-          queueMicrotask(() => popup.remove());
+          // handler while React is still flushing this click. The short
+          // delay lets the button show its tick before the card goes.
+          setTimeout(() => popup.remove(), motionMs(CARD_LINGER_MS));
         }}
         onSetDestination={(s) => {
           latest.current.onSetDestination(s);
-          queueMicrotask(() => popup.remove());
+          setTimeout(() => popup.remove(), motionMs(CARD_LINGER_MS));
         }}
       />,
     );

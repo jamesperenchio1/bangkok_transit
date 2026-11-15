@@ -3,7 +3,7 @@
 import { shownCode, type Station } from "@/data/stations";
 import { StationActions } from "@/components/StationActions";
 import { GooglePlaceMap } from "@/components/GooglePlaceMap";
-import { readableTextColor } from "@/lib/line-colors";
+import { LINE_COLORS, LINE_NAMES, readableTextColor } from "@/lib/line-colors";
 import { stationName, useT } from "@/lib/i18n";
 import { stationLineColor } from "@/lib/map-data";
 import { distanceLabel } from "@/lib/nearest-station";
@@ -34,7 +34,7 @@ export interface CardRouteState {
 function CardStationName({ station }: { station: Station }) {
   const { lang } = useT();
   return (
-    <span className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+    <span className="truncate text-base font-semibold text-neutral-900 dark:text-neutral-100">
       {stationName(station, lang)}
     </span>
   );
@@ -53,8 +53,27 @@ export function StationCard({ station, ...route }: { station: Station } & CardRo
         </span>
         <CardStationName station={station} />
       </div>
+      <StationLines station={station} />
       <StationActions station={station} {...route} />
     </div>
+  );
+}
+
+/** Every line that stops here, by name and colour, so an interchange reads as one at a glance. */
+function StationLines({ station }: { station: Station }) {
+  const lines = [...new Set(station.lines.map((l) => l.line))];
+  return (
+    <ul className="flex flex-wrap gap-1.5" aria-label="Lines">
+      {lines.map((line) => (
+        <li
+          key={line}
+          className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+        >
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: LINE_COLORS[line] }} aria-hidden="true" />
+          {LINE_NAMES[line]}
+        </li>
+      ))}
+    </ul>
   );
 }
 

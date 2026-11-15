@@ -27,6 +27,7 @@ import {
   FOCUS_PADDING,
   FOCUS_ZOOM_CAP,
   FOCUS_ZOOM_FLOOR,
+  panToReveal,
   LABEL_CODE_ZOOM,
   LOCATE_ZOOM,
   MARKER_FACTOR,
@@ -105,6 +106,8 @@ interface StationNode {
   station: Station;
   dot: HTMLElement;
   ring: HTMLElement;
+  /** The "this card belongs to me" ring, shown while the station's card is open. */
+  sel: HTMLElement;
   fill: HTMLElement;
   label: HTMLElement;
   text: HTMLElement;
@@ -184,6 +187,7 @@ export function GoogleTransitMap({
   const nodes = useRef(new Map<string, StationNode>());
   const trainNodes = useRef(new Map<string, TrainNode>());
   const cardRef = useRef<OpenCard | null>(null);
+  const cardSeq = useRef(0);
   /** The train the open card follows, if the open card is a train's. */
   const trainCardRef = useRef<string | null>(null);
   const movingRef = useRef(false);
@@ -286,7 +290,47 @@ export function GoogleTransitMap({
     close.focus({ preventScroll: true });
   }
 
+  /** Ring on the tapped station (or none); it grows out of the dot like the MapLibre one. */
+  function setSelected(code: string | null) {
+    for (const [c, node] of nodes.current) {
+      const on = c === code;
+      if (on && node.sel.style.display !== "block") {
+        node.sel.style.display = "block";
+        if (!reducedMotion()) {
+          node.sel.animate(
+            [{ transform: "translate(-50%,-50%) scale(0.4)", opacity: 0.4 }, { transform: "translate(-50%,-50%) scale(1)", opacity: 1 }],
+            { duration: 220, easing: "cubic-bezier(0.22,1,0.36,1)" },
+          );
+        }
+      } else if (!on) node.sel.style.display = "none";
+    }
+  }
+
+  /** Pan just enough that the tapped station and its card are fully on screen. */
+  function revealStation(station: Station) {
+    const map = mapRef.current;
+    const container = containerRef.current;
+    const projection = map?.getProjection();
+    const center = map?.getCenter();
+    if (!map || !container || !projection || !center) return;
+    const g = window.google;
+    const scale = Math.pow(2, map.getZoom() ?? 0);
+    const at = projection.fromLatLngToPoint(new g.maps.LatLng(station.lat, station.lon));
+    const mid = projection.fromLatLngToPoint(center);
+    if (!at || !mid) return;
+    const { width, height } = container.getBoundingClientRect();
+    const move = panToReveal({ x: width / 2 + (at.x - mid.x) * scale, y: height / 2 + (at.y - mid.y) * scale }, { width, height });
+    if (!move) return;
+    movingRef.current = true;
+    map.panBy(move.dx, move.dy);
+  }
+
   function openStationCard(station: Station) {
+    const token = ++cardSeq.current;
+    // After a choice the card lingers a beat so the button's tick is seen; it
+    // only closes if it is still the same card (not one opened since).
+    const closeSoon = (close: () => void) => setTimeout(() => cardSeq.current === token && close(), motionDuration(380));
+    setSelected(station.code);
     showCard(
       "card",
       station.lat,
@@ -299,14 +343,15 @@ export function GoogleTransitMap({
           destinationCode={latest.current.destinationCode}
           onSetStart={(s) => {
             latest.current.onSetStart(s);
-            queueMicrotask(close);
+            closeSoon(close);
           }}
           onSetDestination={(s) => {
             latest.current.onSetDestination(s);
-            queueMicrotask(close);
+            closeSoon(close);
           }}
         />
       ),
+      () => setSelected(null),
     );
   }
 
@@ -607,10 +652,12 @@ export function GoogleTransitMap({
       e.stopPropagation();
       latest.current.onSelectStation(station);
       openStationCard(station);
+      revealStation(station);
     });
     const ring = el("span", centered(`width:28px;height:28px;box-sizing:border-box;border:3px dashed ${ENDPOINT_COLOR};border-radius:9999px;display:none;pointer-events:none`));
     const fill = el("span", centered("border-radius:9999px;box-sizing:border-box;pointer-events:none"));
-    dot.append(ring, fill);
+    const sel = el("span", centered(`width:34px;height:34px;box-sizing:border-box;border:3px solid ${ENDPOINT_COLOR};background:rgba(22,163,74,.18);border-radius:9999px;display:none;pointer-events:none`));
+    dot.append(sel, ring, fill);
     hitRoot.append(hit);
     layer.add(`d:${station.code}`, station.lat, station.lon, dot, Z.dot);
     layer.add(`h:${station.code}`, station.lat, station.lon, hitRoot, Z.hit);
@@ -620,7 +667,7 @@ export function GoogleTransitMap({
     label.append(text);
     label.style.display = "none";
     layer.add(`l:${station.code}`, station.lat, station.lon, label, Z.label);
-    return { station, dot, ring, fill, label, text, visual: undefined as unknown as StationVisual, radius: 4, shown: "" };
+    return { station, dot, ring, sel, fill, label, text, visual: undefined as unknown as StationVisual, radius: 4, shown: "" };
   }
 
   useEffect(() => {

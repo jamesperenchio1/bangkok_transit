@@ -225,3 +225,28 @@ export const FOCUS_ZOOM_CAP = 15;
 /** Zoom the "locate me" button and a picked place fly to at least. (MapLibre scale.) */
 export const LOCATE_ZOOM = 16;
 export const PLACE_ZOOM = 15;
+
+/** Extra pixels around a station dot that still count as a tap: 22 + the dot makes a 44px+ target. */
+export const STATION_HIT_PAD = 22;
+
+/**
+ * How far to pan so a tapped station and the card above it are fully on screen,
+ * or null when they already are. Moves as little as it can (never zooms): the
+ * rider's framing is theirs. `point` is the station in container pixels.
+ */
+export function panToReveal(
+  point: { x: number; y: number },
+  size: { width: number; height: number },
+  card = { above: 230, half: 170, below: 90 },
+): { dx: number; dy: number } | null {
+  const minX = card.half;
+  const maxX = size.width - card.half;
+  const minY = card.above;
+  const maxY = size.height - card.below;
+  // A narrow window can't satisfy both sides; centre then.
+  const x = minX > maxX ? size.width / 2 : Math.min(Math.max(point.x, minX), maxX);
+  const y = minY > maxY ? size.height / 2 : Math.min(Math.max(point.y, minY), maxY);
+  const dx = point.x - x;
+  const dy = point.y - y;
+  return Math.abs(dx) < 1 && Math.abs(dy) < 1 ? null : { dx, dy };
+}
