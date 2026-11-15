@@ -38,6 +38,7 @@ import { applyTrainStyle, startLiveTrainsWhenIdle } from "@/components/live-trai
 import { routeHops } from "@/lib/live-trains";
 import { LINE_COLORS } from "@/lib/line-colors";
 import { useLangStore, useT, type Lang } from "@/lib/i18n";
+import { easeOut, revealParts, ROUTE_DRAW_MS } from "@/lib/route-reveal";
 import { motionDuration, useSettingsStore } from "@/lib/settings-store";
 
 // MapLibre uses [lon, lat] everywhere, the opposite of Leaflet's [lat, lon] -
@@ -201,14 +202,17 @@ function routeGeoJSON(
   path: PathResult,
   segmentsByLine: LineSegments,
   finalWalk?: FinalWalk | null,
+  fraction = 1,
 ): GeoJSON.FeatureCollection<GeoJSON.LineString> {
   return {
     type: "FeatureCollection",
-    features: routeParts(path, segmentsByLine, finalWalk).map(({ line, walk, points }) => ({
+    features: revealParts(routeParts(path, segmentsByLine, finalWalk), fraction)
+      .filter((part) => part.points.length > 1)
+      .map(({ line, walk, points }) => ({
       type: "Feature" as const,
       properties: { line, walk },
       geometry: { type: "LineString" as const, coordinates: points.map(([lat, lon]) => [lon, lat]) },
-    })),
+      })),
   };
 }
 
@@ -453,13 +457,23 @@ export function TransitMap({
           "line-opacity": 1,
         },
       });
+      // Walking reads as a trail of round dots (zero-length dashes with round
+      // caps), under a white halo so it stays visible over busy tiles.
+      map.addLayer({
+        id: `${ROUTE_WALK_LAYER}-halo`,
+        type: "line",
+        source: ROUTE_SOURCE,
+        filter: ["==", ["get", "walk"], true],
+        layout: { "line-cap": "round" },
+        paint: { "line-color": "#ffffff", "line-width": 7, "line-dasharray": [0, 1.6] },
+      });
       map.addLayer({
         id: ROUTE_WALK_LAYER,
         type: "line",
         source: ROUTE_SOURCE,
         filter: ["==", ["get", "walk"], true],
         layout: { "line-cap": "round" },
-        paint: { "line-color": "#525252", "line-width": 3, "line-dasharray": [0.5, 1.5] },
+        paint: { "line-color": "#404040", "line-width": 4.5, "line-dasharray": [0, 1.6] },
       });
 
       map.addSource(STATIONS_SOURCE, {
@@ -696,12 +710,31 @@ export function TransitMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    let cancelled = false;
+    let raf = 0;
     const applyWith = (segmentsByLine: LineSegments) => {
       const apply = () => {
         const source = map.getSource<maplibregl.GeoJSONSource>(ROUTE_SOURCE);
-        source?.setData(
-          path ? routeGeoJSON(path, segmentsByLine, finalWalk) : { type: "FeatureCollection", features: [] },
-        );
+        if (!source) return;
+        if (!path) {
+          source.setData({ type: "FeatureCollection", features: [] });
+          return;
+        }
+        // The route travels from origin to destination instead of appearing;
+        // reduce-motion (duration 0) and a stale effect both skip straight to the end.
+        const total = motionMs(ROUTE_DRAW_MS);
+        if (total === 0) {
+          source.setData(routeGeoJSON(path, segmentsByLine, finalWalk));
+          return;
+        }
+        const t0 = performance.now();
+        const step = (now: number) => {
+          if (cancelled) return;
+          const t = Math.min(1, (now - t0) / total);
+          source.setData(routeGeoJSON(path, segmentsByLine, finalWalk, easeOut(t)));
+          if (t < 1) raf = requestAnimationFrame(step);
+        };
+        raf = requestAnimationFrame(step);
       };
       if (loadedRef.current) apply();
       else map.once("style.load", apply);
@@ -716,6 +749,10 @@ export function TransitMap({
         applyWith(segmentsByLine);
       });
     }
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
   }, [path, finalWalk]);
 
   // Keep a planned route in view: fitted to whatever part of the map the
@@ -763,7 +800,8 @@ export function TransitMap({
       map.setPaintProperty(STATIONS_LAYER, "circle-radius", ["*", ["get", "radius"], k]);
       map.setPaintProperty(STATIONS_HIT_LAYER, "circle-radius", ["+", ["*", ["get", "radius"], k], 12]);
       map.setPaintProperty(ROUTE_LAYER, "line-width", routeWidth);
-      map.setPaintProperty(ROUTE_WALK_LAYER, "line-width", Math.max(2, routeWidth - 2));
+      map.setPaintProperty(ROUTE_WALK_LAYER, "line-width", Math.max(3.5, routeWidth - 0.5));
+      map.setPaintProperty(`${ROUTE_WALK_LAYER}-halo`, "line-width", Math.max(3.5, routeWidth - 0.5) + 2.5);
       for (const id of basemapLabelLayers) {
         if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", basemapLabels ? "visible" : "none");
       }

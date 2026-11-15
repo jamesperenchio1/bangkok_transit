@@ -82,17 +82,21 @@ export interface RoutePanelProps {
   userPosition: GeoPosition | null;
   stopAlert: StopAlert;
   onClose: () => void;
+  /** Tapping a stop in the list shows it on the map, keeping the sheet open. */
+  onFocusStation?: (station: Station) => void;
   /** Turn lines back on for routes (the one-tap fix when they are what is in the way). */
   onUseLines?: (lines: LineKey[]) => void;
 }
 
-export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines }: RoutePanelProps) {
+export function RoutePanel({ state, userPosition, stopAlert, onClose, onFocusStation, onUseLines }: RoutePanelProps) {
   const open = state !== null;
   const { lang, t } = useT();
   const fares = useFares(!!state?.path);
   const headingRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const [expanded, setExpanded] = useState(showAllStops);
+  const [dragY, setDragY] = useState<number | null>(null);
+  const dragStart = useRef<{ y: number; t: number } | null>(null);
   const listId = useId();
   // Latest onClose without re-running the focus effect on every parent render.
   const onCloseRef = useRef(onClose);
@@ -123,7 +127,7 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
   const changes = state?.path ? effectiveChanges(state.path) : 0;
   const finalWalk = state?.finalWalk ?? null;
   // The walk to the place is part of the trip, so it counts in the total.
-  const totalMinutes = state?.path ? state.path.minutes + (finalWalk?.minutes ?? 0) : 0;
+  const totalMinutes = state?.path ? Math.round(state.path.minutes + (finalWalk?.minutes ?? 0)) : 0;
   const totalWalkMeters = (state?.path?.walkMeters ?? 0) + (finalWalk?.meters ?? 0);
   const summary = state?.path
     ? [
@@ -164,14 +168,45 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
         role="dialog"
         aria-modal="false"
         aria-label={open ? t.routeDialog(from, to) : undefined}
-        className={`fixed inset-x-0 bottom-0 z-50 rounded-t-2xl pb-[env(safe-area-inset-bottom)] border-t border-neutral-200 bg-white shadow-2xl transition-transform duration-200 dark:border-neutral-800 dark:bg-neutral-900 ${
+        className={`fixed inset-x-0 bottom-0 z-50 rounded-t-2xl pb-[env(safe-area-inset-bottom)] border-t border-neutral-200 bg-white shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] dark:border-neutral-800 dark:bg-neutral-900 ${
           open ? "translate-y-0" : "translate-y-full"
         }`}
-        style={{ maxHeight: "70dvh" }}
+        style={{
+          maxHeight: "70dvh",
+          // While dragging the sheet follows the finger with no easing.
+          ...(open && dragY !== null ? { transform: `translateY(${dragY}px)`, transition: "none" } : null),
+        }}
         aria-hidden={!open}
       >
         {state?.mode === "route" && (
           <div className="flex max-h-[70dvh] flex-col overflow-y-auto">
+            <div
+              // Grab bar: drag down to dismiss, like any native sheet.
+              className="flex h-5 shrink-0 cursor-grab touch-none items-center justify-center"
+              onPointerDown={(e) => {
+                e.currentTarget.setPointerCapture(e.pointerId);
+                dragStart.current = { y: e.clientY, t: e.timeStamp };
+                setDragY(0);
+              }}
+              onPointerMove={(e) => {
+                if (dragStart.current) setDragY(Math.max(0, e.clientY - dragStart.current.y));
+              }}
+              onPointerUp={(e) => {
+                const start = dragStart.current;
+                dragStart.current = null;
+                const dy = start ? e.clientY - start.y : 0;
+                const fast = start ? dy / Math.max(1, e.timeStamp - start.t) > 0.6 : false;
+                setDragY(null);
+                if (dy > 90 || (fast && dy > 30)) onClose();
+              }}
+              onPointerCancel={() => {
+                dragStart.current = null;
+                setDragY(null);
+              }}
+              aria-hidden="true"
+            >
+              <span className="h-1 w-10 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+            </div>
             <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white/95 px-4 pt-3 pb-2.5 backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95">
               <div className="flex items-start justify-between gap-2">
                 <div ref={headingRef} tabIndex={-1} className="min-w-0 outline-none">
@@ -279,7 +314,11 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
 
                   const isDestination = isLast;
                   return (
-                    <li key={`${leg.station.code}-${i}`} className="flex items-stretch gap-3">
+                    <li
+                      key={`${leg.station.code}-${i}`}
+                      className="bt-rise flex items-stretch gap-3"
+                      style={{ "--i": Math.min(i, 12) } as React.CSSProperties}
+                    >
                       <div className="relative w-4 shrink-0">
                         {i > 0 &&
                           (leg.mode === "walk" ? (
@@ -312,9 +351,13 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
                       </div>
                       <div className={`flex-1 py-1.5 ${isDestination ? "pb-3" : ""}`}>
                         <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm font-medium">
-                          <span className={isDestination ? "font-semibold" : undefined}>
+                          <button
+                            type="button"
+                            onClick={() => onFocusStation?.(leg.station)}
+                            className={`rounded text-left hover:underline hover:underline-offset-2 ${isDestination ? "font-semibold" : ""}`}
+                          >
                             {stationName(leg.station, lang)}
-                          </span>
+                          </button>
                           <span className="rounded bg-neutral-100 px-1 py-px font-mono text-[10px] font-semibold tracking-wide text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
                             {shownCode(leg.station)}
                           </span>
@@ -437,7 +480,7 @@ function RouteSummary({
   const parts = [t.stops(path.stops), t.changes(changes)];
   const walkMeters = path.walkMeters + (finalWalk?.meters ?? 0);
   if (walkMeters > 0) parts.push(t.walk(distanceLabel(walkMeters, lang)));
-  parts.push(t.aboutMinutes(path.minutes + (finalWalk?.minutes ?? 0)));
+  parts.push(t.aboutMinutes(Math.round(path.minutes + (finalWalk?.minutes ?? 0))));
   const showFare = useSettingsStore((s) => s.settings.showFare);
   const fares = useFares(showFare);
   const fare = showFare ? computeFare(path, fares) : null;

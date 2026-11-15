@@ -41,6 +41,7 @@ import {
   stationVisuals,
   type StationVisual,
 } from "@/lib/map-data";
+import { easeOut, revealParts, ROUTE_DRAW_MS } from "@/lib/route-reveal";
 import { motionDuration, useSettingsStore } from "@/lib/settings-store";
 import type { PathOptions, PathResult } from "@/lib/transit-graph";
 import type { FinalWalk } from "@/lib/place-station";
@@ -514,10 +515,12 @@ export function GoogleTransitMap({
     routeLines.current = [];
     if (!path) return;
     let stale = false;
+    let raf = 0;
     void fetchLineGeometry().then((real) => {
       if (stale) return;
       const g = window.google;
-      routeLines.current = routeParts(path, real, finalWalk).map(({ line, walk, points }) => {
+      const fullParts = routeParts(path, real, finalWalk);
+      routeLines.current = fullParts.map(({ line, walk, points }) => {
         const pathLatLng = points.map(([lat, lng]) => ({ lat, lng }));
         return walk
           ? new g.maps.Polyline({
@@ -526,12 +529,19 @@ export function GoogleTransitMap({
               strokeOpacity: 0,
               clickable: false,
               zIndex: 20,
-              // A dashed line: Google has no dash style, so a repeated 1px-gap symbol draws it.
+              // Dots: Google has no dash style, so a repeated circle symbol draws it.
               icons: [
                 {
-                  icon: { path: "M 0,-1 0,1", strokeOpacity: 1, strokeColor: WALK_COLOR, scale: Math.max(2, routeWidth - 2) / 2 },
+                  icon: {
+                    path: g.maps.SymbolPath.CIRCLE,
+                    fillOpacity: 1,
+                    fillColor: WALK_COLOR,
+                    strokeColor: "#ffffff",
+                    strokeWeight: 1,
+                    scale: Math.max(2.5, routeWidth / 2 - 0.5),
+                  },
                   offset: "0",
-                  repeat: "9px",
+                  repeat: "10px",
                 },
               ],
             })
@@ -545,9 +555,22 @@ export function GoogleTransitMap({
               zIndex: 20,
             });
       });
+      // Same draw-in as the MapLibre twin: the route travels origin to destination.
+      const total = motionDuration(ROUTE_DRAW_MS);
+      if (total === 0) return;
+      const toLatLng = (pts: [number, number][]) => pts.map(([lat, lng]) => ({ lat, lng }));
+      const t0 = performance.now();
+      const step = (now: number) => {
+        if (stale) return;
+        const t = Math.min(1, (now - t0) / total);
+        revealParts(fullParts, easeOut(t)).forEach((part, i) => routeLines.current[i]?.setPath(toLatLng(part.points)));
+        if (t < 1) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
     });
     return () => {
       stale = true;
+      cancelAnimationFrame(raf);
     };
   }, [ready, path, finalWalk, routeWidth]);
 

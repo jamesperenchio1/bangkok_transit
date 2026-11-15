@@ -78,7 +78,8 @@ export const strings = {
     boardTowardVia: (name: string, via: string) => `Board toward ${name} (first stop ${via})`,
     walked: (d: string) => `Walk ${d} from the previous station`,
     walk: (d: string) => `${d} walk`,
-    aboutMinutes: (n: number) => `~${n} min`,
+    // Minutes arrive as floats (walk model); people read whole minutes.
+    aboutMinutes: (n: number) => `~${Math.round(n)} min`,
     stops: (n: number) => `${n} ${n === 1 ? "stop" : "stops"}`,
     changes: (n: number) => (n === 0 ? "no changes" : `${n} ${n === 1 ? "change" : "changes"}`),
     lastKnown: "last known",
@@ -189,7 +190,7 @@ export const strings = {
     boardTowardVia: (name: string, via: string) => `ขึ้นขบวนไปทาง ${name} (สถานีถัดไป ${via})`,
     walked: (d: string) => `เดิน ${d} จากสถานีก่อนหน้า`,
     walk: (d: string) => `เดิน ${d}`,
-    aboutMinutes: (n: number) => `~${n} นาที`,
+    aboutMinutes: (n: number) => `~${Math.round(n)} นาที`,
     stops: (n: number) => `${n} สถานี`,
     changes: (n: number) => (n === 0 ? "ไม่ต้องเปลี่ยนสาย" : `เปลี่ยนสาย ${n} ครั้ง`),
     lastKnown: "ข้อมูลล่าสุดที่มี",

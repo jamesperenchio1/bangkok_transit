@@ -221,6 +221,35 @@ button {
   }
 }
 
+/* Route sheet rows ease in one after another, so the trip reads top to
+   bottom as it opens. The reduce-motion rules below collapse it to nothing. */
+@keyframes bt-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.bt-rise {
+  animation: bt-rise 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 30ms);
+}
+
+/* Pressed feedback and soft hover on every button: the UI answers a tap. */
+button {
+  transition:
+    transform 100ms ease-out,
+    background-color 150ms ease-out;
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
 /* Keyboard focus must always be visible (WCAG 2.4.7); inputs and buttons
    that remove the default outline rely on this instead. */
 :focus-visible {
