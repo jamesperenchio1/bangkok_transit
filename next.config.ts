@@ -45,6 +45,7 @@ const withSerwist = withSerwistInit({
 const nextConfig: NextConfig = {
   output: "export",
   images: { unoptimized: true },
+  experimental: { agentUpgrade: "security" },
 };
 
 // Serwist injects a `webpack` config key even when `disable: true` is set,

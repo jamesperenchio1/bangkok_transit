@@ -40,6 +40,9 @@ export interface Station {
    * rendering on the interactive map and the "Open in Google Maps" link. */
   lat: number;
   lon: number;
+  /** Optional exit/landmark hints for tourists. */
+  exits?: string[];
+  landmark?: string;
 }
 
 export const stations: Station[] = raw as Station[];

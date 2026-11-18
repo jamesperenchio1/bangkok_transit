@@ -53,6 +53,14 @@ export function StationCard({ station, ...route }: { station: Station } & CardRo
         </span>
         <CardStationName station={station} />
       </div>
+      {station.landmark && (
+        <p className="text-xs text-neutral-600 dark:text-neutral-400">{station.landmark}</p>
+      )}
+      {station.exits && station.exits.length > 0 && (
+        <p className="text-xs text-neutral-600 dark:text-neutral-400">
+          Exits: {station.exits.join(", ")}
+        </p>
+      )}
       <StationActions station={station} {...route} />
     </div>
   );
