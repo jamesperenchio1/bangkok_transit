@@ -149,6 +149,8 @@ export interface TransitMapProps {
   path: PathResult | null;
   /** The walk from the destination station to a place picked as the destination. */
   finalWalk?: FinalWalk | null;
+  /** The walk from the rider to the first station (when starting from current location). */
+  firstWalk?: FinalWalk | null;
   /** Route preferences, so a place card picks its station the same way the route does. */
   pathOptions?: PathOptions;
   userPosition: GeoPosition | null;
@@ -201,10 +203,11 @@ function routeGeoJSON(
   path: PathResult,
   segmentsByLine: LineSegments,
   finalWalk?: FinalWalk | null,
+  firstWalk?: FinalWalk | null,
 ): GeoJSON.FeatureCollection<GeoJSON.LineString> {
   return {
     type: "FeatureCollection",
-    features: routeParts(path, segmentsByLine, finalWalk).map(({ line, walk, points }) => ({
+    features: routeParts(path, segmentsByLine, finalWalk, firstWalk).map(({ line, walk, points }) => ({
       type: "Feature" as const,
       properties: { line, walk },
       geometry: { type: "LineString" as const, coordinates: points.map(([lat, lon]) => [lon, lat]) },
@@ -290,6 +293,7 @@ export function TransitMap({
   destinationCode,
   path,
   finalWalk,
+  firstWalk,
   pathOptions,
   userPosition,
   focusStation,
@@ -700,7 +704,7 @@ export function TransitMap({
       const apply = () => {
         const source = map.getSource<maplibregl.GeoJSONSource>(ROUTE_SOURCE);
         source?.setData(
-          path ? routeGeoJSON(path, segmentsByLine, finalWalk) : { type: "FeatureCollection", features: [] },
+          path ? routeGeoJSON(path, segmentsByLine, finalWalk, firstWalk) : { type: "FeatureCollection", features: [] },
         );
       };
       if (loadedRef.current) apply();
@@ -716,7 +720,7 @@ export function TransitMap({
         applyWith(segmentsByLine);
       });
     }
-  }, [path, finalWalk]);
+  }, [path, finalWalk, firstWalk]);
 
   // Keep a planned route in view: fitted to whatever part of the map the
   // route sheet (fixed to the bottom of the screen, up to 70vh) leaves
@@ -726,7 +730,7 @@ export function TransitMap({
     if (!map || !path) return;
     const apply = () => {
       const rect = map.getContainer().getBoundingClientRect();
-      map.fitBounds(routeBounds(path, finalWalk), {
+      map.fitBounds(routeBounds(path, finalWalk, firstWalk), {
         padding: routeFitPadding(sheetOpen, rect.bottom, rect.height, window.innerHeight),
         maxZoom: FOCUS_ZOOM_CAP,
         duration: motionMs(600),
@@ -734,7 +738,7 @@ export function TransitMap({
     };
     if (loadedRef.current) apply();
     else map.once("style.load", apply);
-  }, [path, finalWalk, sheetOpen]);
+  }, [path, finalWalk, firstWalk, sheetOpen]);
 
   // Station marker styling (start/destination/on-path/dimmed).
   useEffect(() => {

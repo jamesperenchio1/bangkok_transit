@@ -38,7 +38,14 @@ export function restoreLang() {
   } catch {
     return;
   }
-  if (saved === "th" || saved === "en") useLangStore.getState().setLang(saved);
+  if (saved === "th" || saved === "en") {
+    useLangStore.getState().setLang(saved);
+    return;
+  }
+  // First visit: follow the browser's language so Thai riders land in Thai.
+  if (typeof navigator !== "undefined" && (navigator.language || "").toLowerCase().startsWith("th")) {
+    useLangStore.getState().setLang("th");
+  }
 }
 
 export function stationName(station: Station, lang: Lang): string {

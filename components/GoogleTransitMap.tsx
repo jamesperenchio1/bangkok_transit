@@ -69,6 +69,7 @@ export interface GoogleTransitMapProps {
   path: PathResult | null;
   /** The walk from the destination station to a place picked as the destination. */
   finalWalk?: FinalWalk | null;
+  firstWalk?: FinalWalk | null;
   /** Route preferences, so a place card picks its station the same way the route does. */
   pathOptions?: PathOptions;
   userPosition: GeoPosition | null;
@@ -161,6 +162,7 @@ export function GoogleTransitMap({
   destinationCode,
   path,
   finalWalk,
+  firstWalk,
   pathOptions,
   userPosition,
   focusStation,
@@ -517,7 +519,7 @@ export function GoogleTransitMap({
     void fetchLineGeometry().then((real) => {
       if (stale) return;
       const g = window.google;
-      routeLines.current = routeParts(path, real, finalWalk).map(({ line, walk, points }) => {
+      routeLines.current = routeParts(path, real, finalWalk, firstWalk).map(({ line, walk, points }) => {
         const pathLatLng = points.map(([lat, lng]) => ({ lat, lng }));
         return walk
           ? new g.maps.Polyline({
@@ -549,7 +551,7 @@ export function GoogleTransitMap({
     return () => {
       stale = true;
     };
-  }, [ready, path, finalWalk, routeWidth]);
+  }, [ready, path, finalWalk, firstWalk, routeWidth]);
 
   // Keep a planned route in view, in whatever the route sheet leaves uncovered.
   useEffect(() => {
@@ -558,7 +560,7 @@ export function GoogleTransitMap({
     if (!map || !container || !ready || !path) return;
     const g = window.google;
     const rect = container.getBoundingClientRect();
-    const [[west, south], [east, north]] = routeBounds(path, finalWalk);
+    const [[west, south], [east, north]] = routeBounds(path, finalWalk, firstWalk);
     movingRef.current = true;
     map.fitBounds({ west, south, east, north }, routeFitPadding(sheetOpen, rect.bottom, rect.height, window.innerHeight));
     const cap = mapLibreToGoogleZoom(FOCUS_ZOOM_CAP);
@@ -566,7 +568,7 @@ export function GoogleTransitMap({
       if ((map.getZoom() ?? 0) > cap) map.setZoom(cap);
     });
     return () => listener.remove();
-  }, [ready, path, finalWalk, sheetOpen]);
+  }, [ready, path, finalWalk, firstWalk, sheetOpen]);
 
   // ---- Stations: dots, tap targets and names -------------------------------
 

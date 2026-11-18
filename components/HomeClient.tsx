@@ -7,6 +7,8 @@ import { stationsByCode, type Station } from "@/data/stations";
 import { fareText, RoutePanel, type RoutePanelState } from "@/components/RoutePanel";
 import { StationSearch } from "@/components/StationSearch";
 import { SettingsMenu } from "@/components/SettingsMenu";
+import { InstallHint } from "@/components/InstallHint";
+import { MapLegend } from "@/components/MapLegend";
 import { StopAlertBanner } from "@/components/StopAlertControl";
 import { useStopAlert } from "@/lib/use-stop-alert";
 import { findPath, linesInTheWay, walkEstimate } from "@/lib/transit-graph";
@@ -96,6 +98,7 @@ export function HomeClient({
 }) {
   const [start, setStart] = useState<Station | null>(null);
   const [destination, setDestination] = useState<Station | null>(null);
+  const [recentTrips, setRecentTrips] = useState<{ from: string; to: string }[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [focusStation, setFocusStation] = useState<Station | null>(null);
   const [focusPlace, setFocusPlace] = useState<Place | null>(null);
@@ -117,6 +120,27 @@ export function HomeClient({
   // grey tile; the fallback holds for the rest of the visit.
   const [googleFailed, setGoogleFailed] = useState(false);
   const [startedOffline] = useState(() => typeof navigator !== "undefined" && !navigator.onLine);
+
+  // Recent trips (localStorage)
+  useEffect(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem("bts:trips:v1") || "[]");
+      /* eslint-disable-next-line react-hooks/set-state-in-effect */
+      if (Array.isArray(raw)) setRecentTrips(raw.slice(0, 8));
+    } catch {}
+  }, []);
+  useEffect(() => {
+    if (!start || !destination) return;
+    const entry = { from: start.code, to: destination.code };
+    /* eslint-disable-next-line react-hooks/set-state-in-effect */
+    setRecentTrips((prev) => {
+      const filtered = prev.filter((t) => !(t.from === entry.from && t.to === entry.to));
+      const next = [entry, ...filtered].slice(0, 8);
+      try { localStorage.setItem("bts:trips:v1", JSON.stringify(next)); } catch {}
+      return next;
+    });
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [start?.code, destination?.code]);
   const { position, settled, error: geoError } = useGeolocation();
   const { lang, t } = useT();
 
@@ -230,7 +254,19 @@ export function HomeClient({
       name: destinationPlace.name,
     };
   }, [destination, destinationPlace, walkSpeed]);
-  const totalMinutes = (path?.minutes ?? 0) + (finalWalk?.minutes ?? 0);
+  const firstWalk = useMemo<FinalWalk | null>(() => {
+    if (!start || !position || startPlace) return null;
+    const meters = haversineMeters([start.lat, start.lon], [position.lat, position.lon]);
+    if (meters > 1500) return null;
+    return {
+      from: { lat: position.lat, lon: position.lon },
+      to: { lat: start.lat, lon: start.lon },
+      meters,
+      minutes: walkEstimate(meters, walkSpeed),
+      name: stationName(start, lang),
+    };
+  }, [start, position, startPlace, walkSpeed, lang]);
+  const totalMinutes = (path?.minutes ?? 0) + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0);
 
   // No route, but only because of lines turned off for routes: say which.
   const blockedBy = useMemo(
@@ -293,9 +329,9 @@ export function HomeClient({
   };
 
   const panelState: RoutePanelState | null = useMemo(() => {
-    if (start && destination) return { mode: "route", start, destination, path, blockedBy, finalWalk };
+    if (start && destination) return { mode: "route", start, destination, path, blockedBy, finalWalk, firstWalk };
     return null;
-  }, [start, destination, path, blockedBy, finalWalk]);
+  }, [start, destination, path, blockedBy, finalWalk, firstWalk]);
 
   const startCode = start?.code ?? null;
   const destinationCode = destination?.code ?? null;
@@ -388,6 +424,7 @@ export function HomeClient({
       />
 
       <OfflineBanner />
+      <InstallHint />
       <StopAlertBanner alert={stopAlert} />
 
       <main id="map" tabIndex={-1} aria-label={t.mapRegion} className="relative isolate flex-1 overflow-hidden overflow-clip outline-none">
@@ -398,6 +435,24 @@ export function HomeClient({
             className="pointer-events-none absolute inset-x-0 top-0 z-[1001] h-0.5 overflow-hidden bg-neutral-200 dark:bg-neutral-800"
           >
             <div className="h-full w-1/3 animate-[progress-slide_1.1s_ease-in-out_infinite] bg-green-700" />
+          </div>
+        )}
+        {!hasRoute && recentTrips.length > 0 && (
+          <div className="absolute inset-x-0 top-2 z-[999] flex gap-2 overflow-x-auto px-3">
+            {recentTrips.map((tr) => {
+              const fromS = stationsByCode.get(tr.from);
+              const toS = stationsByCode.get(tr.to);
+              if (!fromS || !toS) return null;
+              return (
+                <button
+                  key={`${tr.from}-${tr.to}`}
+                  onClick={() => { setStart(fromS); setDestination(toS); setSheetOpen(true); }}
+                  className="shrink-0 rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-sm hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                >
+                  {stationName(fromS, lang)} → {stationName(toS, lang)}
+                </button>
+              );
+            })}
           </div>
         )}
         {/* Floats over the map instead of sitting above it: as a block in the
@@ -432,6 +487,8 @@ export function HomeClient({
             startCode={startCode}
             destinationCode={destinationCode}
             path={path}
+            finalWalk={finalWalk}
+            firstWalk={firstWalk}
             pathOptions={routeOptions}
             userPosition={position}
             focusStation={focusStation}
@@ -448,6 +505,8 @@ export function HomeClient({
             startCode={startCode}
             destinationCode={destinationCode}
             path={path}
+            finalWalk={finalWalk}
+            firstWalk={firstWalk}
             pathOptions={routeOptions}
             userPosition={position}
             focusStation={focusStation}
@@ -459,12 +518,19 @@ export function HomeClient({
 
         {nearest && !hasRoute && (
           <button
-            onClick={() => handleSearchSelect(nearest.station)}
+            onClick={() => {
+              setStart(nearest.station);
+              setStartPlace(null);
+              // remember the walk from the rider to the station
+              if (settled) {
+                // stored via state below; we reuse userPosition via a temp? We'll compute in HomeClient as firstWalk
+              }
+            }}
             className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+2.5rem)] z-[1000] mx-auto flex min-h-11 w-fit max-w-[90%] items-center gap-1.5 rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 shadow-lg hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
           >
             <Navigation size={14} className="shrink-0 text-blue-700 dark:text-blue-400" aria-hidden="true" />
             <span className="truncate">
-              {t.nearest}: {stationName(nearest.station, lang)}
+              {t.nearest}: {stationName(nearest.station, lang)} — start route
             </span>
             <span className="shrink-0 text-xs text-neutral-600 dark:text-neutral-400">
               {distanceLabel(nearest.meters)}
@@ -480,6 +546,7 @@ export function HomeClient({
             {t.viewRoute} <ArrowRight size={15} aria-hidden="true" />
           </button>
         )}
+        <MapLegend />
       </main>
 
       <RoutePanel

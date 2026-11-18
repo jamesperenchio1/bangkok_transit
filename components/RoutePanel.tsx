@@ -4,7 +4,7 @@ import { useSettingsStore } from "@/lib/settings-store";
 import { computeFare, type FareResult } from "@/lib/fares";
 import { useFares } from "@/lib/use-fares";
 import { useEffect, useId, useRef, useState } from "react";
-import { X, MapPin, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
+import { X, MapPin, ArrowRight, ChevronDown, ChevronUp, Share2 } from "lucide-react";
 import { useArrivals } from "@/lib/use-arrivals";
 import {
   arrivalClockTime,
@@ -75,6 +75,7 @@ export type RoutePanelState = {
   blockedBy?: LineKey[];
   /** The walk from the last station to a destination picked as a place. */
   finalWalk?: FinalWalk | null;
+  firstWalk?: FinalWalk | null;
 };
 
 export interface RoutePanelProps {
@@ -89,6 +90,8 @@ export interface RoutePanelProps {
 export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines }: RoutePanelProps) {
   const open = state !== null;
   const { lang, t } = useT();
+  const settings = useSettingsStore((s) => s.settings);
+  const updateSettings = useSettingsStore((s) => s.update);
   const fares = useFares(!!state?.path);
   const headingRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
@@ -122,9 +125,10 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
   const to = state ? (state.finalWalk?.name ?? stationName(state.destination, lang)) : "";
   const changes = state?.path ? effectiveChanges(state.path) : 0;
   const finalWalk = state?.finalWalk ?? null;
-  // The walk to the place is part of the trip, so it counts in the total.
-  const totalMinutes = state?.path ? state.path.minutes + (finalWalk?.minutes ?? 0) : 0;
-  const totalWalkMeters = (state?.path?.walkMeters ?? 0) + (finalWalk?.meters ?? 0);
+  const firstWalk = state?.firstWalk ?? null;
+  // The walks to/from stations are part of the trip, so they count in the total.
+  const totalMinutes = state?.path ? state.path.minutes + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0) : 0;
+  const totalWalkMeters = (state?.path?.walkMeters ?? 0) + (finalWalk?.meters ?? 0) + (firstWalk?.meters ?? 0);
   const summary = state?.path
     ? [
         t.stops(state.path.stops),
@@ -194,6 +198,27 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
                     </p>
                   )}
                 </div>
+                {state && (
+                  <button
+                    onClick={async () => {
+                      const url = `${window.location.origin}${window.location.pathname}?from=${state.start.code}&to=${state.destination.code}`;
+                      const title = `${stationName(state.start, lang)} → ${stationName(state.destination, lang)}`;
+                      try {
+                        if (navigator.share) await navigator.share({ title, url });
+                        else {
+                          await navigator.clipboard.writeText(url);
+                        }
+                      } catch {
+                        /* user cancelled or clipboard blocked */
+                      }
+                    }}
+                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                    aria-label="Share route"
+                    title="Share route"
+                  >
+                    <Share2 size={18} aria-hidden="true" />
+                  </button>
+                )}
                 <button
                   onClick={onClose}
                   className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
@@ -202,7 +227,25 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
                   <X size={20} aria-hidden="true" />
                 </button>
               </div>
-              {state.path && <RouteSummary path={state.path} changes={changes} finalWalk={finalWalk} />}
+              {state.path && <RouteSummary path={state.path} changes={changes} finalWalk={finalWalk} firstWalk={firstWalk} />}
+            {state.path && (
+              <div className="flex flex-wrap gap-2 px-4 pt-2">
+                <button
+                  type="button"
+                  onClick={() => updateSettings({ fewerChanges: !settings.fewerChanges })}
+                  className={`min-h-9 rounded-full border px-3 py-1 text-xs font-medium ${settings.fewerChanges ? "border-green-700 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300" : "border-neutral-300 text-neutral-700 dark:border-neutral-700 dark:text-neutral-300"}`}
+                >
+                  Fewer changes {settings.fewerChanges ? "✓" : ""}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateSettings({ avoidWalking: !settings.avoidWalking })}
+                  className={`min-h-9 rounded-full border px-3 py-1 text-xs font-medium ${settings.avoidWalking ? "border-green-700 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300" : "border-neutral-300 text-neutral-700 dark:border-neutral-700 dark:text-neutral-300"}`}
+                >
+                  Less walking {settings.avoidWalking ? "✓" : ""}
+                </button>
+              </div>
+            )}
             </div>
 
             {state.path && (
@@ -232,6 +275,23 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
                   {t.noRoute}
                 </p>
               )
+            )}
+
+            {state.path && firstWalk && (
+              <div className="flex items-stretch gap-3 px-4 pt-2">
+                <div className="relative w-4 shrink-0">
+                  <span className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-l-2 border-dotted border-neutral-400" />
+                  <span className="absolute top-1/2 left-1/2 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white dark:bg-neutral-900">
+                    <MapPin size={12} className="text-blue-700 dark:text-blue-400" aria-hidden="true" />
+                  </span>
+                </div>
+                <div className="flex-1 py-1.5">
+                  <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Walk to {stationName(state.start, lang)}</p>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                    {t.walked(distanceLabel(firstWalk.meters, lang))} · {t.aboutMinutes(firstWalk.minutes)}
+                  </p>
+                </div>
+              </div>
             )}
 
             {state.path && (
@@ -428,16 +488,18 @@ function RouteSummary({
   path,
   changes,
   finalWalk,
+  firstWalk,
 }: {
   path: PathResult;
   changes: number;
   finalWalk?: FinalWalk | null;
+  firstWalk?: FinalWalk | null;
 }) {
   const { lang, t } = useT();
   const parts = [t.stops(path.stops), t.changes(changes)];
-  const walkMeters = path.walkMeters + (finalWalk?.meters ?? 0);
+  const walkMeters = path.walkMeters + (finalWalk?.meters ?? 0) + (firstWalk?.meters ?? 0);
   if (walkMeters > 0) parts.push(t.walk(distanceLabel(walkMeters, lang)));
-  parts.push(t.aboutMinutes(path.minutes + (finalWalk?.minutes ?? 0)));
+  parts.push(t.aboutMinutes(path.minutes + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0)));
   const showFare = useSettingsStore((s) => s.settings.showFare);
   const fares = useFares(showFare);
   const fare = showFare ? computeFare(path, fares) : null;

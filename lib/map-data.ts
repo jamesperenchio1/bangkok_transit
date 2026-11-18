@@ -54,8 +54,20 @@ export function routeParts(
   path: PathResult,
   segmentsByLine: LineSegments,
   finalWalk?: FinalWalk | null,
+  firstWalk?: FinalWalk | null,
 ): RoutePart[] {
-  const parts = path.legs.slice(1).map((leg, i) => {
+  const parts: RoutePart[] = [];
+  if (firstWalk) {
+    parts.push({
+      line: "",
+      walk: true,
+      points: [
+        [firstWalk.from.lat, firstWalk.from.lon],
+        [firstWalk.to.lat, firstWalk.to.lon],
+      ] as LatLon[],
+    });
+  }
+  const rideParts = path.legs.slice(1).map((leg, i) => {
     const prev = path.legs[i].station;
     const points =
       leg.mode === "ride" && leg.line
@@ -66,6 +78,7 @@ export function routeParts(
           ] as LatLon[]);
     return { line: leg.line ?? "", walk: leg.mode === "walk", points };
   });
+  parts.push(...rideParts);
   if (finalWalk) {
     parts.push({
       line: "",
@@ -204,12 +217,17 @@ export function routeFitPadding(
 export function routeBounds(
   path: PathResult,
   finalWalk?: FinalWalk | null,
+  firstWalk?: FinalWalk | null,
 ): [[number, number], [number, number]] {
   const lons = path.legs.map((l) => l.station.lon);
   const lats = path.legs.map((l) => l.station.lat);
   if (finalWalk) {
     lons.push(finalWalk.to.lon);
     lats.push(finalWalk.to.lat);
+  }
+  if (firstWalk) {
+    lons.push(firstWalk.from.lon, firstWalk.to.lon);
+    lats.push(firstWalk.from.lat, firstWalk.to.lat);
   }
   return [
     [Math.min(...lons), Math.min(...lats)],
