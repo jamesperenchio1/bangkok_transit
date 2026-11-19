@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LINES, SITE_NAME, linePath } from "@/lib/seo";
+import { ReportIssue } from "@/components/ReportIssue";
 
 // Shell for the static, crawlable pages (lines, stations, routes). The root
 // layout locks the body to the viewport for the map, so this supplies its own
@@ -32,6 +33,9 @@ export default function ContentLayout({ children }: { children: React.ReactNode 
           </ul>
           <p className="mt-4">
             <Link href="/" className="underline underline-offset-2">Open the live map and route planner</Link>
+          </p>
+          <p className="mt-2">
+            <ReportIssue trigger="link" context={{}} />
           </p>
         </div>
       </footer>

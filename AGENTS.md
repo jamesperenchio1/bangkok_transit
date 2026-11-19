@@ -91,6 +91,12 @@ same-building interchanges are one node with several `lines`. `findPath`
 runs Dijkstra over (station, mode, service) states with a minutes cost model and
 returns legs with `mode: "start" | "ride" | "walk"`.
 
+A place picked from search routes through the station that gets there soonest,
+not the geographically nearest: `lib/place-station.ts` compares the closest few
+by `findPath(...).minutes + walkEstimate(meters)` (one minute of tie-break in
+favour of the nearest). The route then ends with the walk to the place, dashed
+on both maps and counted in the sheet's total (`finalWalk`).
+
 A station's `code` is a stable **internal id**: it is in `?from=`/`?to=` links,
 page slugs and the fare/hop data, so never renumber it. For BTS/Gold/Yellow/Pink
 and Purple it is also the operator's code. MRT Blue, ARL and SRT Red use local

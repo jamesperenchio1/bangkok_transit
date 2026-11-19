@@ -3,6 +3,7 @@ import { fullLineSegments, trackBetween, type LatLon, type LineSegments } from "
 import { LINE_COLORS } from "@/lib/line-colors";
 import type { Lang } from "@/lib/i18n";
 import type { PathResult } from "@/lib/transit-graph";
+import type { FinalWalk } from "@/lib/place-station";
 
 /**
  * Everything both maps need to know about *what* to draw, with no knowledge of
@@ -44,9 +45,29 @@ export interface RoutePart {
   points: LatLon[];
 }
 
-/** One part per leg: rides follow the real track, a walking transfer is a short straight dashed line. */
-export function routeParts(path: PathResult, segmentsByLine: LineSegments): RoutePart[] {
-  return path.legs.slice(1).map((leg, i) => {
+/**
+ * One part per leg: rides follow the real track, a walking transfer is a short
+ * straight dashed line. A route that ends at a place gets one last walk, from
+ * the station to the place, drawn the same way.
+ */
+export function routeParts(
+  path: PathResult,
+  segmentsByLine: LineSegments,
+  finalWalk?: FinalWalk | null,
+  firstWalk?: FinalWalk | null,
+): RoutePart[] {
+  const parts: RoutePart[] = [];
+  if (firstWalk) {
+    parts.push({
+      line: "",
+      walk: true,
+      points: [
+        [firstWalk.from.lat, firstWalk.from.lon],
+        [firstWalk.to.lat, firstWalk.to.lon],
+      ] as LatLon[],
+    });
+  }
+  const rideParts = path.legs.slice(1).map((leg, i) => {
     const prev = path.legs[i].station;
     const points =
       leg.mode === "ride" && leg.line
@@ -57,6 +78,18 @@ export function routeParts(path: PathResult, segmentsByLine: LineSegments): Rout
           ] as LatLon[]);
     return { line: leg.line ?? "", walk: leg.mode === "walk", points };
   });
+  parts.push(...rideParts);
+  if (finalWalk) {
+    parts.push({
+      line: "",
+      walk: true,
+      points: [
+        [finalWalk.from.lat, finalWalk.from.lon],
+        [finalWalk.to.lat, finalWalk.to.lon],
+      ] as LatLon[],
+    });
+  }
+  return parts;
 }
 
 export interface StationVisual {
@@ -180,10 +213,22 @@ export function routeFitPadding(
   return { top: 40, left: 40, right: 40, bottom: Math.max(40, bottom) };
 }
 
-/** Bounding box of a route's stops as [[minLon, minLat], [maxLon, maxLat]]. */
-export function routeBounds(path: PathResult): [[number, number], [number, number]] {
+/** Bounding box of a route's stops (and the place it ends at) as [[minLon, minLat], [maxLon, maxLat]]. */
+export function routeBounds(
+  path: PathResult,
+  finalWalk?: FinalWalk | null,
+  firstWalk?: FinalWalk | null,
+): [[number, number], [number, number]] {
   const lons = path.legs.map((l) => l.station.lon);
   const lats = path.legs.map((l) => l.station.lat);
+  if (finalWalk) {
+    lons.push(finalWalk.to.lon);
+    lats.push(finalWalk.to.lat);
+  }
+  if (firstWalk) {
+    lons.push(firstWalk.from.lon, firstWalk.to.lon);
+    lats.push(firstWalk.from.lat, firstWalk.to.lat);
+  }
   return [
     [Math.min(...lons), Math.min(...lats)],
     [Math.max(...lons), Math.max(...lats)],

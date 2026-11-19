@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 import { MapPin, Search, X } from "lucide-react";
-import { codeAliases, shownCode, stations, type Station } from "@/data/stations";
+import { codeAliases, shownCode, stations, stationsByCode, type Station } from "@/data/stations";
 import { LINE_COLORS, LINE_NAMES } from "@/lib/line-colors";
 import { stationsByLine } from "@/lib/station-groups";
 import { useArrivals } from "@/lib/use-arrivals";
@@ -109,10 +109,14 @@ function SearchResultEta({ station }: { station: Station }) {
   );
 }
 
+const RECENTS_KEY = "bts:search-recents:v1";
+type RecentEntry = { kind: "station"; code: string } | { kind: "place"; place: Place };
+
 export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
+  const [recents, setRecents] = useState<Item[]>([]);
   const { lang, t } = useT();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listId = useId();
@@ -120,6 +124,26 @@ export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchP
   // The full list by line, shown while the box is empty: the old separate
   // "browse" button, folded in. Built only once the panel has been opened.
   const groups = useMemo(() => (open ? stationsByLine() : []), [open]);
+
+  // Load recents when the panel opens.
+  useEffect(() => {
+    if (!open) return;
+    let entries: RecentEntry[] = [];
+    try {
+      entries = JSON.parse(localStorage.getItem(RECENTS_KEY) || "[]");
+    } catch {}
+    const items: Item[] = [];
+    for (const e of entries) {
+      if (e.kind === "station") {
+        const s = stationsByCode.get(e.code);
+        if (s) items.push({ kind: "station", station: s, key: `s-${s.code}` });
+      } else if (e.kind === "place" && e.place) {
+        items.push({ kind: "place", place: e.place, key: `p-${e.place.id}` });
+      }
+    }
+    /* eslint-disable-next-line react-hooks/set-state-in-effect */
+    setRecents(items.slice(0, 5));
+  }, [open]);
 
   const { onlinePlaces, placeResults } = useSettingsStore((s) => s.settings);
   const { places, error: placesError, loading: placesLoading } = usePlaces(query, onlinePlaces, lang, placeResults);
@@ -186,6 +210,18 @@ export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchP
   const select = (item: Item) => {
     if (item.kind === "station") onSelectStation(item.station);
     else onSelectPlace(item.place);
+    // Record recent
+    try {
+      const raw = JSON.parse(localStorage.getItem(RECENTS_KEY) || "[]") as RecentEntry[];
+      const entry: RecentEntry =
+        item.kind === "station" ? { kind: "station", code: item.station.code } : { kind: "place", place: item.place };
+      const key = item.kind === "station" ? `s-${item.station.code}` : `p-${item.place.id}`;
+      const filtered = raw.filter((e) =>
+        e.kind === "station" ? `s-${e.code}` !== key : `p-${e.place.id}` !== key,
+      );
+      filtered.unshift(entry);
+      localStorage.setItem(RECENTS_KEY, JSON.stringify(filtered.slice(0, 5)));
+    } catch {}
     close();
   };
 
@@ -297,7 +333,35 @@ export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchP
             <p className="px-2 py-2 text-sm text-neutral-600 dark:text-neutral-400">{t.noStations}</p>
           )}
 
-          {!query.trim() && (
+           {!query.trim() && recents.length > 0 && (
+             <div className="mt-1">
+               <p className="px-2 pt-1 text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
+                 Recent
+               </p>
+               <ul>
+                 {recents.map((item) => {
+                   const rowClass = "flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800";
+                   return (
+                     <li key={item.key}>
+                       {item.kind === "station" ? (
+                         <button type="button" onClick={() => select(item)} className={rowClass}>
+                           <span className="w-12 shrink-0 text-xs text-neutral-600 dark:text-neutral-400">{shownCode(item.station)}</span>
+                           <span lang={lang} className="flex-1 truncate">{stationName(item.station, lang)}</span>
+                         </button>
+                       ) : (
+                         <button type="button" onClick={() => select(item)} className={rowClass}>
+                           <MapPin size={14} className="shrink-0 text-neutral-600 dark:text-neutral-400" aria-hidden="true" />
+                           <span className="min-w-0 flex-1 truncate">{item.place.name}</span>
+                         </button>
+                       )}
+                     </li>
+                   );
+                 })}
+               </ul>
+             </div>
+           )}
+
+           {!query.trim() && (
             <div className="mt-1 min-h-0 overflow-y-auto" data-testid="browse-stations">
               <p className="px-2 pt-1 text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
                 {t.browseByLine}

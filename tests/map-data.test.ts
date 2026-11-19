@@ -70,6 +70,30 @@ describe("shared geometry", () => {
     expect(west).toBeLessThan(east);
     expect(south).toBeLessThan(north);
   });
+
+  it("adds the walk to a picked place as one last dashed part, and fits it in", () => {
+    const path = findPath("W1", "CEN")!;
+    const finalWalk = {
+      from: { lat: at("CEN").lat, lon: at("CEN").lon },
+      to: { lat: 13.7466, lon: 100.5393 },
+      meters: 521,
+      minutes: 9.9,
+      name: "Central World",
+    };
+    const parts = routeParts(path, stationLineSegments(), finalWalk);
+    expect(parts).toHaveLength(path.legs.length);
+    const last = parts[parts.length - 1];
+    expect(last.walk).toBe(true);
+    expect(last.points).toEqual([
+      [finalWalk.from.lat, finalWalk.from.lon],
+      [finalWalk.to.lat, finalWalk.to.lon],
+    ]);
+
+    const [[, south], [, north]] = routeBounds(path, finalWalk);
+    const without = routeBounds(path);
+    expect(south).toBeLessThanOrEqual(without[0][1]);
+    expect(north).toBeGreaterThanOrEqual(without[1][1]);
+  });
 });
 
 describe("labelText", () => {

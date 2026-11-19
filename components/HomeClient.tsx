@@ -7,15 +7,19 @@ import { stationsByCode, type Station } from "@/data/stations";
 import { fareText, RoutePanel, type RoutePanelState } from "@/components/RoutePanel";
 import { StationSearch } from "@/components/StationSearch";
 import { SettingsMenu } from "@/components/SettingsMenu";
+import { InstallHint } from "@/components/InstallHint";
+import { MapLegend } from "@/components/MapLegend";
+import { ReportIssue } from "@/components/ReportIssue";
 import { StopAlertBanner } from "@/components/StopAlertControl";
 import { useStopAlert } from "@/lib/use-stop-alert";
-import { findPath, linesInTheWay } from "@/lib/transit-graph";
+import { findPath, linesInTheWay, walkEstimate } from "@/lib/transit-graph";
 import { useGeolocation } from "@/lib/use-geolocation";
 import { startArrivalsPolling, useArrivalsStore } from "@/lib/arrivals-store";
 import { scheduleOfflineWarm } from "@/lib/offline-warm";
-import { fetchLineGeometry } from "@/lib/line-geometry";
+import { fetchLineGeometry, haversineMeters } from "@/lib/line-geometry";
 import { whenMapPainted } from "@/lib/map-ready";
 import { distanceLabel, nearestStation } from "@/lib/nearest-station";
+import type { FinalWalk } from "@/lib/place-station";
 import type { Place } from "@/lib/google-places";
 import { computeFare } from "@/lib/fares";
 import { useFares } from "@/lib/use-fares";
@@ -95,9 +99,14 @@ export function HomeClient({
 }) {
   const [start, setStart] = useState<Station | null>(null);
   const [destination, setDestination] = useState<Station | null>(null);
+  const [recentTrips, setRecentTrips] = useState<{ from: string; to: string }[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [focusStation, setFocusStation] = useState<Station | null>(null);
   const [focusPlace, setFocusPlace] = useState<Place | null>(null);
+  // The place a route ends (or starts) at. Kept beside the station so the last
+  // walk can be shown and measured, and cleared when a plain station is picked.
+  const [startPlace, setStartPlace] = useState<Place | null>(null);
+  const [destinationPlace, setDestinationPlace] = useState<Place | null>(null);
   // The map chunk and its first tiles are the slowest part of a cold load;
   // until the map reports first paint, the header and the build-time SVG
   // network carry the screen, with a thin indeterminate bar above them.
@@ -112,7 +121,28 @@ export function HomeClient({
   // grey tile; the fallback holds for the rest of the visit.
   const [googleFailed, setGoogleFailed] = useState(false);
   const [startedOffline] = useState(() => typeof navigator !== "undefined" && !navigator.onLine);
-  const { position, error: geoError } = useGeolocation();
+
+  // Recent trips (localStorage)
+  useEffect(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem("bts:trips:v1") || "[]");
+      /* eslint-disable-next-line react-hooks/set-state-in-effect */
+      if (Array.isArray(raw)) setRecentTrips(raw.slice(0, 8));
+    } catch {}
+  }, []);
+  useEffect(() => {
+    if (!start || !destination) return;
+    const entry = { from: start.code, to: destination.code };
+    /* eslint-disable-next-line react-hooks/set-state-in-effect */
+    setRecentTrips((prev) => {
+      const filtered = prev.filter((t) => !(t.from === entry.from && t.to === entry.to));
+      const next = [entry, ...filtered].slice(0, 8);
+      try { localStorage.setItem("bts:trips:v1", JSON.stringify(next)); } catch {}
+      return next;
+    });
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [start?.code, destination?.code]);
+  const { position, settled, error: geoError } = useGeolocation();
   const { lang, t } = useT();
 
   useEffect(() => {
@@ -191,9 +221,12 @@ export function HomeClient({
     window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
   }, [urlRead, start, destination]);
 
+  // The dot follows every fix; anything that decides something for the rider
+  // (nearest station, stop alerts) waits for `settled`, so a jittery fix can't
+  // flip the destination station on the card.
   const nearest = useMemo(
-    () => (position ? nearestStation(position.lat, position.lon) : null),
-    [position],
+    () => (settled ? nearestStation(settled.lat, settled.lon) : null),
+    [settled],
   );
 
   // The route is derived, not staged: as soon as both ends exist the path is
@@ -206,6 +239,36 @@ export function HomeClient({
     () => (start && destination ? findPath(start.code, destination.code, routeOptions) : null),
     [start, destination, routeOptions],
   );
+  // When the destination was picked as a place, the trip ends with a walk from
+  // the station chosen for it (lib/place-station.ts) to the place itself.
+  const finalWalk = useMemo<FinalWalk | null>(() => {
+    if (!destination || !destinationPlace) return null;
+    const meters = haversineMeters(
+      [destination.lat, destination.lon],
+      [destinationPlace.lat, destinationPlace.lon],
+    );
+    return {
+      from: { lat: destination.lat, lon: destination.lon },
+      to: { lat: destinationPlace.lat, lon: destinationPlace.lon },
+      meters,
+      minutes: walkEstimate(meters, walkSpeed),
+      name: destinationPlace.name,
+    };
+  }, [destination, destinationPlace, walkSpeed]);
+  const firstWalk = useMemo<FinalWalk | null>(() => {
+    if (!start || !position || startPlace) return null;
+    const meters = haversineMeters([start.lat, start.lon], [position.lat, position.lon]);
+    if (meters > 1500) return null;
+    return {
+      from: { lat: position.lat, lon: position.lon },
+      to: { lat: start.lat, lon: start.lon },
+      meters,
+      minutes: walkEstimate(meters, walkSpeed),
+      name: stationName(start, lang),
+    };
+  }, [start, position, startPlace, walkSpeed, lang]);
+  const totalMinutes = (path?.minutes ?? 0) + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0);
+
   // No route, but only because of lines turned off for routes: say which.
   const blockedBy = useMemo(
     () => (start && destination && !path ? linesInTheWay(start.code, destination.code, routeOptions) : []),
@@ -214,14 +277,19 @@ export function HomeClient({
   const fares = useFares(path !== null && showFare);
   const fareLine = showFare ? fareText(t, computeFare(path, fares)) : "";
 
-  const handleSetStart = (station: Station) => {
+  const handleSetStart = (station: Station, place?: Place) => {
     setStart(station);
-    if (destination?.code === station.code) setDestination(null);
+    setStartPlace(place ?? null);
+    if (destination?.code === station.code) {
+      setDestination(null);
+      setDestinationPlace(null);
+    }
   };
 
-  const handleSetDestination = (station: Station) => {
+  const handleSetDestination = (station: Station, place?: Place) => {
     if (start?.code === station.code) return;
     setDestination(station);
+    setDestinationPlace(place ?? null);
     setSheetOpen(true);
   };
 
@@ -235,6 +303,8 @@ export function HomeClient({
   const clearRoute = () => {
     setStart(null);
     setDestination(null);
+    setStartPlace(null);
+    setDestinationPlace(null);
     setSheetOpen(false);
   };
 
@@ -255,17 +325,19 @@ export function HomeClient({
   const swapRoute = () => {
     setStart(destination);
     setDestination(start);
+    setStartPlace(destinationPlace);
+    setDestinationPlace(startPlace);
   };
 
   const panelState: RoutePanelState | null = useMemo(() => {
-    if (start && destination) return { mode: "route", start, destination, path, blockedBy };
+    if (start && destination) return { mode: "route", start, destination, path, blockedBy, finalWalk, firstWalk };
     return null;
-  }, [start, destination, path, blockedBy]);
+  }, [start, destination, path, blockedBy, finalWalk, firstWalk]);
 
   const startCode = start?.code ?? null;
   const destinationCode = destination?.code ?? null;
   const hasRoute = start !== null && destination !== null;
-  const stopAlert = useStopAlert(path, position);
+  const stopAlert = useStopAlert(path, settled);
 
   const subtitle = !start && !destination
     ? t.hintIdle
@@ -291,7 +363,7 @@ export function HomeClient({
               <span lang={lang} title={stationName(start, lang)}>{stationName(start, lang)}</span>
               <span aria-hidden="true"> → </span>
               <span lang={lang} title={stationName(destination, lang)}>{stationName(destination, lang)}</span>
-              {path && <span> · {t.aboutMinutes(path.minutes)}</span>}
+              {path && <span> · {t.aboutMinutes(totalMinutes)}</span>}
               {path && fareLine && <span data-testid="header-fare"> · {fareLine}</span>}
             </p>
           ) : start || destination ? (
@@ -338,6 +410,18 @@ export function HomeClient({
             </button>
           )}
           <LangToggle />
+          <ReportIssue
+            trigger="header"
+            context={{
+              lang,
+              mapProvider: loadedMap,
+              startCode: start?.code ?? null,
+              destinationCode: destination?.code ?? null,
+              focusStationCode: focusStation?.code ?? null,
+              routeMinutes: path ? path.minutes + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0) : null,
+              routeChanges: path?.changes ?? null,
+            }}
+          />
           <StationSearch onSelectStation={handleSearchSelect} onSelectPlace={handlePlaceSelect} />
           <SettingsMenu />
         </div>
@@ -353,6 +437,7 @@ export function HomeClient({
       />
 
       <OfflineBanner />
+      <InstallHint />
       <StopAlertBanner alert={stopAlert} />
 
       <main id="map" tabIndex={-1} aria-label={t.mapRegion} className="relative isolate flex-1 overflow-hidden overflow-clip outline-none">
@@ -363,6 +448,24 @@ export function HomeClient({
             className="pointer-events-none absolute inset-x-0 top-0 z-[1001] h-0.5 overflow-hidden bg-neutral-200 dark:bg-neutral-800"
           >
             <div className="h-full w-1/3 animate-[progress-slide_1.1s_ease-in-out_infinite] bg-green-700" />
+          </div>
+        )}
+        {!hasRoute && recentTrips.length > 0 && (
+          <div className="absolute inset-x-0 top-2 z-[999] flex gap-2 overflow-x-auto px-3">
+            {recentTrips.map((tr) => {
+              const fromS = stationsByCode.get(tr.from);
+              const toS = stationsByCode.get(tr.to);
+              if (!fromS || !toS) return null;
+              return (
+                <button
+                  key={`${tr.from}-${tr.to}`}
+                  onClick={() => { setStart(fromS); setDestination(toS); setSheetOpen(true); }}
+                  className="shrink-0 rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-sm hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
+                >
+                  {stationName(fromS, lang)} → {stationName(toS, lang)}
+                </button>
+              );
+            })}
           </div>
         )}
         {/* Floats over the map instead of sitting above it: as a block in the
@@ -397,6 +500,9 @@ export function HomeClient({
             startCode={startCode}
             destinationCode={destinationCode}
             path={path}
+            finalWalk={finalWalk}
+            firstWalk={firstWalk}
+            pathOptions={routeOptions}
             userPosition={position}
             focusStation={focusStation}
             focusPlace={focusPlace}
@@ -412,6 +518,9 @@ export function HomeClient({
             startCode={startCode}
             destinationCode={destinationCode}
             path={path}
+            finalWalk={finalWalk}
+            firstWalk={firstWalk}
+            pathOptions={routeOptions}
             userPosition={position}
             focusStation={focusStation}
             focusPlace={focusPlace}
@@ -422,12 +531,19 @@ export function HomeClient({
 
         {nearest && !hasRoute && (
           <button
-            onClick={() => handleSearchSelect(nearest.station)}
+            onClick={() => {
+              setStart(nearest.station);
+              setStartPlace(null);
+              // remember the walk from the rider to the station
+              if (settled) {
+                // stored via state below; we reuse userPosition via a temp? We'll compute in HomeClient as firstWalk
+              }
+            }}
             className="absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+2.5rem)] z-[1000] mx-auto flex min-h-11 w-fit max-w-[90%] items-center gap-1.5 rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 shadow-lg hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
           >
             <Navigation size={14} className="shrink-0 text-blue-700 dark:text-blue-400" aria-hidden="true" />
             <span className="truncate">
-              {t.nearest}: {stationName(nearest.station, lang)}
+              {t.nearest}: {stationName(nearest.station, lang)} — start route
             </span>
             <span className="shrink-0 text-xs text-neutral-600 dark:text-neutral-400">
               {distanceLabel(nearest.meters)}
@@ -443,6 +559,7 @@ export function HomeClient({
             {t.viewRoute} <ArrowRight size={15} aria-hidden="true" />
           </button>
         )}
+        <MapLegend />
       </main>
 
       <RoutePanel

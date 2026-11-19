@@ -42,7 +42,8 @@ import {
   type StationVisual,
 } from "@/lib/map-data";
 import { motionDuration, useSettingsStore } from "@/lib/settings-store";
-import type { PathResult } from "@/lib/transit-graph";
+import type { PathOptions, PathResult } from "@/lib/transit-graph";
+import type { FinalWalk } from "@/lib/place-station";
 import {
   TRAIN_FRAME_MS,
   TRAIN_LABEL_ZOOM,
@@ -60,11 +61,17 @@ import type { GeoPosition } from "@/lib/use-geolocation";
 
 export interface GoogleTransitMapProps {
   onSelectStation: (station: Station) => void;
-  onSetStart: (station: Station) => void;
-  onSetDestination: (station: Station) => void;
+  /** A place card passes its place, so the route can end with the walk to it. */
+  onSetStart: (station: Station, place?: Place) => void;
+  onSetDestination: (station: Station, place?: Place) => void;
   startCode: string | null;
   destinationCode: string | null;
   path: PathResult | null;
+  /** The walk from the destination station to a place picked as the destination. */
+  finalWalk?: FinalWalk | null;
+  firstWalk?: FinalWalk | null;
+  /** Route preferences, so a place card picks its station the same way the route does. */
+  pathOptions?: PathOptions;
   userPosition: GeoPosition | null;
   focusStation: Station | null;
   focusPlace: Place | null;
@@ -154,6 +161,9 @@ export function GoogleTransitMap({
   startCode,
   destinationCode,
   path,
+  finalWalk,
+  firstWalk,
+  pathOptions,
   userPosition,
   focusStation,
   focusPlace,
@@ -207,9 +217,9 @@ export function GoogleTransitMap({
   }, [path]);
 
   // The newest props and settings, for handlers created once.
-  const latest = useRef({ onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, onLoad, onError, settings, lang });
+  const latest = useRef({ onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions, onLoad, onError, settings, lang });
   useEffect(() => {
-    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, onLoad, onError, settings, lang };
+    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions, onLoad, onError, settings, lang };
   });
 
   const reducedMotion = () => motionDuration(1) === 0;
@@ -330,12 +340,13 @@ export function GoogleTransitMap({
           place={place}
           startCode={latest.current.startCode}
           destinationCode={latest.current.destinationCode}
+          pathOptions={latest.current.pathOptions}
           onSetStart={(s) => {
-            latest.current.onSetStart(s);
+            latest.current.onSetStart(s, place);
             queueMicrotask(close);
           }}
           onSetDestination={(s) => {
-            latest.current.onSetDestination(s);
+            latest.current.onSetDestination(s, place);
             queueMicrotask(close);
           }}
         />
@@ -508,7 +519,7 @@ export function GoogleTransitMap({
     void fetchLineGeometry().then((real) => {
       if (stale) return;
       const g = window.google;
-      routeLines.current = routeParts(path, real).map(({ line, walk, points }) => {
+      routeLines.current = routeParts(path, real, finalWalk, firstWalk).map(({ line, walk, points }) => {
         const pathLatLng = points.map(([lat, lng]) => ({ lat, lng }));
         return walk
           ? new g.maps.Polyline({
@@ -540,7 +551,7 @@ export function GoogleTransitMap({
     return () => {
       stale = true;
     };
-  }, [ready, path, routeWidth]);
+  }, [ready, path, finalWalk, firstWalk, routeWidth]);
 
   // Keep a planned route in view, in whatever the route sheet leaves uncovered.
   useEffect(() => {
@@ -549,7 +560,7 @@ export function GoogleTransitMap({
     if (!map || !container || !ready || !path) return;
     const g = window.google;
     const rect = container.getBoundingClientRect();
-    const [[west, south], [east, north]] = routeBounds(path);
+    const [[west, south], [east, north]] = routeBounds(path, finalWalk, firstWalk);
     movingRef.current = true;
     map.fitBounds({ west, south, east, north }, routeFitPadding(sheetOpen, rect.bottom, rect.height, window.innerHeight));
     const cap = mapLibreToGoogleZoom(FOCUS_ZOOM_CAP);
@@ -557,7 +568,7 @@ export function GoogleTransitMap({
       if ((map.getZoom() ?? 0) > cap) map.setZoom(cap);
     });
     return () => listener.remove();
-  }, [ready, path, sheetOpen]);
+  }, [ready, path, finalWalk, firstWalk, sheetOpen]);
 
   // ---- Stations: dots, tap targets and names -------------------------------
 
@@ -688,27 +699,46 @@ export function GoogleTransitMap({
     const map = mapRef.current;
     if (!layer || !map || !ready) return;
     const g = window.google;
-    layer.remove("gps");
-    gpsCircle.current?.setMap(null);
-    gpsCircle.current = null;
-    if (!userPosition || !showLocation) return;
-    const dot = el("div", "");
-    dot.append(el("span", centered(`width:18px;height:18px;box-sizing:border-box;border-radius:9999px;background:${GPS_COLOR};border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15)`)));
-    layer.add("gps", userPosition.lat, userPosition.lon, dot, Z.gps);
+    if (!userPosition || !showLocation) {
+      layer.remove("gps");
+      gpsCircle.current?.setMap(null);
+      gpsCircle.current = null;
+      return;
+    }
+    const { lat, lon } = userPosition;
+    // Move the dot in place. Re-creating it on every fix (the old approach)
+    // tore down and rebuilt the overlay element several times a minute, which
+    // reads as flicker on a phone - the very thing a live dot must not do.
+    if (layer.has("gps")) {
+      layer.move("gps", lat, lon);
+    } else {
+      const dot = el("div", "");
+      dot.append(el("span", centered(`width:18px;height:18px;box-sizing:border-box;border-radius:9999px;background:${GPS_COLOR};border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15)`)));
+      layer.add("gps", lat, lon, dot, Z.gps);
+    }
     // The accuracy estimate as a real circle on the ground, like MapLibre's.
     if (userPosition.accuracy > 0) {
-      gpsCircle.current = new g.maps.Circle({
-        map,
-        center: { lat: userPosition.lat, lng: userPosition.lon },
-        radius: userPosition.accuracy,
-        fillColor: GPS_COLOR,
-        fillOpacity: 0.12,
-        strokeColor: GPS_COLOR,
-        strokeOpacity: 0.35,
-        strokeWeight: 1,
-        clickable: false,
-        zIndex: 1,
-      });
+      if (gpsCircle.current) {
+        gpsCircle.current.setCenter({ lat, lng: lon });
+        gpsCircle.current.setRadius(userPosition.accuracy);
+        gpsCircle.current.setMap(map);
+      } else {
+        gpsCircle.current = new g.maps.Circle({
+          map,
+          center: { lat, lng: lon },
+          radius: userPosition.accuracy,
+          fillColor: GPS_COLOR,
+          fillOpacity: 0.12,
+          strokeColor: GPS_COLOR,
+          strokeOpacity: 0.35,
+          strokeWeight: 1,
+          clickable: false,
+          zIndex: 1,
+        });
+      }
+    } else {
+      gpsCircle.current?.setMap(null);
+      gpsCircle.current = null;
     }
   }, [ready, userPosition, showLocation]);
 

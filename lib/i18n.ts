@@ -38,7 +38,14 @@ export function restoreLang() {
   } catch {
     return;
   }
-  if (saved === "th" || saved === "en") useLangStore.getState().setLang(saved);
+  if (saved === "th" || saved === "en") {
+    useLangStore.getState().setLang(saved);
+    return;
+  }
+  // First visit: follow the browser's language so Thai riders land in Thai.
+  if (typeof navigator !== "undefined" && (navigator.language || "").toLowerCase().startsWith("th")) {
+    useLangStore.getState().setLang("th");
+  }
 }
 
 export function stationName(station: Station, lang: Lang): string {
@@ -112,6 +119,31 @@ export const strings = {
     mapRegion: "Map of Bangkok rail lines",
     settings: "Settings",
     settingsTitle: "Settings",
+    report: "Report",
+    reportIssue: "Report an issue",
+    reportTitle: "Something not right?",
+    reportSubtitle: "Tell us what's off and we'll fix it. Nothing is sent automatically — you choose how to send it.",
+    reportCategories: "What's wrong?",
+    reportCatRoute: "Wrong route",
+    reportCatStation: "Station info",
+    reportCatLive: "Live times",
+    reportCatMap: "Map / display",
+    reportCatSearch: "Search",
+    reportCatOther: "Other",
+    reportDetails: "Details (optional)",
+    reportDetailsPlaceholder: "What did you expect? What happened instead?",
+    reportContext: "What we'll include",
+    reportContextHide: "Hide",
+    reportContextShow: "Show",
+    reportIncludeDevice: "Include device & browser info",
+    reportCopy: "Copy report",
+    reportCopied: "Copied to clipboard",
+    reportEmail: "Email us",
+    reportGithub: "Open GitHub issue",
+    reportSave: "Save for later",
+    reportSaved: "Saved — you can resend it from Settings",
+    reportContextual: "Something off? Report it",
+    reportPrivacy: "No tracking. Your report is only sent if you choose to send it.",
     settingsReset: "Reset to defaults",
     browseByLine: "All stations by line",
     searchResultsCount: (n: number) => `${n} ${n === 1 ? "station" : "stations"} found`,
@@ -133,6 +165,7 @@ export const strings = {
     searchingPlaces: "Searching places…",
     placesUnavailable: "Place search unavailable (offline?). Stations still work.",
     placeNearest: "Nearest station",
+    placeStation: "Station",
     placeAway: (d: string) => `${d} away`,
     searchStations: "Search stations",
     closeSearch: "Close search",
@@ -222,6 +255,31 @@ export const strings = {
     mapRegion: "แผนที่เส้นทางรถไฟฟ้าในกรุงเทพฯ",
     settings: "ตั้งค่า",
     settingsTitle: "ตั้งค่า",
+    report: "รายงาน",
+    reportIssue: "รายงานปัญหา",
+    reportTitle: "มีอะไรไม่ถูกต้อง?",
+    reportSubtitle: "บอกเราได้เลยว่าอะไรผิดพลาด เราจะแก้ไขให้ ไม่มีการส่งอัตโนมัติ — คุณเลือกวิธีส่งเอง",
+    reportCategories: "เกิดอะไรขึ้น?",
+    reportCatRoute: "เส้นทางผิด",
+    reportCatStation: "ข้อมูลสถานี",
+    reportCatLive: "เวลาเรียลไทม์",
+    reportCatMap: "แผนที่ / แสดงผล",
+    reportCatSearch: "การค้นหา",
+    reportCatOther: "อื่นๆ",
+    reportDetails: "รายละเอียด (ไม่บังคับ)",
+    reportDetailsPlaceholder: "คุณคาดหวังอะไร? เกิดอะไรขึ้นจริง?",
+    reportContext: "ข้อมูลที่จะรวม",
+    reportContextHide: "ซ่อน",
+    reportContextShow: "แสดง",
+    reportIncludeDevice: "รวมข้อมูลอุปกรณ์และเบราว์เซอร์",
+    reportCopy: "คัดลอกรายงาน",
+    reportCopied: "คัดลอกแล้ว",
+    reportEmail: "ส่งอีเมล",
+    reportGithub: "เปิด GitHub issue",
+    reportSave: "บันทึกไว้ทีหลัง",
+    reportSaved: "บันทึกแล้ว — ส่งใหม่ได้จาก Settings",
+    reportContextual: "มีอะไรผิด? รายงานได้",
+    reportPrivacy: "ไม่มีการติดตาม รายงานจะถูกส่งก็ต่อเมื่อคุณเลือกส่ง",
     settingsReset: "คืนค่าเริ่มต้น",
     browseByLine: "สถานีทั้งหมดแยกตามสาย",
     searchResultsCount: (n: number) => `พบ ${n} สถานี`,
@@ -243,6 +301,7 @@ export const strings = {
     searchingPlaces: "กำลังค้นหาสถานที่…",
     placesUnavailable: "ค้นหาสถานที่ไม่ได้ (ออฟไลน์?) ยังค้นหาสถานีได้ตามปกติ",
     placeNearest: "สถานีที่ใกล้ที่สุด",
+    placeStation: "สถานี",
     placeAway: (d: string) => `ห่าง ${d}`,
     searchStations: "ค้นหาสถานี",
     closeSearch: "ปิดการค้นหา",
