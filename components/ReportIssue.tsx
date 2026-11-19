@@ -260,16 +260,16 @@ export function ReportIssue({
         type="button"
         onClick={() => setOpen(true)}
         aria-label={t.reportIssue}
-        className={`inline-flex h-11 min-w-11 items-center justify-center rounded-full border border-neutral-300 px-2.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800 ${className ?? ""}`}
+        className={`inline-flex h-11 items-center gap-1.5 rounded-full border border-neutral-300 px-3 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800 ${className ?? ""}`}
       >
-        <AlertTriangle size={16} aria-hidden="true" />
-        <span className="sr-only">{t.reportIssue}</span>
+        <AlertTriangle size={14} aria-hidden="true" />
+        <span>{t.report}</span>
       </button>
     ) : trigger === "link" ? (
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`inline-flex items-center gap-1.5 text-xs font-medium text-neutral-600 underline underline-offset-2 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white ${className ?? ""}`}
+        className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border border-neutral-300 bg-neutral-50 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 ${className ?? ""}`}
       >
         <AlertTriangle size={12} aria-hidden="true" />
         {label ?? t.reportContextual}
