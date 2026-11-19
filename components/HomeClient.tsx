@@ -9,6 +9,7 @@ import { StationSearch } from "@/components/StationSearch";
 import { SettingsMenu } from "@/components/SettingsMenu";
 import { InstallHint } from "@/components/InstallHint";
 import { MapLegend } from "@/components/MapLegend";
+import { ReportIssue } from "@/components/ReportIssue";
 import { StopAlertBanner } from "@/components/StopAlertControl";
 import { useStopAlert } from "@/lib/use-stop-alert";
 import { findPath, linesInTheWay, walkEstimate } from "@/lib/transit-graph";
@@ -409,6 +410,18 @@ export function HomeClient({
             </button>
           )}
           <LangToggle />
+          <ReportIssue
+            trigger="header"
+            context={{
+              lang,
+              mapProvider: loadedMap,
+              startCode: start?.code ?? null,
+              destinationCode: destination?.code ?? null,
+              focusStationCode: focusStation?.code ?? null,
+              routeMinutes: path ? path.minutes + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0) : null,
+              routeChanges: path?.changes ?? null,
+            }}
+          />
           <StationSearch onSelectStation={handleSearchSelect} onSelectPlace={handlePlaceSelect} />
           <SettingsMenu />
         </div>

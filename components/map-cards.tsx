@@ -2,6 +2,7 @@
 
 import { shownCode, type Station } from "@/data/stations";
 import { StationActions } from "@/components/StationActions";
+import { ReportIssue } from "@/components/ReportIssue";
 import { GooglePlaceMap } from "@/components/GooglePlaceMap";
 import { readableTextColor } from "@/lib/line-colors";
 import { stationName, useT } from "@/lib/i18n";
@@ -42,6 +43,7 @@ function CardStationName({ station }: { station: Station }) {
 
 export function StationCard({ station, ...route }: { station: Station } & CardRouteState) {
   const color = stationLineColor(station);
+  const { t, lang } = useT();
   return (
     <div className="flex flex-col gap-2 py-0.5">
       <div className="flex items-center gap-2">
@@ -62,6 +64,12 @@ export function StationCard({ station, ...route }: { station: Station } & CardRo
         </p>
       )}
       <StationActions station={station} {...route} />
+      <ReportIssue
+        trigger="link"
+        initialCategory="station"
+        context={{ focusStationCode: station.code, lang }}
+        label={t.reportContextual}
+      />
     </div>
   );
 }

@@ -20,6 +20,7 @@ import { LINE_COLORS, LINE_NAMES } from "@/lib/line-colors";
 import { stationName, useT } from "@/lib/i18n";
 import { distanceLabel } from "@/lib/nearest-station";
 import { StopAlertControl } from "@/components/StopAlertControl";
+import { ReportIssue } from "@/components/ReportIssue";
 import type { FinalWalk } from "@/lib/place-station";
 import type { StopAlert } from "@/lib/use-stop-alert";
 
@@ -471,6 +472,22 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
             <div className="mt-1 border-t border-neutral-200 px-4 py-2.5 dark:border-neutral-800">
               <GoogleMapsLink href={directionsUrl(userPosition ?? state.start, state.destination)} />
             </div>
+            {state.path && (
+              <div className="border-t border-neutral-200 px-4 py-2 dark:border-neutral-800">
+                <ReportIssue
+                  trigger="link"
+                  initialCategory="route"
+                  context={{
+                    lang,
+                    startCode: state.start.code,
+                    destinationCode: state.destination.code,
+                    routeMinutes: totalMinutes,
+                    routeChanges: changes,
+                  }}
+                  label={t.reportContextual}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
