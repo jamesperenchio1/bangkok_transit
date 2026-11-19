@@ -7,8 +7,8 @@ const changesAt = (path: PathResult | null) => path?.legs.filter((l) => l.isChan
 describe("findPath", () => {
   it("rides a single line without changes", () => {
     const path = findPath("N8", "CEN");
-    expect(codes(path)).toEqual(["N8", "N7", "N6", "N5", "N4", "N3", "N2", "N1", "CEN"]);
-    expect(path).toMatchObject({ stops: 8, changes: 0, walkMeters: 0 });
+    expect(codes(path)).toEqual(["N8", "N7", "N5", "N4", "N3", "N2", "N1", "CEN"]);
+    expect(path).toMatchObject({ stops: 7, changes: 0, walkMeters: 0 });
     expect(path!.legs[0].boardToward?.code).toBe("E23");
   });
 

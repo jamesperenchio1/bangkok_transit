@@ -8,7 +8,7 @@ import {
   type LatLon,
   type LineSegments,
 } from "@/lib/line-geometry";
-import { stationsByCode } from "@/data/stations";
+import { stations, stationsByCode } from "@/data/stations";
 import sequences from "@/data/line-sequences.json";
 
 const geometry: LineSegments = JSON.parse(readFileSync("public/line-geometry.json", "utf8"));
@@ -188,5 +188,59 @@ describe("loadLineGeometryInBackground", () => {
     stop();
     await vi.advanceTimersByTimeAsync(60_000);
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * The station points come from BMA's GIS data and are the reference; the
+ * drawn track is derived from them. This pins how closely the two agree so a
+ * geometry edit (or a bad station coordinate) that pulls a dot off its line
+ * fails here instead of on the map. If a dot ever looks "off the line", the
+ * cause is more likely a marker anchor than the data - check this first.
+ *
+ * Known outlier: PK01 Nonthaburi Civic Center sits ~37 m from the Pink track.
+ * Verify it against OSM before moving either the station or the line.
+ */
+describe("station points sit on their line's track", () => {
+  const R = 6_371_000;
+  const rad = Math.PI / 180;
+
+  /** Metres from `p` to segment a-b, on a local flat projection (fine at city scale). */
+  function distanceToSegment(p: LatLon, a: LatLon, b: LatLon): number {
+    const k = Math.cos(p[0] * rad);
+    const xy = (q: LatLon): [number, number] => [(q[1] - p[1]) * rad * R * k, (q[0] - p[0]) * rad * R];
+    const [ax, ay] = xy(a);
+    const [bx, by] = xy(b);
+    const dx = bx - ax;
+    const dy = by - ay;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 ? Math.max(0, Math.min(1, (-ax * dx - ay * dy) / len2)) : 0;
+    return Math.hypot(ax + t * dx, ay + t * dy);
+  }
+
+  const gaps = stations.map((s) => {
+    let best = Infinity;
+    for (const { line } of s.lines) {
+      for (const segment of geometry[line] ?? []) {
+        for (let i = 0; i < segment.length - 1; i++) {
+          best = Math.min(best, distanceToSegment([s.lat, s.lon], segment[i], segment[i + 1]));
+        }
+      }
+    }
+    return { code: s.code, name: s.nameEn, meters: best };
+  });
+
+  it("finds a track for every station", () => {
+    expect(gaps.filter((g) => !Number.isFinite(g.meters)).map((g) => g.code)).toEqual([]);
+  });
+
+  it("keeps every station within 40 m of its track", () => {
+    const far = gaps.filter((g) => g.meters > 40).map((g) => `${g.code} ${g.name} ${g.meters.toFixed(1)} m`);
+    expect(far).toEqual([]);
+  });
+
+  it("keeps at least 95% of stations within 10 m", () => {
+    const close = gaps.filter((g) => g.meters <= 10).length;
+    expect(close / gaps.length).toBeGreaterThanOrEqual(0.95);
   });
 });

@@ -1,0 +1,136 @@
+{
+  "note": "Hand-maintained transfer and cap rules, applied by lib/fares.ts on top of the per-system tables in fares.json (which CI regenerates). Each rule names its source and how sure we are. Rules are date-gated (Asia/Bangkok) and `enabled: false` rules are recorded but never applied. Station ids are internal ids, not display codes (see AGENTS.md). Checked 2026-11-13.",
+  "rules": [
+    {
+      "id": "blue-to-purple-entry-once",
+      "kind": "entryOnce",
+      "from": "blue",
+      "to": "purple",
+      "sameStation": true,
+      "amount": 14,
+      "windowMinutes": null,
+      "payment": "any",
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "enabled": true,
+      "confidence": "reported",
+      "source": "MRTA Purple Line fare regulation effective 2026-07-03: the entry fare is charged once when changing between MRTA lines at stations the MRTA board designates (https://www.nationthailand.com/news/40067698). No designated station is named; 14 baht is MRTA's entry fee. Checked against a rider: Bang Sue to Wong Sawang is 17 + 20 - 14 = 23.",
+      "message": {
+        "en": "Includes a ฿{amount} transfer discount (entry fee waived or refunded to the same EMV card).",
+        "th": "รวมส่วนลดการเปลี่ยนสาย ฿{amount} (ไม่คิดค่าแรกเข้า หรือคืนเข้าบัตร EMV ใบเดิม)"
+      }
+    },
+    {
+      "id": "purple-to-blue-entry-once",
+      "kind": "entryOnce",
+      "from": "purple",
+      "to": "blue",
+      "sameStation": true,
+      "amount": 14,
+      "windowMinutes": null,
+      "payment": "any",
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "enabled": true,
+      "confidence": "reported",
+      "source": "Same MRTA regulation as blue-to-purple-entry-once, other direction.",
+      "message": {
+        "en": "Includes a ฿{amount} transfer discount (entry fee waived or refunded to the same EMV card).",
+        "th": "รวมส่วนลดการเปลี่ยนสาย ฿{amount} (ไม่คิดค่าแรกเข้า หรือคืนเข้าบัตร EMV ใบเดิม)"
+      }
+    },
+    {
+      "id": "blue-to-yellow-lat-phrao",
+      "kind": "refund",
+      "from": "blue",
+      "to": "yellow",
+      "fromStation": "BL26",
+      "toStation": "YL01",
+      "amount": 15,
+      "windowMinutes": 30,
+      "payment": "emv-same-card",
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "enabled": true,
+      "confidence": "confirmed",
+      "source": "Eastern Bangkok Monorail terms (BL15 -> YL01 in the operator's numbering): exit Blue and enter Yellow within 30 minutes on the same EMV card for a 15 baht entry-fee discount, refunded within 3 days (7 working days by issuer). https://ebm.co.th/en/ticket-emv/ (read 2026-11-13). Only this direction is documented.",
+      "message": {
+        "en": "Includes a ฿{amount} transfer discount: tap out of Blue and into Yellow at Lat Phrao within 30 minutes with the same contactless (EMV) card; the entry fee is refunded to the card.",
+        "th": "รวมส่วนลดการเปลี่ยนสาย ฿{amount}: แตะออกสายสีน้ำเงินและแตะเข้าสายสีเหลืองที่ลาดพร้าวภายใน 30 นาทีด้วยบัตร EMV ใบเดิม ค่าแรกเข้าจะคืนเข้าบัตร"
+      }
+    },
+    {
+      "id": "purple-to-pink-nonthaburi-civic-center",
+      "kind": "refund",
+      "from": "purple",
+      "to": "pink",
+      "fromStation": "PP11",
+      "toStation": "PK01",
+      "amount": 15,
+      "windowMinutes": 30,
+      "payment": "emv-same-card",
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "enabled": true,
+      "confidence": "confirmed",
+      "source": "Northern Bangkok Monorail terms: exit Purple at Nonthaburi Civic Center (PP11) and enter Pink (PK01) within 30 minutes on the same EMV card for 15 baht off the Pink entry fee, refunded within 3 days (7 working days by issuer). https://nbm.co.th/en/ticket-emv/ (read 2026-11-13).",
+      "message": {
+        "en": "Includes a ฿{amount} transfer discount: tap out of Purple and into Pink at Nonthaburi Civic Center within 30 minutes with the same contactless (EMV) card; the entry fee is refunded to the card.",
+        "th": "รวมส่วนลดการเปลี่ยนสาย ฿{amount}: แตะออกสายสีม่วงและแตะเข้าสายสีชมพูที่ศูนย์ราชการนนทบุรีภายใน 30 นาทีด้วยบัตร EMV ใบเดิม ค่าแรกเข้าจะคืนเข้าบัตร"
+      }
+    },
+    {
+      "id": "pink-to-purple-nonthaburi-civic-center",
+      "kind": "refund",
+      "from": "pink",
+      "to": "purple",
+      "fromStation": "PK01",
+      "toStation": "PP11",
+      "amount": 14,
+      "windowMinutes": 30,
+      "payment": "emv-same-card",
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "enabled": false,
+      "confidence": "reported",
+      "source": "One BEM post seen only in a search snippet says 14 baht in this direction, and Infoquest (Jan 2024) says 13-14. Neither the Pink nor the Blue operator page documents it, so it is recorded but not applied. Enable only after reading the operator's own terms.",
+      "message": {
+        "en": "Includes a ฿{amount} transfer discount (same contactless card within 30 minutes).",
+        "th": "รวมส่วนลดการเปลี่ยนสาย ฿{amount} (บัตร EMV ใบเดิมภายใน 30 นาที)"
+      }
+    },
+    {
+      "id": "red-purple-day-cap",
+      "kind": "dailyCap",
+      "systems": ["purple", "srtRed"],
+      "cap": 40,
+      "payment": "emv-same-card",
+      "effectiveFrom": "2025-12-01",
+      "effectiveTo": "2026-11-30",
+      "enabled": true,
+      "confidence": "confirmed",
+      "source": "MRTA and SRT 40 baht a day for Purple plus Red, EMV only, 1 Dec 2025 to 30 Nov 2026, refunded in 1-3 days (https://www.infoquest.co.th/?p=550437). Whether it is extended past 30 Nov 2026 is reported by one source only (Thairath, 2026-10-21), so it stops on that date until an operator notice says otherwise.",
+      "message": {
+        "en": "Includes ฿{amount} off: Purple and Red are capped at ฿40 a day with a contactless (EMV) card (to 30 Nov 2026); the rest is refunded to the card.",
+        "th": "รวมส่วนลด ฿{amount}: สายสีม่วงและสายสีแดงเหมาจ่ายวันละ ฿40 เมื่อใช้บัตร EMV (ถึง 30 พ.ย. 2569) ส่วนเกินคืนเข้าบัตร"
+      }
+    },
+    {
+      "id": "joint-ticket-2027",
+      "kind": "joint",
+      "systems": ["bts", "blue", "purple", "arl", "srtRed", "yellow", "pink"],
+      "entryFeeMax": 17,
+      "cap": 45,
+      "payment": "emv-same-card",
+      "effectiveFrom": "2027-01-01",
+      "effectiveTo": "2027-12-31",
+      "enabled": false,
+      "confidence": "reported",
+      "source": "Cabinet approved a 17-45 baht joint ticket for 2027 on 2026-11-03 (https://www.naewna.com/n/top-stories/146406/). The designated interchanges and the implementing regulation are not published, and it needs a Thai-national Paotang registration, so nothing is applied. Kept here so turning it on is a data edit once the rules exist.",
+      "message": {
+        "en": "Includes ฿{amount} off under the joint rail ticket.",
+        "th": "รวมส่วนลด ฿{amount} ตามตั๋วร่วม"
+      }
+    }
+  ]
+}

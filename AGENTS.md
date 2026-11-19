@@ -1,6 +1,6 @@
 <!-- BEGIN:nextjs-agent-rules -->
 
-# This is NOT the Next.js you know
+## This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
 
@@ -22,13 +22,19 @@ live BTS arrivals, live at bangkok-transit.com. Read `README.md` first, then
   file written by one Durable Object. Don't add API routes, per-user fetches
   to the upstream, or anything that needs a paid plan. Keep the Cloudflare
   free-tier numbers in `docs/architecture.md#cost-model` true.
-  **The one exception, waived by the owner:** the paid x402 API for AI agents
-  (`worker/`, served under `/api/*`). It is the site's only server code, it runs
-  only for `/api/*` (`assets.run_worker_first` in `wrangler.jsonc` must stay
-  exactly `["/api/*"]`), and every call that costs us anything is paid for by
-  its caller. Never put a Worker, or any per-request work, in front of pages,
-  the map or the data files, and never serve paid data without payment
-  (`tests/x402-worker.test.ts` checks that every paid route answers 402 unpaid).
+  - Default users stay on MapLibre/OpenFreeMap and make zero Google requests.
+    The map is cached on the device so it works offline; that is why it is
+    the default. The opt-in Google map and Google Places search are an exception: a
+    browser key restricted by HTTP referrer and API, with daily quotas and a
+    budget alert. They are billed per request when enabled; never put them in
+    the default path.
+  - **The one server-code exception, waived by the owner:** the paid x402 API for AI agents
+    (`worker/`, served under `/api/*`). It is the site's only server code, it runs
+    only for `/api/*` (`assets.run_worker_first` in `wrangler.jsonc` must stay
+    exactly `["/api/*"]`), and every call that costs us anything is paid for by
+    its caller. Never put a Worker, or any per-request work, in front of pages,
+    the map or the data files, and never serve paid data without payment
+    (`tests/x402-worker.test.ts` checks that every paid route answers 402 unpaid).
 - **Never per-user calls to `bts-api.topmile.com`.** It has no CORS, no batch
   endpoint and a ~180/min rate limit; only `cloudflare/poller` talks to it.
 - **Honest live data.** Old readings are shown as last-known with their age
@@ -45,6 +51,21 @@ live BTS arrivals, live at bangkok-transit.com. Read `README.md` first, then
   cards are MapLibre popups rendered as separate React roots, which is why
   language lives in a Zustand store (`lib/i18n.ts`), not context.
   `window.__map` exposes the map for debugging and e2e.
+- `components/GoogleTransitMap.tsx` — the opt-in Google basemap (Settings →
+  Map). It must stay a *twin* of `TransitMap`, not a second app: everything
+  that decides **what** to draw lives in shared, library-free modules —
+  `lib/map-data.ts` (station visuals, line/route geometry, label text,
+  camera padding), `lib/train-model.ts` (train placement, text, arrow shape),
+  `lib/label-layout.ts` (collision), `components/map-cards.tsx` (station /
+  place / train cards) — and both maps only differ in **how** they draw it.
+  Change what the map shows in those modules first; never in one map only.
+  `lib/map-provider.ts` decides which map mounts and falls back to MapLibre
+  (offline, no key, load failure). `components/google-layer.ts` is the one
+  DOM overlay the Google map keeps its markers in (zero-size anchors, so a
+  dot is exactly on its coordinate).
+- `components/settings/` — Settings: a category list plus one section at a
+  time (full screen on phones). Rows are data in `catalog/*.ts`; every stored
+  setting is owned by one section in `SECTION_KEYS` (a test pins it).
 - `components/RoutePanel.tsx` — the route sheet (legs, walks, boarding
   direction, live times at each boarding point).
 - `lib/transit-graph.ts` — routing (see below). `lib/line-geometry.ts` —
@@ -81,6 +102,12 @@ Muang Thong Thani spur) is a change.
 same-building interchanges are one node with several `lines`. `findPath`
 runs Dijkstra over (station, mode, service) states with a minutes cost model and
 returns legs with `mode: "start" | "ride" | "walk"`.
+
+A place picked from search routes through the station that gets there soonest,
+not the geographically nearest: `lib/place-station.ts` compares the closest few
+by `findPath(...).minutes + walkEstimate(meters)` (one minute of tie-break in
+favour of the nearest). The route then ends with the walk to the place, dashed
+on both maps and counted in the sheet's total (`finalWalk`).
 
 A station's `code` is a stable **internal id**: it is in `?from=`/`?to=` links,
 page slugs and the fare/hop data, so never renumber it. For BTS/Gold/Yellow/Pink

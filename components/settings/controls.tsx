@@ -1,22 +1,67 @@
 "use client";
 
-import { useId, useState } from "react";
-import type { LineKey } from "@/data/stations";
+import { Fragment, useId, useState } from "react";
+import { Check } from "lucide-react";
 import { LINE_COLORS, LINE_NAMES, LINE_ORDER } from "@/lib/line-colors";
 import { useLangStore, useT, type Lang } from "@/lib/i18n";
-import { useSettingsStore, type Settings } from "@/lib/settings-store";
+import { googleMapsKey } from "@/lib/google-maps";
+import { DEFAULT_SETTINGS, useSettingsStore, type Settings } from "@/lib/settings-store";
 import type { ActionId, Row, Text } from "./types";
 
 const pick = (text: Text, lang: Lang) => text[lang];
 
-function Label({ row, lang, id }: { row: { label: Text; hint?: Text }; lang: Lang; id: string }) {
+/** Which map the rider is effectively on: Google only when chosen and usable in this build. */
+export function effectiveProvider(settings: Settings): "standard" | "google" {
+  return settings.mapProvider === "google" && googleMapsKey() !== "" ? "google" : "standard";
+}
+
+/** Whether a row applies right now: not for the other map, and not without what it needs. */
+export function rowVisible(row: Row, settings: Settings): boolean {
+  if (row.requires === "googleKey" && !googleMapsKey()) return false;
+  if (row.provider && row.provider !== effectiveProvider(settings)) return false;
+  return true;
+}
+
+/** True when a stored setting differs from its default. */
+export function isChanged(key: keyof Settings, value: unknown): boolean {
+  return JSON.stringify(value) !== JSON.stringify(DEFAULT_SETTINGS[key]);
+}
+
+function Label({
+  row,
+  lang,
+  id,
+  changed = false,
+}: {
+  row: { label: Text; hint?: Text };
+  lang: Lang;
+  id: string;
+  /** Differs from the default: marked, so what you have touched is easy to see. */
+  changed?: boolean;
+}) {
   return (
     <span className="min-w-0 flex-1 py-1.5">
-      <span id={id} className="block text-sm font-medium">
+      <span id={id} className="flex items-center gap-1.5 text-sm font-medium">
         {pick(row.label, lang)}
+        {changed && (
+          <>
+            <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-green-700 dark:bg-green-500" />
+            <span className="sr-only">{lang === "th" ? "(เปลี่ยนจากค่าเริ่มต้น)" : "(changed from default)"}</span>
+          </>
+        )}
       </span>
-      {row.hint && <span className="block text-xs text-neutral-600 dark:text-neutral-400">{pick(row.hint, lang)}</span>}
+      {row.hint && <span className="mt-0.5 block text-xs text-neutral-600 dark:text-neutral-400">{pick(row.hint, lang)}</span>}
     </span>
+  );
+}
+
+/** The small heading above a group of rows. */
+export function GroupHeading({ text }: { text: Text }) {
+  const lang = useLangStore((s) => s.lang);
+  return (
+    <h4 className="px-2 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wide text-neutral-600 first:pt-1 dark:text-neutral-400">
+      {pick(text, lang)}
+    </h4>
   );
 }
 
@@ -33,7 +78,7 @@ function Toggle({ row, lang }: { row: Extract<Row, { kind: "toggle" }>; lang: La
       onClick={() => update({ [row.key]: !on })}
       className="flex min-h-11 w-full items-center gap-3 rounded-lg px-2 text-left hover:bg-neutral-100 dark:hover:bg-neutral-800"
     >
-      <Label row={row} lang={lang} id={labelId} />
+      <Label row={row} lang={lang} id={labelId} changed={isChanged(row.key, on)} />
       <span
         aria-hidden="true"
         className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${on ? "bg-green-700" : "bg-neutral-400 dark:bg-neutral-600"}`}
@@ -48,22 +93,38 @@ function Choice({ row, lang }: { row: Extract<Row, { kind: "choice" }>; lang: La
   const value = useSettingsStore((s) => s.settings[row.key]) as string;
   const update = useSettingsStore((s) => s.update);
   const labelId = useId();
+  const options = row.options.filter((o) => o.requires !== "googleKey" || googleMapsKey() !== "");
+  // Two or three short options read best as one segmented control that fills the row.
+  const segmented = options.length <= 3;
   return (
     <div className="px-2 py-1">
-      <Label row={row} lang={lang} id={labelId} />
-      <div role="radiogroup" aria-labelledby={labelId} className="mt-1 flex flex-wrap gap-1.5">
-        {row.options.map((o) => (
+      <Label row={row} lang={lang} id={labelId} changed={isChanged(row.key, value)} />
+      <div
+        role="radiogroup"
+        aria-labelledby={labelId}
+        className={segmented ? "mt-1 grid gap-1 rounded-xl bg-neutral-100 p-1 dark:bg-neutral-800" : "mt-1 flex flex-wrap gap-1.5"}
+        style={segmented ? { gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` } : undefined}
+      >
+        {options.map((o) => (
           <button
             key={o.value}
             type="button"
             role="radio"
             aria-checked={value === o.value}
             onClick={() => update({ [row.key]: o.value })}
-            className={`min-h-11 rounded-full border px-3.5 text-sm font-medium ${
-              value === o.value
-                ? "border-green-700 bg-green-700 text-white"
-                : "border-neutral-300 hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-800"
-            }`}
+            className={
+              segmented
+                ? `min-h-11 rounded-lg px-2 text-sm font-medium ${
+                    value === o.value
+                      ? "bg-green-700 text-white shadow-sm"
+                      : "text-neutral-800 hover:bg-white dark:text-neutral-200 dark:hover:bg-neutral-700"
+                  }`
+                : `min-h-11 rounded-full border px-3.5 text-sm font-medium ${
+                    value === o.value
+                      ? "border-green-700 bg-green-700 text-white"
+                      : "border-neutral-300 hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-800"
+                  }`
+            }
           >
             {pick(o.label, lang)}
           </button>
@@ -81,7 +142,7 @@ function Range({ row, lang }: { row: Extract<Row, { kind: "range" }>; lang: Lang
   return (
     <div className="px-2 py-1">
       <div className="flex items-baseline gap-2">
-        <Label row={row} lang={lang} id={labelId} />
+        <Label row={row} lang={lang} id={labelId} changed={isChanged(row.key, value)} />
         <output className="shrink-0 text-sm tabular-nums text-neutral-700 dark:text-neutral-300">{shown}</output>
       </div>
       <input
@@ -98,39 +159,73 @@ function Range({ row, lang }: { row: Extract<Row, { kind: "range" }>; lang: Lang
   );
 }
 
-/** One chip per line. `inverted`: lit = shown (the setting stores the hidden ones); otherwise lit = selected. */
-function Lines({ row, lang }: { row: Extract<Row, { kind: "lines" }>; lang: Lang }) {
-  const list = useSettingsStore((s) => s.settings[row.key]) as LineKey[];
+/**
+ * One row per line, two switches each: whether the line is drawn on the map,
+ * and whether route planning may ride it. They are independent - a line can be
+ * hidden from the map and still used for routes, or drawn and left out of
+ * routes. Compact on purpose (one 44 px row per line) so all of them fit on a
+ * phone without a long scroll.
+ */
+function LineTable({ row, lang }: { row: Extract<Row, { kind: "lineTable" }>; lang: Lang }) {
+  const hidden = useSettingsStore((s) => s.settings.hiddenLines);
+  const unused = useSettingsStore((s) => s.settings.unusedLines);
   const toggleLine = useSettingsStore((s) => s.toggleLine);
+  const update = useSettingsStore((s) => s.update);
   const labelId = useId();
+  const T = (en: string, th: string) => (lang === "th" ? th : en);
+  const cell = (on: boolean, label: string, onClick: () => void) => (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      onClick={onClick}
+      className={`mx-auto flex h-11 w-14 items-center justify-center rounded-xl border-2 ${
+        on
+          ? "border-green-700 bg-green-700 text-white"
+          : "border-neutral-300 text-transparent hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-800"
+      }`}
+    >
+      <Check size={20} strokeWidth={3} aria-hidden="true" />
+    </button>
+  );
   return (
-    <div className="px-2 py-1">
-      <Label row={row} lang={lang} id={labelId} />
-      <div role="group" aria-labelledby={labelId} className="mt-1 grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
-        {LINE_ORDER.map((line) => {
-          const listed = list.includes(line);
-          const on = row.inverted ? !listed : listed;
-          return (
-            <button
-              key={line}
-              type="button"
-              role="switch"
-              aria-checked={on}
-              onClick={() => toggleLine(row.key, line)}
-              className="flex min-h-11 items-center gap-2 rounded-lg border border-neutral-300 px-3 text-left text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
-            >
-              <span
-                aria-hidden="true"
-                className="h-3 w-3 shrink-0 rounded-full border border-black/20"
-                style={{ backgroundColor: on ? LINE_COLORS[line] : "transparent" }}
-              />
-              <span lang="en" className={row.inverted && !on ? "text-neutral-500 line-through" : ""}>
+    <div className="px-2 py-1" role="group" aria-labelledby={labelId}>
+      <Label row={row} lang={lang} id={labelId} changed={isChanged("hiddenLines", hidden) || isChanged("unusedLines", unused)} />
+      <div className="mt-1 grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem] items-center gap-x-2 min-[400px]:grid-cols-[minmax(0,1fr)_4.5rem_4.5rem]">
+        <span aria-hidden="true" />
+        <span aria-hidden="true" className="text-center text-[11px] font-semibold uppercase leading-tight tracking-wide text-neutral-600 dark:text-neutral-400">
+          {T("On map", "บนแผนที่")}
+        </span>
+        <span aria-hidden="true" className="text-center text-[11px] font-semibold uppercase leading-tight tracking-wide text-neutral-600 dark:text-neutral-400">
+          {T("Routes", "เส้นทาง")}
+        </span>
+        {LINE_ORDER.map((line) => (
+          <Fragment key={line}>
+            <span className="flex min-h-12 min-w-0 items-center gap-2 border-t border-neutral-200 text-sm dark:border-neutral-800">
+              <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-full border border-black/20" style={{ backgroundColor: LINE_COLORS[line] }} />
+              <span lang="en" className="truncate">
                 {LINE_NAMES[line]}
               </span>
-            </button>
-          );
-        })}
+            </span>
+            <span className="border-t border-neutral-200 dark:border-neutral-800">
+              {cell(!hidden.includes(line), `${LINE_NAMES[line]}: ${T("show on map", "แสดงบนแผนที่")}`, () => toggleLine("hiddenLines", line))}
+            </span>
+            <span className="border-t border-neutral-200 dark:border-neutral-800">
+              {cell(!unused.includes(line), `${LINE_NAMES[line]}: ${T("use for routes", "ใช้ในการวางแผนเส้นทาง")}`, () => toggleLine("unusedLines", line))}
+            </span>
+          </Fragment>
+        ))}
       </div>
+      {(hidden.length > 0 || unused.length > 0) && (
+        <button
+          type="button"
+          onClick={() => update({ hiddenLines: [], unusedLines: [] })}
+          className="mt-2 inline-flex min-h-11 items-center rounded-full border border-neutral-300 px-4 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-800"
+        >
+          {T("Turn every line back on", "เปิดทุกสายอีกครั้ง")}
+        </button>
+      )}
     </div>
   );
 }
@@ -197,8 +292,9 @@ function Action({ row, lang }: { row: Extract<Row, { kind: "action" }>; lang: La
     clearMap: async () => {
       try {
         await caches.delete("openfreemap-tiles");
-        const { OFFLINE_DONE_KEY } = await import("@/lib/offline-warm");
+        const { OFFLINE_DONE_KEY, OFFLINE_OVERVIEW_KEY } = await import("@/lib/offline-warm");
         localStorage.removeItem(OFFLINE_DONE_KEY);
+        localStorage.removeItem(OFFLINE_OVERVIEW_KEY);
         setStatus(T("Deleted. It will be downloaded again on a later visit.", "ลบแล้ว จะดาวน์โหลดใหม่ในการเข้าครั้งถัดไป"));
       } catch {
         setStatus(T("Nothing to delete.", "ไม่มีอะไรให้ลบ"));
@@ -247,8 +343,8 @@ function Action({ row, lang }: { row: Extract<Row, { kind: "action" }>; lang: La
     about: () =>
       setStatus(
         T(
-          "Bangkok Transit. Map data © OpenStreetMap contributors, tiles by OpenFreeMap, places by Photon. Live BTS times are estimates.",
-          "Bangkok Transit ข้อมูลแผนที่ © ผู้ร่วมจัดทำ OpenStreetMap, แผนที่ย่อยโดย OpenFreeMap, สถานที่โดย Photon เวลารถไฟสดเป็นค่าประมาณ",
+          "Bangkok Transit. Map data © OpenStreetMap contributors, tiles by OpenFreeMap, places by Google. Live BTS times are estimates.",
+          "Bangkok Transit ข้อมูลแผนที่ © ผู้ร่วมจัดทำ OpenStreetMap, แผนที่ย่อยโดย OpenFreeMap, สถานที่โดย Google เวลารถไฟสดเป็นค่าประมาณ",
         ),
       ),
   };
@@ -292,8 +388,8 @@ export function RowView({ row }: { row: Row }) {
       return <Choice row={row} lang={lang} />;
     case "range":
       return <Range row={row} lang={lang} />;
-    case "lines":
-      return <Lines row={row} lang={lang} />;
+    case "lineTable":
+      return <LineTable row={row} lang={lang} />;
     case "language":
       return <LanguageRow row={row} lang={lang} />;
     case "action":
@@ -303,7 +399,10 @@ export function RowView({ row }: { row: Row }) {
 
 /** The key of a row, for React lists. */
 export function rowId(row: Row): string {
-  return row.kind === "action" ? `a-${row.id}` : row.kind === "language" ? "language" : String(row.key);
+  if (row.kind === "action") return `a-${row.id}`;
+  if (row.kind === "language") return "language";
+  if (row.kind === "lineTable") return "lineTable";
+  return String(row.key);
 }
 
 export type { Settings };

@@ -1,33 +1,29 @@
 import * as maplibregl from "maplibre-gl";
-import { stations } from "@/data/stations";
 import { serverNow, useArrivalsStore } from "@/lib/arrivals-store";
-import { stationName, strings, useLangStore } from "@/lib/i18n";
-import { LINE_NAMES } from "@/lib/line-colors";
-import { haversineMeters, trackBetween, type LatLon, type LineSegments } from "@/lib/line-geometry";
-import { estimateTrains, trainOnRoute, type TrainEstimate, type TrainLine } from "@/lib/live-trains";
+import { strings, useLangStore } from "@/lib/i18n";
+import type { LineSegments } from "@/lib/line-geometry";
+import { estimateTrains, trainOnRoute, type TrainEstimate } from "@/lib/live-trains";
 import { useSettingsStore, type Settings } from "@/lib/settings-store";
+import {
+  TRAIN_FRAME_MS as FRAME_MS,
+  TRAIN_ARROW_PATH,
+  TRAIN_ICON_SIZE,
+  TRAIN_SIZE_FACTOR as SIZE_FACTOR,
+  TRAIN_SLOW_FRAME_MS as REDUCED_MOTION_FRAME_MS,
+  TRAIN_TAP_RADIUS_PX as TAP_RADIUS_PX,
+  TRAIN_ZOOM_STOPS,
+  VISIBLE_MOVE_PX,
+  VISIBLE_TURN_DEG,
+  createTrainPlacer,
+  describeTrain,
+  summariseTrain,
+  turnBetween,
+} from "@/lib/train-model";
 
 export const TRAINS_SOURCE = "live-trains";
 export const TRAINS_LAYER = "live-trains-layer";
 const TRAINS_LABEL_LAYER = "live-trains-label-layer";
 const TRAINS_HIT_LAYER = "live-trains-hit-layer";
-
-/** ~4 fps: a train moves a few pixels a second, so this reads as smooth without a render loop. */
-const FRAME_MS = 250;
-/** For people who ask for less motion: positions still refresh, just without a steady glide. */
-const REDUCED_MOTION_FRAME_MS = 5_000;
-/**
- * Radius of the invisible tap target around each train. 22 px is a 44 px
- * circle - the WCAG 2.5.8 minimum the rest of the app holds to - and far more
- * than the train itself covers at city zoom, so a moving train is easy to hit.
- */
-const TAP_RADIUS_PX = 24;
-
-/** Smaller than this on screen is invisible: not worth a map render. */
-const VISIBLE_MOVE_PX = 0.75;
-
-/** A turn smaller than this is not visible on a train icon. */
-const VISIBLE_TURN_DEG = 5;
 
 interface DrawnTrain {
   at: [number, number];
@@ -44,8 +40,7 @@ function trainsMoved(
     const before = drawn.get(id);
     if (!before) return true;
     // At a bend the icon turns while its centre barely moves.
-    const turn = Math.abs(((bearing - before.bearing + 540) % 360) - 180);
-    if (turn >= VISIBLE_TURN_DEG) return true;
+    if (turnBetween(bearing, before.bearing) >= VISIBLE_TURN_DEG) return true;
     const a = map.project(at);
     const b = map.project(before.at);
     if (Math.hypot(a.x - b.x, a.y - b.y) >= VISIBLE_MOVE_PX) return true;
@@ -53,15 +48,7 @@ function trainsMoved(
   return false;
 }
 
-const stationsByCode = new Map(stations.map((s) => [s.code, s]));
 const TRAIN_ICON = "live-train";
-
-interface Track {
-  /** [lon, lat] points, the order MapLibre wants. */
-  points: [number, number][];
-  /** Metres from the start to each point. */
-  along: number[];
-}
 
 /**
  * A bold navigation arrow, tip up, so direction reads from the shape alone:
@@ -73,7 +60,7 @@ interface Track {
  */
 function drawTrainIcon(): ImageData | null {
   const ratio = 2;
-  const S = 44;
+  const S = TRAIN_ICON_SIZE;
   const canvas = document.createElement("canvas");
   canvas.width = S * ratio;
   canvas.height = S * ratio;
@@ -81,12 +68,7 @@ function drawTrainIcon(): ImageData | null {
   if (!ctx) return null;
   ctx.scale(ratio, ratio);
   ctx.lineJoin = "round";
-  const arrow = new Path2D();
-  arrow.moveTo(22, 4);
-  arrow.lineTo(38, 38);
-  arrow.lineTo(22, 30);
-  arrow.lineTo(6, 38);
-  arrow.closePath();
+  const arrow = new Path2D(TRAIN_ARROW_PATH);
   // Outer dark edge, then white outline, then the navy body.
   ctx.strokeStyle = "#0b1220";
   ctx.lineWidth = 8;
@@ -99,11 +81,14 @@ function drawTrainIcon(): ImageData | null {
   return ctx.getImageData(0, 0, S * ratio, S * ratio);
 }
 
-const SIZE_FACTOR = { small: 0.75, medium: 1, large: 1.3 } as const;
-
 /** Icon size by zoom, scaled (a zoom expression can only sit at the top level, so the factor goes into the stops). */
 function iconSize(factor: number): maplibregl.ExpressionSpecification {
-  return ["interpolate", ["linear"], ["zoom"], 9, 0.5 * factor, 12, 0.65 * factor, 15, 0.85 * factor, 17, factor];
+  return [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    ...TRAIN_ZOOM_STOPS.flatMap(([zoom, scale]) => [zoom, scale * factor]),
+  ] as unknown as maplibregl.ExpressionSpecification;
 }
 
 /** Train features carry `onRoute`; this keeps only the ones that are. */
@@ -181,76 +166,11 @@ interface LiveTrainsOptions {
  * card that follows it.
  */
 export function startLiveTrains(map: maplibregl.Map, { getSegments, getRouteHops, stationHitLayer }: LiveTrainsOptions): () => void {
-  const tracks = new Map<string, Track>();
+  const place = createTrainPlacer();
   let drawn = false;
   let latest = new Map<string, { train: TrainEstimate; at: [number, number] }>();
   let selected: { id: string; popup: maplibregl.Popup; title: HTMLElement; toward: HTMLElement; next: HTMLElement } | null =
     null;
-
-  function trackFor(line: TrainLine, fromCode: string, toCode: string, segments: LineSegments): Track | null {
-    const key = `${line}|${fromCode}|${toCode}`;
-    const cached = tracks.get(key);
-    if (cached) return cached;
-    const from = stationsByCode.get(fromCode);
-    const to = stationsByCode.get(toCode);
-    if (!from || !to) return null;
-    const latLons: LatLon[] = trackBetween(segments, line, from, to);
-    const points = latLons.map(([lat, lon]): [number, number] => [lon, lat]);
-    const along = [0];
-    for (let i = 1; i < latLons.length; i++) along.push(along[i - 1] + haversineMeters(latLons[i - 1], latLons[i]));
-    const track = { points, along };
-    tracks.set(key, track);
-    return track;
-  }
-
-  /** Compass bearing (degrees clockwise from north) of the step from point i-1 to i. */
-  function bearing(track: Track, i: number): number {
-    const [x0, y0] = track.points[i - 1];
-    const [x1, y1] = track.points[i];
-    const east = (x1 - x0) * Math.cos(((y0 + y1) / 2) * (Math.PI / 180));
-    const north = y1 - y0;
-    return ((Math.atan2(east, north) * 180) / Math.PI + 360) % 360;
-  }
-
-  /** Where the train is and which way it faces, both along the real track. */
-  function place(train: TrainEstimate, segments: LineSegments): { at: [number, number]; bearing: number } | null {
-    const [fromCode, toCode] = train.heading;
-    const track = trackFor(train.line, fromCode, toCode, segments);
-    if (!track || track.points.length < 2) return null;
-
-    if (train.fromCode === train.toCode) {
-      // At a station: on its marker, facing along the hop it leaves by (or
-      // arrived by, at the end of the line).
-      const s = stationsByCode.get(train.fromCode);
-      if (!s) return null;
-      const last = train.fromCode === toCode;
-      return { at: [s.lon, s.lat], bearing: bearing(track, last ? track.points.length - 1 : 1) };
-    }
-
-    const target = track.along[track.along.length - 1] * train.fraction;
-    let i = 1;
-    while (i < track.along.length - 1 && track.along[i] < target) i++;
-    const span = track.along[i] - track.along[i - 1];
-    const t = span > 0 ? (target - track.along[i - 1]) / span : 0;
-    const [x0, y0] = track.points[i - 1];
-    const [x1, y1] = track.points[i];
-    return { at: [x0 + (x1 - x0) * t, y0 + (y1 - y0) * t], bearing: bearing(track, i) };
-  }
-
-  // --- Text for the on-map label and the screen-reader list ---
-
-  function summarise(train: TrainEstimate) {
-    const lang = useLangStore.getState().lang;
-    const t = strings[lang];
-    const toward = stationsByCode.get(train.towardCode);
-    const next = train.next ? stationsByCode.get(train.next.code) : undefined;
-    const towardName = toward ? stationName(toward, lang) : "";
-    const lineName = LINE_NAMES[train.line];
-    return {
-      label: towardName ? `${lineName} · ${towardName}` : lineName,
-      sentence: t.trainItem(lineName, train.trainNo, towardName, next ? stationName(next, lang) : ""),
-    };
-  }
 
   // A visually hidden list of the same trains, outside the canvas, so a screen
   // reader or the keyboard can reach them. Each entry shows itself when
@@ -288,26 +208,9 @@ export function startLiveTrains(map: maplibregl.Map, { getSegments, getRouteHops
 
   // --- The card that opens when a train is tapped ---
 
-  function describe(train: TrainEstimate) {
-    const lang = useLangStore.getState().lang;
-    const t = strings[lang];
-    const toward = stationsByCode.get(train.towardCode);
-    const nextStation = train.next ? stationsByCode.get(train.next.code) : undefined;
-    let next = "";
-    if (train.next && nextStation) {
-      const minutes = Math.ceil((train.next.at - serverNow()) / 60_000);
-      next = t.trainNext(stationName(nextStation, lang), minutes <= 0 ? t.arriving : t.min(minutes));
-    }
-    return {
-      title: t.trainNo(train.trainNo),
-      toward: toward ? t.trainToward(stationName(toward, lang)) : "",
-      next,
-    };
-  }
-
   function paintCard(train: TrainEstimate) {
     if (!selected) return;
-    const text = describe(train);
+    const text = describeTrain(train);
     if (selected.title.textContent !== text.title) selected.title.textContent = text.title;
     if (selected.toward.textContent !== text.toward) selected.toward.textContent = text.toward;
     if (selected.next.textContent !== text.next) selected.next.textContent = text.next;
@@ -412,7 +315,7 @@ export function startLiveTrains(map: maplibregl.Map, { getSegments, getRouteHops
       if (!placed) continue;
       placedNow.set(train.id, { train, at: placed.at });
       bearings.set(train.id, placed.bearing);
-      const summary = summarise(train);
+      const summary = summariseTrain(train);
       items.push({ id: train.id, text: summary.sentence, at: placed.at });
       features.push({
         type: "Feature",

@@ -42,6 +42,12 @@ test.describe("rider-reported errors", () => {
     await expect(sheet.getByTestId("route-fare")).toContainText("Includes a ฿15 transfer discount");
   });
 
+  test("Purple -> Pink at Nonthaburi Civic Center takes the 15 baht entry fee off, same EMV card", async ({ page }) => {
+    const sheet = await openSheet(page, "PP10", "PK02");
+    await expect(sheet.getByTestId("route-fare")).toContainText("Includes a ฿15 transfer discount");
+    await expect(sheet.getByTestId("route-fare")).toContainText("same contactless (EMV) card");
+  });
+
   test("the map and the search box show the operator's codes, and search finds them", async ({ page }) => {
     await page.goto("/");
     await mapReady(page);

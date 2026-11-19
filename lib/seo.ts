@@ -166,7 +166,7 @@ export function stationLines(s: Station): LineInfo[] {
 }
 
 // ---------------------------------------------------------------------------
-// Curated route pages. Every pair of 193 stations would be ~18k near-duplicate
+// Curated route pages. Every pair of 192 stations would be ~18k near-duplicate
 // pages; the hubs below are where riders actually go (airports, interchanges,
 // shopping, rail terminals), which keeps each page distinct and useful.
 // ---------------------------------------------------------------------------

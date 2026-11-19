@@ -1,18 +1,21 @@
 import { expect, forgiveNetworkErrors, mapReady, servePlaces, test } from "./fixtures";
 
 const paragon = {
-  type: "Feature",
-  properties: {
-    osm_type: "W",
-    osm_id: 781138575,
-    osm_key: "shop",
-    osm_value: "mall",
-    name: "Siam Paragon",
-    street: "Rama I Road",
-    district: "Pathum Wan",
-    city: "Bangkok",
-  },
-  geometry: { type: "Point", coordinates: [100.534954, 13.7467785] },
+  id: "places/siam-paragon",
+  displayName: { text: "Siam Paragon" },
+  formattedAddress: "991 Rama I Rd, Pathum Wan, Bangkok",
+  location: { latitude: 13.7467785, longitude: 100.534954 },
+  types: ["shopping_mall", "point_of_interest"],
+  primaryTypeDisplayName: { text: "Shopping mall" },
+};
+
+const centralWorld = {
+  id: "places/central-world",
+  displayName: { text: "Central World" },
+  formattedAddress: "999/9 Rama I Rd, Pathum Wan, Bangkok",
+  location: { latitude: 13.7466, longitude: 100.5393 },
+  types: ["shopping_mall", "point_of_interest"],
+  primaryTypeDisplayName: { text: "Shopping mall" },
 };
 
 test.use({ placesOnline: true, serviceWorkers: "block" });
@@ -45,11 +48,37 @@ test.describe("place search", () => {
     await expect.poll(() => new URL(page.url()).searchParams.get("to")).toBe("CEN");
   });
 
+  test("picks the station that gets there soonest, and walks the rest", async ({ page }) => {
+    await servePlaces(page, [centralWorld]);
+    // Starting at National Stadium (W1): Chit Lom is the nearest station to
+    // Central World (490 m), but Siam is two stops away and the walk is only
+    // 31 m longer. Comparing "ride + walk" must pick Siam anyway.
+    await page.goto("/?from=W1");
+    await mapReady(page);
+    await page.getByRole("button", { name: "Search stations" }).click();
+    await page.getByRole("combobox").fill("central");
+    await page.getByRole("option", { name: /Central World/ }).click();
+
+    const card = page.locator(".maplibregl-popup");
+    const stationLine = card.locator("p").filter({ hasText: /Siam/ });
+    await expect(stationLine).toContainText("Station");
+    await expect(stationLine).toContainText("Siam");
+
+    await card.getByRole("button", { name: /Set .* as destination/ }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.get("to")).toBe("CEN");
+
+    // The ride's last station is Siam; the trip ends at the place, so the
+    // sheet names it and counts the walk.
+    const sheet = page.getByRole("dialog");
+    await expect(sheet.getByText("Central World").first()).toBeVisible();
+    await expect(sheet.getByText(/Walk \d+ m from the previous station/)).toBeVisible();
+  });
+
   test("can be switched off: no request is made", async ({ page }) => {
     let calls = 0;
-    await page.route("https://photon.komoot.io/**", (route) => {
+    await page.route("https://places.googleapis.com/**", (route) => {
       calls++;
-      return route.fulfill({ json: { type: "FeatureCollection", features: [] } });
+      return route.fulfill({ json: { places: [] } });
     });
     await page.goto("/");
     await page.getByRole("button", { name: "Settings" }).click();
@@ -63,7 +92,7 @@ test.describe("place search", () => {
   });
 
   test("a failing service says so and leaves station search working", async ({ page, problems }) => {
-    await page.route("https://photon.komoot.io/**", (route) => route.abort());
+    await page.route("https://places.googleapis.com/**", (route) => route.abort());
     await page.goto("/");
     await page.getByRole("button", { name: "Search stations" }).click();
     await page.getByRole("combobox").fill("siam");

@@ -116,6 +116,12 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Popups are interactive cards; keep them above MapLibre's control container
+   (attribution/zoom, z-index 2) so their buttons are never blocked. */
+.maplibregl-popup {
+  z-index: 5;
+}
+
 .maplibregl-popup-tip {
   border-top-color: var(--background) !important;
   border-bottom-color: var(--background) !important;
@@ -142,6 +148,65 @@ button {
 }
 
 .maplibregl-popup-close-button:hover {
+  background: var(--surface-muted);
+}
+
+/* The card on the Google map: the same look as the MapLibre popup above, since
+   both hold the same React cards. It is a plain element in the map's overlay
+   layer, anchored by its bottom-centre to the point it describes. */
+.bt-card {
+  position: absolute;
+  left: 0;
+  bottom: var(--bt-card-offset, 12px);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(300px, calc(100vw - 24px));
+  box-sizing: border-box;
+  padding: 14px 46px 14px 16px;
+  border-radius: var(--radius-sheet);
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: var(--shadow-3);
+  font-family: var(--font-app);
+  cursor: default;
+}
+
+.bt-card::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  margin-left: -10px;
+  border: 10px solid transparent;
+  border-top-color: var(--background);
+}
+
+@media (max-width: 480px) {
+  .bt-card {
+    padding: 12px 44px 12px 12px;
+  }
+}
+
+.bt-card-close {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.bt-card-close:hover {
   background: var(--surface-muted);
 }
 

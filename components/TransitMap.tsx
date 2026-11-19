@@ -4,27 +4,40 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import * as maplibregl from "maplibre-gl";
 import { useEffect, useMemo, useRef, type RefObject } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { LocateFixed } from "lucide-react";
-import { shownCode, stations, type LineKey, type Station } from "@/data/stations";
+import { LocateButton } from "@/components/LocateButton";
+import { stations, type LineKey, type Station } from "@/data/stations";
 import {
   fetchLineGeometry,
-  fullLineSegments,
   loadedLineGeometry,
   loadLineGeometryInBackground,
   stationLineSegments,
-  trackBetween,
   type LineSegments,
 } from "@/lib/line-geometry";
+import {
+  ENDPOINT_COLOR,
+  FOCUS_PADDING,
+  FOCUS_ZOOM_CAP,
+  FOCUS_ZOOM_FLOOR,
+  LOCATE_ZOOM,
+  MARKER_FACTOR,
+  PLACE_ZOOM,
+  lineKeys,
+  lineTracks,
+  routeBounds,
+  routeFitPadding,
+  routeParts,
+  stationVisuals,
+} from "@/lib/map-data";
 import { markMapPainted } from "@/lib/map-ready";
 import type { GeoPosition } from "@/lib/use-geolocation";
-import type { PathResult } from "@/lib/transit-graph";
-import { StationActions } from "@/components/StationActions";
-import { distanceLabel, nearestStation } from "@/lib/nearest-station";
-import type { Place } from "@/lib/place-search";
+import type { PathOptions, PathResult } from "@/lib/transit-graph";
+import type { FinalWalk } from "@/lib/place-station";
+import { PlaceCard, StationCard } from "@/components/map-cards";
+import type { Place } from "@/lib/google-places";
 import { applyTrainStyle, startLiveTrainsWhenIdle } from "@/components/live-trains-layer";
 import { routeHops } from "@/lib/live-trains";
-import { LINE_COLORS, readableTextColor } from "@/lib/line-colors";
-import { stationName, useLangStore, useT, type Lang } from "@/lib/i18n";
+import { LINE_COLORS } from "@/lib/line-colors";
+import { useLangStore, useT, type Lang } from "@/lib/i18n";
 import { motionDuration, useSettingsStore } from "@/lib/settings-store";
 
 // MapLibre uses [lon, lat] everywhere, the opposite of Leaflet's [lat, lon] -
@@ -119,12 +132,6 @@ function stationLabelField(lang: Lang, codes = true, both = false): maplibregl.E
   return ["step", ["zoom"], plain, 14, ["format", ...parts(true)]] as unknown as maplibregl.ExpressionSpecification;
 }
 
-const MARKER_FACTOR = { small: 0.75, medium: 1, large: 1.35 } as const;
-
-// Start/destination marker accent color, shared by the station GeoJSON
-// builder, the destination dashed-ring icon, and the popup content.
-const ENDPOINT_COLOR = "#16a34a";
-
 // MapLibre's `new Worker(new URL('./maplibre-gl-worker.mjs', import.meta.url))`
 // pattern doesn't resolve correctly under Next's bundler (Turbopack or
 // webpack) from inside node_modules - the request 404s, so tiles never load
@@ -134,11 +141,18 @@ maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
 export interface TransitMapProps {
   onSelectStation: (station: Station) => void;
-  onSetStart: (station: Station) => void;
-  onSetDestination: (station: Station) => void;
+  /** A place card passes its place, so the route can end with the walk to it. */
+  onSetStart: (station: Station, place?: Place) => void;
+  onSetDestination: (station: Station, place?: Place) => void;
   startCode: string | null;
   destinationCode: string | null;
   path: PathResult | null;
+  /** The walk from the destination station to a place picked as the destination. */
+  finalWalk?: FinalWalk | null;
+  /** The walk from the rider to the first station (when starting from current location). */
+  firstWalk?: FinalWalk | null;
+  /** Route preferences, so a place card picks its station the same way the route does. */
+  pathOptions?: PathOptions;
   userPosition: GeoPosition | null;
   /** Set (e.g. from a search result) to fly the map to a station on demand. */
   focusStation: Station | null;
@@ -146,6 +160,8 @@ export interface TransitMapProps {
   focusPlace: Place | null;
   /** Whether the route sheet covers the bottom of the screen (up to 70vh). */
   sheetOpen: boolean;
+  /** Called once, after the first style load and initial fit. */
+  onLoad?: () => void;
 }
 
 const LINES_SOURCE = "transit-lines";
@@ -165,8 +181,6 @@ const GPS_RING_LAYER = "gps-ring-layer";
 const GPS_RING_OUTLINE_LAYER = "gps-ring-outline-layer";
 const GPS_DOT_LAYER = "gps-dot-layer";
 
-const lineKeys = [...new Set(stations.flatMap((s) => s.lines.map((l) => l.line)))];
-
 const LINE_COLOR_MATCH = [
   "match",
   ["get", "line"],
@@ -174,55 +188,30 @@ const LINE_COLOR_MATCH = [
   "#666",
 ] as unknown as maplibregl.ExpressionSpecification;
 
-/** The line-brand color for a station's primary line, or a neutral fallback. */
-function stationLineColor(station: Station, hidden: readonly LineKey[] = []): string {
-  // The first line still on the map, so an interchange doesn't keep the colour of a hidden line.
-  const line = station.lines.find((l) => !hidden.includes(l.line)) ?? station.lines[0];
-  return line ? LINE_COLORS[line.line] : "#666";
-}
-
 function baseLinesGeoJSON(segmentsByLine: LineSegments): GeoJSON.FeatureCollection<GeoJSON.LineString> {
   return {
     type: "FeatureCollection",
-    features: lineKeys.flatMap((line) =>
-      fullLineSegments(segmentsByLine, line).map((positions) => ({
-        type: "Feature",
-        properties: { line },
-        geometry: {
-          type: "LineString",
-          coordinates: positions.map(([lat, lon]) => [lon, lat]),
-        },
-      })),
-    ),
+    features: lineTracks(segmentsByLine).map(({ line, points }) => ({
+      type: "Feature",
+      properties: { line },
+      geometry: { type: "LineString", coordinates: points.map(([lat, lon]) => [lon, lat]) },
+    })),
   };
 }
 
 function routeGeoJSON(
   path: PathResult,
   segmentsByLine: LineSegments,
+  finalWalk?: FinalWalk | null,
+  firstWalk?: FinalWalk | null,
 ): GeoJSON.FeatureCollection<GeoJSON.LineString> {
   return {
     type: "FeatureCollection",
-    features: path.legs.slice(1).map((leg, i) => {
-      const prevStation = path.legs[i].station;
-      // Rides follow the real track; a walking transfer is a short straight
-      // dashed line between the two stations.
-      const positions =
-        leg.mode === "ride" && leg.line
-          ? trackBetween(segmentsByLine, leg.line, prevStation, leg.station)
-          : [
-              [prevStation.lat, prevStation.lon],
-              [leg.station.lat, leg.station.lon],
-            ];
-      return {
-        type: "Feature" as const,
-        properties: { line: leg.line ?? "", walk: leg.mode === "walk" },
-        geometry: {
-          type: "LineString" as const,
-          coordinates: positions.map(([lat, lon]) => [lon, lat]),
-        },
-      };
-    }),
+    features: routeParts(path, segmentsByLine, finalWalk, firstWalk).map(({ line, walk, points }) => ({
+      type: "Feature" as const,
+      properties: { line, walk },
+      geometry: { type: "LineString" as const, coordinates: points.map(([lat, lon]) => [lon, lat]) },
+    })),
   };
 }
 
@@ -235,47 +224,24 @@ function stationsGeoJSON(
 ): GeoJSON.FeatureCollection<GeoJSON.Point> {
   return {
     type: "FeatureCollection",
-    features: stations
-      // A station disappears only when every line through it is hidden; the
-      // ends and stops of a planned route always stay.
-      .filter(
-        (s) =>
-          hiddenLines.length === 0 ||
-          pathCodes.has(s.code) ||
-          s.code === startCode ||
-          s.code === destinationCode ||
-          s.lines.some((l) => !hiddenLines.includes(l.line)),
-      )
-      .map((s) => {
-      const onPath = pathCodes.has(s.code);
-      const isStart = s.code === startCode;
-      const isDestination = s.code === destinationCode;
-      const isEndpoint = isStart || isDestination;
-      const dimmed = isRouting && !onPath;
-      // Lower sorts first and so wins label collisions: route ends, then the
-      // rest of the route, then interchanges, then everything else.
-      const sortKey = isEndpoint ? 0 : onPath ? 1 : s.lines.length > 1 ? 2 : 3;
-      return {
-        type: "Feature",
-        properties: {
-          code: s.code, // the id: clicks look the station up by it
-          shownCode: shownCode(s), // the operator's code, which is what the label shows
-          nameEn: s.nameEn,
-          nameTh: s.nameTh || s.nameEn,
-          sortKey,
-          labelOpacity: dimmed ? 0.45 : 1,
-          radius: isEndpoint ? 8 : s.lines.length > 1 ? 6 : 4,
-          // Green fill = start, white fill/green outline = destination, so
-          // the two ends of the route are distinguishable at a glance.
-          strokeColor: dimmed ? "#ccc" : isEndpoint ? ENDPOINT_COLOR : "#fff",
-          strokeWidth: isEndpoint ? 4 : 1.5,
-          fillColor: dimmed ? "#ddd" : isStart ? ENDPOINT_COLOR : stationLineColor(s, hiddenLines),
-          fillOpacity: dimmed ? 0.7 : 1,
-          isDestination,
-        },
-        geometry: { type: "Point", coordinates: [s.lon, s.lat] },
-      };
-    }),
+    features: stationVisuals(pathCodes, startCode, destinationCode, isRouting, hiddenLines).map((v) => ({
+      type: "Feature",
+      properties: {
+        code: v.code, // the id: clicks look the station up by it
+        shownCode: v.shownCode, // the operator's code, which is what the label shows
+        nameEn: v.nameEn,
+        nameTh: v.nameTh,
+        sortKey: v.sortKey,
+        labelOpacity: v.labelOpacity,
+        radius: v.radius,
+        strokeColor: v.strokeColor,
+        strokeWidth: v.strokeWidth,
+        fillColor: v.fillColor,
+        fillOpacity: v.fillOpacity,
+        isDestination: v.isDestination,
+      },
+      geometry: { type: "Point", coordinates: [v.station.lon, v.station.lat] },
+    })),
   };
 }
 
@@ -326,14 +292,23 @@ export function TransitMap({
   startCode,
   destinationCode,
   path,
+  finalWalk,
+  firstWalk,
+  pathOptions,
   userPosition,
   focusStation,
   focusPlace,
   sheetOpen,
+  onLoad,
 }: TransitMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const loadedRef = useRef(false);
+  // Keep the newest callback without re-running the map-creation effect.
+  const onLoadRef = useRef(onLoad);
+  useEffect(() => {
+    onLoadRef.current = onLoad;
+  }, [onLoad]);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const geometryRef = useRef<LineSegments | null>(null);
   const stopTrainsRef = useRef<(() => void) | null>(null);
@@ -352,7 +327,7 @@ export function TransitMap({
   useEffect(() => {
     routeHopsRef.current = routeHopsSet;
   }, [routeHopsSet]);
-  const { lang, t } = useT();
+  const { lang } = useT();
   const settings = useSettingsStore((s) => s.settings);
   const { hiddenLines } = settings;
 
@@ -365,9 +340,10 @@ export function TransitMap({
     onSetDestination,
     startCode,
     destinationCode,
+    pathOptions,
   });
   useEffect(() => {
-    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode };
+    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions };
   });
 
   // Create the map once per mount. Like the Leaflet canvas renderer this
@@ -667,8 +643,12 @@ export function TransitMap({
       }
       // First view fully drawn (lines, stations, basemap tiles): from here the
       // page may start everything that is not the map - live times, the
-      // offline-map download. See lib/map-ready.ts.
-      map.once("idle", markMapPainted);
+      // offline-map download - and the instant SVG can hand over to the map.
+      // See lib/map-ready.ts.
+      map.once("idle", () => {
+        markMapPainted();
+        onLoadRef.current?.();
+      });
     });
 
     return () => {
@@ -723,7 +703,9 @@ export function TransitMap({
     const applyWith = (segmentsByLine: LineSegments) => {
       const apply = () => {
         const source = map.getSource<maplibregl.GeoJSONSource>(ROUTE_SOURCE);
-        source?.setData(path ? routeGeoJSON(path, segmentsByLine) : { type: "FeatureCollection", features: [] });
+        source?.setData(
+          path ? routeGeoJSON(path, segmentsByLine, finalWalk, firstWalk) : { type: "FeatureCollection", features: [] },
+        );
       };
       if (loadedRef.current) apply();
       else map.once("style.load", apply);
@@ -738,7 +720,7 @@ export function TransitMap({
         applyWith(segmentsByLine);
       });
     }
-  }, [path]);
+  }, [path, finalWalk, firstWalk]);
 
   // Keep a planned route in view: fitted to whatever part of the map the
   // route sheet (fixed to the bottom of the screen, up to 70vh) leaves
@@ -747,24 +729,16 @@ export function TransitMap({
     const map = mapRef.current;
     if (!map || !path) return;
     const apply = () => {
-      const lons = path.legs.map((l) => l.station.lon);
-      const lats = path.legs.map((l) => l.station.lat);
       const rect = map.getContainer().getBoundingClientRect();
-      const sheetTop = window.innerHeight * 0.3;
-      const covered = sheetOpen ? Math.max(0, rect.bottom - sheetTop) : 0;
-      // Never pad away the whole map (MapLibre refuses to fit then).
-      const bottom = Math.min(covered + 24, rect.height - 120);
-      map.fitBounds(
-        [
-          [Math.min(...lons), Math.min(...lats)],
-          [Math.max(...lons), Math.max(...lats)],
-        ],
-        { padding: { top: 40, left: 40, right: 40, bottom: Math.max(40, bottom) }, maxZoom: 15, duration: motionMs(600) },
-      );
+      map.fitBounds(routeBounds(path, finalWalk, firstWalk), {
+        padding: routeFitPadding(sheetOpen, rect.bottom, rect.height, window.innerHeight),
+        maxZoom: FOCUS_ZOOM_CAP,
+        duration: motionMs(600),
+      });
     };
     if (loadedRef.current) apply();
     else map.once("style.load", apply);
-  }, [path, sheetOpen]);
+  }, [path, finalWalk, firstWalk, sheetOpen]);
 
   // Station marker styling (start/destination/on-path/dimmed).
   useEffect(() => {
@@ -888,7 +862,7 @@ export function TransitMap({
       const otherCode = [startCode, destinationCode].find((c) => c && c !== focusStation.code);
       const other = otherCode ? stations.find((s) => s.code === otherCode) : undefined;
       // Room for the card above the marker, and for the header/pills.
-      const padding = { top: 200, bottom: 90, left: 40, right: 40 };
+      const padding = FOCUS_PADDING;
       // With "zoom in" off the camera only pans (and only when the station is
       // off screen); the rider's zoom level is never changed.
       const move = focusCamera(map, focusStation, other, padding, useSettingsStore.getState().settings.autoZoom);
@@ -907,7 +881,7 @@ export function TransitMap({
     const apply = () => {
       const move = {
         center: [focusPlace.lon, focusPlace.lat] as [number, number],
-        zoom: useSettingsStore.getState().settings.autoZoom ? Math.max(map.getZoom(), 15) : map.getZoom(),
+        zoom: useSettingsStore.getState().settings.autoZoom ? Math.max(map.getZoom(), PLACE_ZOOM) : map.getZoom(),
       };
       map.stop().easeTo({ ...move, duration: motionMs(600) });
       openPlacePopup(map, popupsRef, focusPlace, latest);
@@ -920,38 +894,20 @@ export function TransitMap({
     <div className={`relative h-full w-full ${settings.zoomButtons ? "" : "[&_.maplibregl-ctrl-top-left]:hidden"}`}>
       <div ref={containerRef} className="h-full w-full" />
       {settings.locateButton && (
-      <button
-        type="button"
-        onClick={() => {
-          const map = mapRef.current;
-          if (map && userPosition) {
+        <LocateButton
+          position={userPosition}
+          onLocate={(p) => {
+            const map = mapRef.current;
+            if (!map) return;
             map.flyTo({
-              center: [userPosition.lon, userPosition.lat],
-              zoom: Math.max(map.getZoom(), 16),
+              center: [p.lon, p.lat],
+              zoom: Math.max(map.getZoom(), LOCATE_ZOOM),
               duration: motionMs(600),
             });
-          }
-        }}
-        disabled={!userPosition}
-        aria-label={t.centerOnMe}
-        title={userPosition ? t.centerOnMe : t.waitingLocation}
-        className="absolute top-3 right-3 z-[1000] flex h-11 w-11 items-center justify-center rounded-full border border-neutral-300 bg-white text-neutral-700 shadow-md hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
-      >
-        <LocateFixed size={18} />
-      </button>
+          }}
+        />
       )}
     </div>
-  );
-}
-
-// Its own component so the name re-renders when the language changes - the
-// popup is a separate React root that only re-renders on demand otherwise.
-function PopupStationName({ station }: { station: Station }) {
-  const { lang } = useT();
-  return (
-    <span className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-      {stationName(station, lang)}
-    </span>
   );
 }
 
@@ -961,12 +917,10 @@ function PopupStationName({ station }: { station: Station }) {
  * screen, in which case the map stays exactly where the rider left it.
  *
  * - Already visible: no move.
- * - Both ends of a route: fit them together (never closer than ZOOM_CAP).
- * - Just one: centre it, zooming in only as far as ZOOM_FLOOR when the rider
+ * - Both ends of a route: fit them together (never closer than FOCUS_ZOOM_CAP).
+ * - Just one: centre it, zooming in only as far as FOCUS_ZOOM_FLOOR when the rider
  *   is zoomed further out than that, never past what they already chose.
  */
-const ZOOM_FLOOR = 13;
-const ZOOM_CAP = 15;
 function focusCamera(
   map: maplibregl.Map,
   target: Station,
@@ -988,14 +942,14 @@ function focusCamera(
         [Math.min(target.lon, other.lon), Math.min(target.lat, other.lat)],
         [Math.max(target.lon, other.lon), Math.max(target.lat, other.lat)],
       ],
-      { padding, maxZoom: ZOOM_CAP },
+      { padding, maxZoom: FOCUS_ZOOM_CAP },
     );
     if (cam?.center && cam.zoom !== undefined) {
       const c = maplibregl.LngLat.convert(cam.center);
       return { center: [c.lng, c.lat], zoom: cam.zoom };
     }
   }
-  return { center: [target.lon, target.lat], zoom: Math.max(map.getZoom(), ZOOM_FLOOR) };
+  return { center: [target.lon, target.lat], zoom: Math.max(map.getZoom(), FOCUS_ZOOM_FLOOR) };
 }
 
 function openPopup(
@@ -1055,35 +1009,23 @@ function openPopup(
   });
 
   const render = () => {
-    const color = stationLineColor(station);
     root.render(
-      <div className="flex flex-col gap-2 py-0.5">
-        <div className="flex items-center gap-2">
-          <span
-            className="shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold"
-            style={{ backgroundColor: color, color: readableTextColor(color) }}
-          >
-            {shownCode(station)}
-          </span>
-          <PopupStationName station={station} />
-        </div>
-        <StationActions
-          station={station}
-          startCode={latest.current.startCode}
-          destinationCode={latest.current.destinationCode}
-          onSetStart={(s) => {
-            latest.current.onSetStart(s);
-            // Deferred: popup.remove() unmounts this very React root, which
-            // is unsafe to do synchronously from inside its own event
-            // handler while React is still flushing this click.
-            queueMicrotask(() => popup.remove());
-          }}
-          onSetDestination={(s) => {
-            latest.current.onSetDestination(s);
-            queueMicrotask(() => popup.remove());
-          }}
-        />
-      </div>,
+      <StationCard
+        station={station}
+        startCode={latest.current.startCode}
+        destinationCode={latest.current.destinationCode}
+        onSetStart={(s) => {
+          latest.current.onSetStart(s);
+          // Deferred: popup.remove() unmounts this very React root, which
+          // is unsafe to do synchronously from inside its own event
+          // handler while React is still flushing this click.
+          queueMicrotask(() => popup.remove());
+        }}
+        onSetDestination={(s) => {
+          latest.current.onSetDestination(s);
+          queueMicrotask(() => popup.remove());
+        }}
+      />,
     );
   };
   popupsRef.current.set(station.code, { popup, root, render });
@@ -1092,70 +1034,16 @@ function openPopup(
 
 const PLACE_KEY = "__place";
 
-function PlaceCard({
-  place,
-  latest,
-  close,
-}: {
-  place: Place;
-  latest: RefObject<{
-    onSetStart: (s: Station) => void;
-    onSetDestination: (s: Station) => void;
-    startCode: string | null;
-    destinationCode: string | null;
-  }>;
-  close: () => void;
-}) {
-  const { lang, t } = useT();
-  const { station, meters } = nearestStation(place.lat, place.lon);
-  const color = stationLineColor(station);
-  return (
-    <div className="flex flex-col gap-2 py-0.5">
-      <div className="pr-8">
-        <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{place.name}</p>
-        {(place.kind || place.detail) && (
-          <p className="text-xs text-neutral-600 dark:text-neutral-400">
-            {[place.kind, place.detail].filter(Boolean).join(" · ")}
-          </p>
-        )}
-      </div>
-      <p className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-700 dark:text-neutral-300">
-        {t.placeNearest}:
-        <span
-          className="shrink-0 rounded px-1.5 py-0.5 font-semibold"
-          style={{ backgroundColor: color, color: readableTextColor(color) }}
-        >
-          {shownCode(station)}
-        </span>
-        <span lang={lang}>{stationName(station, lang)}</span>
-        <span>· {t.placeAway(distanceLabel(meters))}</span>
-      </p>
-      <StationActions
-        station={station}
-        startCode={latest.current.startCode}
-        destinationCode={latest.current.destinationCode}
-        onSetStart={(s) => {
-          latest.current.onSetStart(s);
-          close();
-        }}
-        onSetDestination={(s) => {
-          latest.current.onSetDestination(s);
-          close();
-        }}
-      />
-    </div>
-  );
-}
-
 function openPlacePopup(
   map: maplibregl.Map,
   popupsRef: RefObject<Map<string, { popup: maplibregl.Popup; root: Root; render: () => void }>>,
   place: Place,
   latest: RefObject<{
-    onSetStart: (s: Station) => void;
-    onSetDestination: (s: Station) => void;
+    onSetStart: (s: Station, place?: Place) => void;
+    onSetDestination: (s: Station, place?: Place) => void;
     startCode: string | null;
     destinationCode: string | null;
+    pathOptions?: PathOptions;
   }>,
 ) {
   // One card at a time, same as station cards.
@@ -1192,7 +1080,22 @@ function openPlacePopup(
   });
 
   const render = () =>
-    root.render(<PlaceCard place={place} latest={latest} close={() => queueMicrotask(() => popup.remove())} />);
+    root.render(
+      <PlaceCard
+        place={place}
+        startCode={latest.current.startCode}
+        destinationCode={latest.current.destinationCode}
+        pathOptions={latest.current.pathOptions}
+        onSetStart={(s) => {
+          latest.current.onSetStart(s, place);
+          queueMicrotask(() => popup.remove());
+        }}
+        onSetDestination={(s) => {
+          latest.current.onSetDestination(s, place);
+          queueMicrotask(() => popup.remove());
+        }}
+      />,
+    );
   popupsRef.current.set(PLACE_KEY, { popup, root, render });
   render();
 }

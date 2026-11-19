@@ -19,6 +19,10 @@ import type { LineKey } from "@/data/stations";
  */
 export interface Settings {
   // --- Map
+  /** Basemap provider. Standard is MapLibre (offline); Google is opt-in. */
+  mapProvider: "standard" | "google";
+  /** Google basemap style, used only when the provider is Google. */
+  googleMapType: "roadmap" | "terrain" | "hybrid" | "satellite";
   /** Station names on the map. */
   showLabels: boolean;
   /** Add the station code under the name. */
@@ -80,8 +84,13 @@ export interface Settings {
   fewerChanges: boolean;
   /** Charge more for walking transfers. */
   avoidWalking: boolean;
-  /** Lines the planner should avoid (still used when there is no other way). */
-  avoidLines: LineKey[];
+  /**
+   * Lines the route planner may not ride. Independent of `hiddenLines`: a line
+   * can be hidden from the map and still used for routes, or drawn on the map
+   * and left out of routes. If that leaves no way between two stations the
+   * route sheet says which lines are in the way (and offers to turn them on).
+   */
+  unusedLines: LineKey[];
   /** Walking speed for transfers, metres per minute. */
   walkSpeed: number;
   /** Minutes allowed for a change of platform / line. */
@@ -99,7 +108,7 @@ export interface Settings {
   alertNotify: boolean;
 
   // --- Places
-  /** Search places (malls, hospitals, addresses...) online as you type. Sends the typed text to Photon. */
+  /** Search places (malls, hospitals, addresses...) online as you type. Sends the typed text to Google Places. */
   onlinePlaces: boolean;
   placeResults: number;
 
@@ -119,6 +128,8 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  mapProvider: "standard",
+  googleMapType: "roadmap",
   showLabels: true,
   labelCodes: true,
   labelLanguage: "ui",
@@ -151,7 +162,7 @@ export const DEFAULT_SETTINGS: Settings = {
 
   fewerChanges: false,
   avoidWalking: false,
-  avoidLines: [],
+  unusedLines: [],
   walkSpeed: 75,
   changeMinutes: 5,
   showFare: true,
@@ -175,6 +186,8 @@ export const DEFAULT_SETTINGS: Settings = {
 
 /** Allowed values of the choice settings (anything else in storage is ignored). */
 export const CHOICES: { [K in keyof Settings]?: readonly string[] } = {
+  mapProvider: ["standard", "google"],
+  googleMapType: ["roadmap", "terrain", "hybrid", "satellite"],
   labelLanguage: ["ui", "en", "th", "both"],
   markerSize: ["small", "medium", "large"],
   otherTrains: ["hide", "dim", "show"],
@@ -201,11 +214,11 @@ export const RANGES: { [K in keyof Settings]?: readonly [number, number] } = {
 
 export const SETTINGS_STORAGE_KEY = "bts:settings:v1";
 
-const LINE_LISTS = ["hiddenLines", "avoidLines"] as const;
+const LINE_LISTS = ["hiddenLines", "unusedLines"] as const;
 
 /** Reads saved settings, ignoring anything missing, malformed, out of range or of the wrong type. */
 export function parseSettings(raw: string | null): Settings {
-  const out: Settings = { ...DEFAULT_SETTINGS, hiddenLines: [], avoidLines: [] };
+  const out: Settings = { ...DEFAULT_SETTINGS, hiddenLines: [], unusedLines: [] };
   if (!raw) return out;
   let saved: unknown;
   try {
@@ -245,13 +258,16 @@ function persist(settings: Settings) {
 
 export const useSettingsStore = create<{
   settings: Settings;
+  /** True once saved settings have been read (they cannot be at module load; see restoreSettings). */
+  restored: boolean;
   update: (patch: Partial<Settings>) => void;
-  toggleLine: (key: "hiddenLines" | "avoidLines", line: LineKey) => void;
+  toggleLine: (key: "hiddenLines" | "unusedLines", line: LineKey) => void;
   /** Replace everything (import / reset); unknown or invalid parts fall back to defaults. */
   replace: (raw: string | null) => void;
   reset: () => void;
 }>((set, get) => ({
   settings: DEFAULT_SETTINGS,
+  restored: false,
   update: (patch) => {
     const settings = { ...get().settings, ...patch };
     set({ settings });
@@ -286,9 +302,9 @@ export function restoreSettings() {
   try {
     raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
   } catch {
-    return;
+    // Storage blocked: the defaults are the settings.
   }
-  if (raw) useSettingsStore.setState({ settings: parseSettings(raw) });
+  useSettingsStore.setState(raw ? { settings: parseSettings(raw), restored: true } : { restored: true });
 }
 
 /** Camera animation length: instant when the OS or this app asks for less motion. */

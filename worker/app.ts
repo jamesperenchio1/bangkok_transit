@@ -17,7 +17,7 @@
 // Data is never served for free by accident.
 import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
-import { paymentMiddlewareFromHTTPServer, x402HTTPResourceServer, x402ResourceServer } from "@x402/hono";
+import { HonoAdapter, paymentMiddlewareFromHTTPServer, x402HTTPResourceServer, x402ResourceServer } from "@x402/hono";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
 import type { ArrivalsDocument } from "@/lib/arrivals-document";
@@ -178,7 +178,30 @@ export function createApp(env: Partial<Env>): Hono {
     return syncing;
   }
 
+  /** The library's own question "does this request need payment?", asked the way its middleware asks it. */
+  const needsPayment = (c: Context): boolean => {
+    let decodedPath = c.req.path;
+    try {
+      decodedPath = decodeURIComponent(c.req.path);
+    } catch {
+      // keep the raw path
+    }
+    return httpServer.requiresPayment({
+      adapter: new HonoAdapter(c),
+      path: c.req.path,
+      decodedPath,
+      method: c.req.method,
+      paymentHeader: c.req.header("payment-signature") ?? c.req.header("x-payment"),
+    });
+  };
+
   const gate: MiddlewareHandler = async (c, next) => {
+    // Sync exactly when the library is about to gate this request, so the gate and the
+    // middleware cannot disagree. The library normalizes paths (trailing slashes, case,
+    // encoding) more loosely than this router does; matching routes by our own patterns
+    // left such requests reaching the middleware before any sync, which answered 503
+    // instead of 402. The free index and junk paths never touch the facilitator.
+    if (!needsPayment(c)) return next();
     try {
       await within(ensureSynced(c), SYNC_BUDGET_MS, "facilitator sync");
     } catch (err) {
@@ -190,8 +213,7 @@ export function createApp(env: Partial<Env>): Hono {
     }
     await next();
   };
-  // Only the paid routes need the facilitator: the index and unknown paths never trigger it.
-  for (const e of PAID_ENDPOINTS) app.use(e.openapiPath.replace(/\{(\w+)\}/g, ":$1"), gate);
+  app.use(`${API_PREFIX}/*`, gate);
 
   app.use(`${API_BASE}/*`, paymentMiddlewareFromHTTPServer(httpServer, undefined, undefined, false));
 

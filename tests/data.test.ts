@@ -49,11 +49,19 @@ describe("stations", () => {
     }
   });
 
-  it("marks exactly the 61 BTS Sukhumvit/Silom stations as live", () => {
-    expect(liveStations).toHaveLength(61);
+  it("marks exactly the 60 BTS Sukhumvit/Silom stations as live", () => {
+    expect(liveStations).toHaveLength(60);
     for (const s of liveStations) {
       expect(s.lines.every((l) => l.line === "sukhumvit" || l.line === "silom"), s.code).toBe(true);
     }
+  });
+
+  it("does not list N6 Sena Ruam, a BTS station that was planned and never built", () => {
+    // The upstream API still serves arrivals for it, and the old BTS numbering
+    // skips it (N5 is followed by N7). Listing it drew a station that does not
+    // exist and put a phantom stop in every Sukhumvit route.
+    expect(stationsByCode.has("N6")).toBe(false);
+    expect(sequences.sukhumvit.some((seg) => seg.some((_, i) => seg[i] === "N7" && (seg[i + 1] === "N5" || seg[i - 1] === "N5")))).toBe(true);
   });
 
   it("only uses lines that have a brand color", () => {
@@ -127,6 +135,21 @@ describe("interchanges", () => {
   });
 });
 
+describe("station positions agree with independent sources", () => {
+  // Stations whose position was checked against the official Namtang GTFS feed
+  // and Wikipedia, which agree with each other. PP06 was 474 m out (it sat 747 m
+  // from Sai Ma and 1,665 m from Bang Rak Yai instead of ~1,200 m from both).
+  const VERIFIED: Record<string, [number, number]> = {
+    PP06: [13.874895, 100.455992], // MRT Bang Rak Noi Tha It
+  };
+  it("keeps verified stations within 100 m of the reference point", () => {
+    for (const [code, [lat, lon]] of Object.entries(VERIFIED)) {
+      const s = stationsByCode.get(code)!;
+      expect(haversineMeters([s.lat, s.lon], [lat, lon]), code).toBeLessThan(100);
+    }
+  });
+});
+
 describe("official station codes", () => {
   // The operators' own codes (Wikipedia station lists for MRT Blue, the Airport
   // Rail Link and the SRT Red lines; EBM's Yellow Line page gives Lat Phrao as
@@ -189,9 +212,9 @@ describe("hop times", () => {
   const adjacent = (line: LineKey) =>
     new Set(sequences[line].flatMap((seg) => seg.slice(0, -1).map((c, i) => hopKey(c, seg[i + 1]))));
 
-  // Yellow and Pink are placeholders in the feed (uniform times), Light Red is
-  // not in the selection; they must stay on the distance formula.
-  const SCHEDULED: LineKey[] = ["sukhumvit", "silom", "gold", "blue", "purple", "arl", "srtDarkRed"];
+  // Yellow and Pink are placeholders in the feed (uniform times); they must
+  // stay on the distance formula.
+  const SCHEDULED: LineKey[] = ["sukhumvit", "silom", "gold", "blue", "purple", "arl", "srtDarkRed", "srtLightRed"];
 
   it("only covers lines with trustworthy feed times", () => {
     expect(Object.keys(tables).sort()).toEqual([...SCHEDULED].sort());
@@ -218,7 +241,7 @@ describe("hop times", () => {
       expect(table.dwell, line).toBeLessThanOrEqual(2);
       for (const [key, minutes] of Object.entries(table.hops)) {
         expect(minutes, `${line} ${key}`).toBeGreaterThanOrEqual(0.5);
-        expect(minutes, `${line} ${key}`).toBeLessThanOrEqual(6);
+        expect(minutes, `${line} ${key}`).toBeLessThanOrEqual(8); // Light Red Bang Son - Bang Bamru is 7
       }
     }
   });

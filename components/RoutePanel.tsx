@@ -4,7 +4,7 @@ import { useSettingsStore } from "@/lib/settings-store";
 import { computeFare, type FareResult } from "@/lib/fares";
 import { useFares } from "@/lib/use-fares";
 import { useEffect, useId, useRef, useState } from "react";
-import { X, MapPin, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
+import { X, MapPin, ArrowRight, ChevronDown, ChevronUp, Share2 } from "lucide-react";
 import { useArrivals } from "@/lib/use-arrivals";
 import {
   arrivalClockTime,
@@ -13,13 +13,15 @@ import {
   upcomingTrains,
   updatedAgoLabel,
 } from "@/lib/format-eta";
-import { shownCode, type Station } from "@/data/stations";
+import { shownCode, type LineKey, type Station } from "@/data/stations";
 import { terminusInDirection, type PathResult } from "@/lib/transit-graph";
 import type { GeoPosition } from "@/lib/use-geolocation";
 import { LINE_COLORS, LINE_NAMES } from "@/lib/line-colors";
 import { stationName, useT } from "@/lib/i18n";
 import { distanceLabel } from "@/lib/nearest-station";
 import { StopAlertControl } from "@/components/StopAlertControl";
+import { ReportIssue } from "@/components/ReportIssue";
+import type { FinalWalk } from "@/lib/place-station";
 import type { StopAlert } from "@/lib/use-stop-alert";
 
 function directionsUrl(
@@ -65,18 +67,32 @@ function effectiveChanges(path: PathResult) {
 // wants them expanded on the next trip too.
 let showAllStops = false;
 
-export type RoutePanelState = { mode: "route"; start: Station; destination: Station; path: PathResult | null };
+export type RoutePanelState = {
+  mode: "route";
+  start: Station;
+  destination: Station;
+  path: PathResult | null;
+  /** When there is no path only because of lines turned off for routes: those lines. */
+  blockedBy?: LineKey[];
+  /** The walk from the last station to a destination picked as a place. */
+  finalWalk?: FinalWalk | null;
+  firstWalk?: FinalWalk | null;
+};
 
 export interface RoutePanelProps {
   state: RoutePanelState | null;
   userPosition: GeoPosition | null;
   stopAlert: StopAlert;
   onClose: () => void;
+  /** Turn lines back on for routes (the one-tap fix when they are what is in the way). */
+  onUseLines?: (lines: LineKey[]) => void;
 }
 
-export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePanelProps) {
+export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines }: RoutePanelProps) {
   const open = state !== null;
   const { lang, t } = useT();
+  const settings = useSettingsStore((s) => s.settings);
+  const updateSettings = useSettingsStore((s) => s.update);
   const fares = useFares(!!state?.path);
   const headingRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
@@ -107,12 +123,25 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePan
   }, [open]);
 
   const from = state ? stationName(state.start, lang) : "";
-  const to = state ? stationName(state.destination, lang) : "";
+  const to = state ? (state.finalWalk?.name ?? stationName(state.destination, lang)) : "";
   const changes = state?.path ? effectiveChanges(state.path) : 0;
+  const finalWalk = state?.finalWalk ?? null;
+  const firstWalk = state?.firstWalk ?? null;
+  // The walks to/from stations are part of the trip, so they count in the total.
+  const totalMinutes = state?.path ? state.path.minutes + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0) : 0;
+  const totalWalkMeters = (state?.path?.walkMeters ?? 0) + (finalWalk?.meters ?? 0) + (firstWalk?.meters ?? 0);
   const summary = state?.path
-    ? [t.stops(state.path.stops), t.changes(changes), t.aboutMinutes(state.path.minutes), fareText(t, computeFare(state.path, fares))].filter(Boolean).join(", ")
+    ? [
+        t.stops(state.path.stops),
+        t.changes(changes),
+        totalWalkMeters > 0 ? t.walk(distanceLabel(totalWalkMeters, lang)) : "",
+        t.aboutMinutes(totalMinutes),
+        fareText(t, computeFare(state.path, fares)),
+      ].filter(Boolean).join(", ")
     : state
-      ? t.noRoute
+      ? state.blockedBy?.length
+        ? t.noRouteLinesOff(state.blockedBy.map((l) => LINE_NAMES[l]).join(", "))
+        : t.noRoute
       : "";
 
   const legs = state?.path?.legs ?? [];
@@ -166,10 +195,31 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePan
                   </p>
                   {state.path && (
                     <p className="mt-0.5 text-2xl font-semibold tracking-tight">
-                      {t.aboutMinutes(state.path.minutes)}
+                      {t.aboutMinutes(totalMinutes)}
                     </p>
                   )}
                 </div>
+                {state && (
+                  <button
+                    onClick={async () => {
+                      const url = `${window.location.origin}${window.location.pathname}?from=${state.start.code}&to=${state.destination.code}`;
+                      const title = `${stationName(state.start, lang)} → ${stationName(state.destination, lang)}`;
+                      try {
+                        if (navigator.share) await navigator.share({ title, url });
+                        else {
+                          await navigator.clipboard.writeText(url);
+                        }
+                      } catch {
+                        /* user cancelled or clipboard blocked */
+                      }
+                    }}
+                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+                    aria-label="Share route"
+                    title="Share route"
+                  >
+                    <Share2 size={18} aria-hidden="true" />
+                  </button>
+                )}
                 <button
                   onClick={onClose}
                   className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
@@ -178,7 +228,25 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePan
                   <X size={20} aria-hidden="true" />
                 </button>
               </div>
-              {state.path && <RouteSummary path={state.path} changes={changes} />}
+              {state.path && <RouteSummary path={state.path} changes={changes} finalWalk={finalWalk} firstWalk={firstWalk} />}
+            {state.path && (
+              <div className="flex flex-wrap gap-2 px-4 pt-2">
+                <button
+                  type="button"
+                  onClick={() => updateSettings({ fewerChanges: !settings.fewerChanges })}
+                  className={`min-h-9 rounded-full border px-3 py-1 text-xs font-medium ${settings.fewerChanges ? "border-green-700 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300" : "border-neutral-300 text-neutral-700 dark:border-neutral-700 dark:text-neutral-300"}`}
+                >
+                  Fewer changes {settings.fewerChanges ? "✓" : ""}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateSettings({ avoidWalking: !settings.avoidWalking })}
+                  className={`min-h-9 rounded-full border px-3 py-1 text-xs font-medium ${settings.avoidWalking ? "border-green-700 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300" : "border-neutral-300 text-neutral-700 dark:border-neutral-700 dark:text-neutral-300"}`}
+                >
+                  Less walking {settings.avoidWalking ? "✓" : ""}
+                </button>
+              </div>
+            )}
             </div>
 
             {state.path && (
@@ -187,10 +255,44 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePan
               </div>
             )}
 
-            {!state.path && (
-              <p className="px-4 py-6 text-center text-sm text-neutral-600 dark:text-neutral-400">
-                {t.noRoute}
-              </p>
+            {!state.path && state.blockedBy && state.blockedBy.length > 0 ? (
+              <div className="flex flex-col items-center gap-3 px-4 py-6 text-center">
+                <p className="text-sm text-neutral-700 dark:text-neutral-300">
+                  {t.noRouteLinesOff(state.blockedBy.map((l) => LINE_NAMES[l]).join(", "))}
+                </p>
+                {onUseLines && (
+                  <button
+                    type="button"
+                    onClick={() => onUseLines(state.blockedBy!)}
+                    className="min-h-11 rounded-full bg-green-700 px-5 text-sm font-semibold text-white hover:bg-green-800"
+                  >
+                    {t.useLinesForRoutes(state.blockedBy.map((l) => LINE_NAMES[l]).join(", "))}
+                  </button>
+                )}
+              </div>
+            ) : (
+              !state.path && (
+                <p className="px-4 py-6 text-center text-sm text-neutral-600 dark:text-neutral-400">
+                  {t.noRoute}
+                </p>
+              )
+            )}
+
+            {state.path && firstWalk && (
+              <div className="flex items-stretch gap-3 px-4 pt-2">
+                <div className="relative w-4 shrink-0">
+                  <span className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-l-2 border-dotted border-neutral-400" />
+                  <span className="absolute top-1/2 left-1/2 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white dark:bg-neutral-900">
+                    <MapPin size={12} className="text-blue-700 dark:text-blue-400" aria-hidden="true" />
+                  </span>
+                </div>
+                <div className="flex-1 py-1.5">
+                  <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Walk to {stationName(state.start, lang)}</p>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                    {t.walked(distanceLabel(firstWalk.meters, lang))} · {t.aboutMinutes(firstWalk.minutes)}
+                  </p>
+                </div>
+              </div>
             )}
 
             {state.path && (
@@ -332,6 +434,23 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePan
               </ul>
             )}
 
+            {state.path && finalWalk && (
+              <div className="flex items-stretch gap-3 px-4">
+                <div className="relative w-4 shrink-0">
+                  <span className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-l-2 border-dotted border-neutral-400" />
+                  <span className="absolute top-1/2 left-1/2 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white dark:bg-neutral-900">
+                    <MapPin size={12} className="text-green-700 dark:text-green-500" aria-hidden="true" />
+                  </span>
+                </div>
+                <div className="flex-1 py-1.5">
+                  <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{finalWalk.name}</p>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                    {t.walked(distanceLabel(finalWalk.meters, lang))} · {t.aboutMinutes(finalWalk.minutes)}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {state.path && collapsible && expanded && (
               <div className="px-4 pb-1">
                 <button
@@ -353,6 +472,22 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose }: RoutePan
             <div className="mt-1 border-t border-neutral-200 px-4 py-2.5 dark:border-neutral-800">
               <GoogleMapsLink href={directionsUrl(userPosition ?? state.start, state.destination)} />
             </div>
+            {state.path && (
+              <div className="border-t border-neutral-200 px-4 py-2 dark:border-neutral-800">
+                <ReportIssue
+                  trigger="link"
+                  initialCategory="route"
+                  context={{
+                    lang,
+                    startCode: state.start.code,
+                    destinationCode: state.destination.code,
+                    routeMinutes: totalMinutes,
+                    routeChanges: changes,
+                  }}
+                  label={t.reportContextual}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -366,11 +501,22 @@ export function fareText(t: ReturnType<typeof useT>["t"], fare: FareResult | nul
   return fare.total > 0 ? t.farePartial(fare.total) : t.fareUnavailable;
 }
 
-function RouteSummary({ path, changes }: { path: PathResult; changes: number }) {
+function RouteSummary({
+  path,
+  changes,
+  finalWalk,
+  firstWalk,
+}: {
+  path: PathResult;
+  changes: number;
+  finalWalk?: FinalWalk | null;
+  firstWalk?: FinalWalk | null;
+}) {
   const { lang, t } = useT();
   const parts = [t.stops(path.stops), t.changes(changes)];
-  if (path.walkMeters > 0) parts.push(t.walk(distanceLabel(path.walkMeters, lang)));
-  parts.push(t.aboutMinutes(path.minutes));
+  const walkMeters = path.walkMeters + (finalWalk?.meters ?? 0) + (firstWalk?.meters ?? 0);
+  if (walkMeters > 0) parts.push(t.walk(distanceLabel(walkMeters, lang)));
+  parts.push(t.aboutMinutes(path.minutes + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0)));
   const showFare = useSettingsStore((s) => s.settings.showFare);
   const fares = useFares(showFare);
   const fare = showFare ? computeFare(path, fares) : null;
@@ -385,9 +531,11 @@ function RouteSummary({ path, changes }: { path: PathResult; changes: number }) 
               {fare.segments.map((s) => t.fareLeg(lang === "th" ? s.nameTh : s.name, s.fare)).join(" · ")}
             </p>
           )}
-          {fare.discount > 0 && (
-            <p className="text-xs text-neutral-600 dark:text-neutral-300">{t.fareDiscount(fare.discount)}</p>
-          )}
+          {fare.applied.map((rule) => (
+            <p key={rule.id} className="text-xs text-neutral-600 dark:text-neutral-300">
+              {lang === "th" ? rule.message.th : rule.message.en}
+            </p>
+          ))}
           <p className="text-xs text-neutral-600 dark:text-neutral-300">{t.faresAsOf(fare.asOf)}</p>
         </div>
       )}

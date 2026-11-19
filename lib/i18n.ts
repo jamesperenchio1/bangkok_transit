@@ -38,7 +38,14 @@ export function restoreLang() {
   } catch {
     return;
   }
-  if (saved === "th" || saved === "en") useLangStore.getState().setLang(saved);
+  if (saved === "th" || saved === "en") {
+    useLangStore.getState().setLang(saved);
+    return;
+  }
+  // First visit: follow the browser's language so Thai riders land in Thai.
+  if (typeof navigator !== "undefined" && (navigator.language || "").toLowerCase().startsWith("th")) {
+    useLangStore.getState().setLang("th");
+  }
 }
 
 export function stationName(station: Station, lang: Lang): string {
@@ -59,6 +66,7 @@ export const strings = {
     swap: "Swap start and destination",
     clear: "Clear",
     locationDenied: "Location access denied — enable it in your browser settings to see your position on the map.",
+    googleUnavailable: "Google Maps can't be used right now (offline or blocked), so the offline map is shown instead.",
     nearest: "Nearest",
     viewRoute: "View route",
     boardHere: "Board here",
@@ -69,6 +77,8 @@ export const strings = {
     close: "Close",
     googleMaps: "Get directions in Google Maps",
     noRoute: "No route found between these stations yet - try Google Maps above.",
+    noRouteLinesOff: (lines: string) => `No route without ${lines}, which you turned off for routes.`,
+    useLinesForRoutes: (lines: string) => `Use ${lines} for routes`,
     changeLine: "Change line",
     boardToward: (name: string) => `Board toward ${name}`,
     // Where both directions end at the same station (MRT Blue at Tha Phra), the next stop says which platform.
@@ -109,6 +119,31 @@ export const strings = {
     mapRegion: "Map of Bangkok rail lines",
     settings: "Settings",
     settingsTitle: "Settings",
+    report: "Report",
+    reportIssue: "Report an issue",
+    reportTitle: "Something not right?",
+    reportSubtitle: "Tell us what's off and we'll fix it. Nothing is sent automatically — you choose how to send it.",
+    reportCategories: "What's wrong?",
+    reportCatRoute: "Wrong route",
+    reportCatStation: "Station info",
+    reportCatLive: "Live times",
+    reportCatMap: "Map / display",
+    reportCatSearch: "Search",
+    reportCatOther: "Other",
+    reportDetails: "Details (optional)",
+    reportDetailsPlaceholder: "What did you expect? What happened instead?",
+    reportContext: "What we'll include",
+    reportContextHide: "Hide",
+    reportContextShow: "Show",
+    reportIncludeDevice: "Include device & browser info",
+    reportCopy: "Copy report",
+    reportCopied: "Copied to clipboard",
+    reportEmail: "Email us",
+    reportGithub: "Open GitHub issue",
+    reportSave: "Save for later",
+    reportSaved: "Saved — you can resend it from Settings",
+    reportContextual: "Something off? Report it",
+    reportPrivacy: "No tracking. Your report is only sent if you choose to send it.",
     settingsReset: "Reset to defaults",
     browseByLine: "All stations by line",
     searchResultsCount: (n: number) => `${n} ${n === 1 ? "station" : "stations"} found`,
@@ -130,6 +165,7 @@ export const strings = {
     searchingPlaces: "Searching places…",
     placesUnavailable: "Place search unavailable (offline?). Stations still work.",
     placeNearest: "Nearest station",
+    placeStation: "Station",
     placeAway: (d: string) => `${d} away`,
     searchStations: "Search stations",
     closeSearch: "Close search",
@@ -146,7 +182,6 @@ export const strings = {
     fareUnavailable: "Fare unavailable",
     fareLeg: (name: string, baht: number | null) => `${name} ${baht === null ? "fare unavailable" : `฿${baht}`}`,
     faresAsOf: (date: string) => `Fares as of ${date}.`,
-    fareDiscount: (baht: number) => `Includes a ฿${baht} transfer discount (entry fee waived or refunded to the same EMV card).`,
     trainsRegion: "Live trains",
     trainItem: (line: string, no: string, toward: string, next: string) =>
       `${line} train ${no}${toward ? `, heading to ${toward}` : ""}${next ? `, next stop ${next}` : ""}`,
@@ -168,6 +203,7 @@ export const strings = {
     swap: "สลับต้นทางและปลายทาง",
     clear: "ล้าง",
     locationDenied: "ไม่ได้รับอนุญาตให้ใช้ตำแหน่ง — เปิดในการตั้งค่าเบราว์เซอร์เพื่อดูตำแหน่งของคุณบนแผนที่",
+    googleUnavailable: "ใช้ Google Maps ไม่ได้ในขณะนี้ (ออฟไลน์หรือถูกบล็อก) จึงแสดงแผนที่ออฟไลน์แทน",
     nearest: "ใกล้ที่สุด",
     viewRoute: "ดูเส้นทาง",
     boardHere: "ขึ้นที่นี่",
@@ -178,6 +214,8 @@ export const strings = {
     close: "ปิด",
     googleMaps: "ขอเส้นทางใน Google Maps",
     noRoute: "ยังไม่พบเส้นทางระหว่างสถานีนี้ - ลองใช้ Google Maps ด้านบน",
+    noRouteLinesOff: (lines: string) => `ไม่มีเส้นทางหากไม่ใช้ ${lines} ซึ่งคุณปิดไว้ในการวางแผนเส้นทาง`,
+    useLinesForRoutes: (lines: string) => `ใช้ ${lines} ในการวางแผนเส้นทาง`,
     changeLine: "เปลี่ยนสาย",
     boardToward: (name: string) => `ขึ้นขบวนไปทาง ${name}`,
     boardTowardVia: (name: string, via: string) => `ขึ้นขบวนไปทาง ${name} (สถานีถัดไป ${via})`,
@@ -217,6 +255,31 @@ export const strings = {
     mapRegion: "แผนที่เส้นทางรถไฟฟ้าในกรุงเทพฯ",
     settings: "ตั้งค่า",
     settingsTitle: "ตั้งค่า",
+    report: "รายงาน",
+    reportIssue: "รายงานปัญหา",
+    reportTitle: "มีอะไรไม่ถูกต้อง?",
+    reportSubtitle: "บอกเราได้เลยว่าอะไรผิดพลาด เราจะแก้ไขให้ ไม่มีการส่งอัตโนมัติ — คุณเลือกวิธีส่งเอง",
+    reportCategories: "เกิดอะไรขึ้น?",
+    reportCatRoute: "เส้นทางผิด",
+    reportCatStation: "ข้อมูลสถานี",
+    reportCatLive: "เวลาเรียลไทม์",
+    reportCatMap: "แผนที่ / แสดงผล",
+    reportCatSearch: "การค้นหา",
+    reportCatOther: "อื่นๆ",
+    reportDetails: "รายละเอียด (ไม่บังคับ)",
+    reportDetailsPlaceholder: "คุณคาดหวังอะไร? เกิดอะไรขึ้นจริง?",
+    reportContext: "ข้อมูลที่จะรวม",
+    reportContextHide: "ซ่อน",
+    reportContextShow: "แสดง",
+    reportIncludeDevice: "รวมข้อมูลอุปกรณ์และเบราว์เซอร์",
+    reportCopy: "คัดลอกรายงาน",
+    reportCopied: "คัดลอกแล้ว",
+    reportEmail: "ส่งอีเมล",
+    reportGithub: "เปิด GitHub issue",
+    reportSave: "บันทึกไว้ทีหลัง",
+    reportSaved: "บันทึกแล้ว — ส่งใหม่ได้จาก Settings",
+    reportContextual: "มีอะไรผิด? รายงานได้",
+    reportPrivacy: "ไม่มีการติดตาม รายงานจะถูกส่งก็ต่อเมื่อคุณเลือกส่ง",
     settingsReset: "คืนค่าเริ่มต้น",
     browseByLine: "สถานีทั้งหมดแยกตามสาย",
     searchResultsCount: (n: number) => `พบ ${n} สถานี`,
@@ -238,6 +301,7 @@ export const strings = {
     searchingPlaces: "กำลังค้นหาสถานที่…",
     placesUnavailable: "ค้นหาสถานที่ไม่ได้ (ออฟไลน์?) ยังค้นหาสถานีได้ตามปกติ",
     placeNearest: "สถานีที่ใกล้ที่สุด",
+    placeStation: "สถานี",
     placeAway: (d: string) => `ห่าง ${d}`,
     searchStations: "ค้นหาสถานี",
     closeSearch: "ปิดการค้นหา",
@@ -254,7 +318,6 @@ export const strings = {
     fareUnavailable: "ยังไม่มีข้อมูลค่าโดยสาร",
     fareLeg: (name: string, baht: number | null) => `${name} ${baht === null ? "ยังไม่มีข้อมูลค่าโดยสาร" : `฿${baht}`}`,
     faresAsOf: (date: string) => `ค่าโดยสาร ณ วันที่ ${date}`,
-    fareDiscount: (baht: number) => `รวมส่วนลดการเปลี่ยนสาย ฿${baht} (ไม่คิดค่าแรกเข้า หรือคืนเข้าบัตร EMV ใบเดิม)`,
     trainsRegion: "รถไฟสด",
     trainItem: (line: string, no: string, toward: string, next: string) =>
       `${line} ขบวน ${no}${toward ? ` มุ่งหน้า ${toward}` : ""}${next ? ` สถานีถัดไป ${next}` : ""}`,

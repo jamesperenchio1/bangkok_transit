@@ -1775,21 +1775,6 @@
     "lon": 100.54565438914052
   },
   {
-    "code": "N6",
-    "nameEn": "Sena Ruam",
-    "nameTh": "เสนาร่วม",
-    "lines": [
-      {
-        "line": "sukhumvit",
-        "name": "BTS Sukhumvit Line",
-        "color": "#76b729"
-      }
-    ],
-    "hasLiveArrivals": true,
-    "lat": 13.7859356,
-    "lon": 100.546865
-  },
-  {
     "code": "BL01",
     "displayCode": "BL38",
     "nameEn": "Lak Song",
@@ -2489,8 +2474,8 @@
       }
     ],
     "hasLiveArrivals": false,
-    "lat": 13.872998228087779,
-    "lon": 100.45993212267838
+    "lat": 13.874894864959,
+    "lon": 100.45599172271
   },
   {
     "code": "PP07",

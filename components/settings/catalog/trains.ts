@@ -17,20 +17,18 @@ export const rows: Row[] = [
     kind: "choice",
     key: "trainSize",
     label: { en: "Train marker size", th: "ขนาดเครื่องหมายรถไฟ" },
-    advanced: true,
     options: [
       { value: "small", label: { en: "Small", th: "เล็ก" } },
       { value: "medium", label: { en: "Medium", th: "กลาง" } },
       { value: "large", label: { en: "Large", th: "ใหญ่" } },
     ],
   },
-  { kind: "toggle", key: "trainLabels", label: { en: "Text beside trains", th: "ข้อความข้างรถไฟ" }, hint: { en: "Destination and next stop, when zoomed in.", th: "ปลายทางและสถานีถัดไป เมื่อซูมเข้า" }, advanced: true },
+  { kind: "toggle", key: "trainLabels", label: { en: "Text beside trains", th: "ข้อความข้างรถไฟ" }, hint: { en: "Destination and next stop, when zoomed in.", th: "ปลายทางและสถานีถัดไป เมื่อซูมเข้า" } },
   {
     kind: "choice",
     key: "trainRate",
     label: { en: "Update rate", th: "ความถี่การอัปเดต" },
     hint: { en: "Battery saver redraws every 2 seconds.", th: "โหมดประหยัดแบตเตอรี่วาดใหม่ทุก 2 วินาที" },
-    advanced: true,
     options: [
       { value: "smooth", label: { en: "Smooth", th: "ลื่นไหล" } },
       { value: "saver", label: { en: "Battery saver", th: "ประหยัดแบตเตอรี่" } },

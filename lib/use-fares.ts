@@ -5,8 +5,10 @@ let cached: FareData | null = null;
 let pending: Promise<FareData> | null = null;
 
 function load(): Promise<FareData> {
-  // A separate chunk: the tables are tens of KB and only matter once a route exists.
-  pending ??= import("@/data/fares.json").then((m) => (cached = m.default as unknown as FareData));
+  // Separate chunks: the tables are tens of KB and only matter once a route exists.
+  pending ??= Promise.all([import("@/data/fares.json"), import("@/data/fare-rules.json")]).then(
+    ([fares, rules]) => (cached = { ...(fares.default as unknown as FareData), rules: rules.default.rules as FareData["rules"] }),
+  );
   return pending;
 }
 

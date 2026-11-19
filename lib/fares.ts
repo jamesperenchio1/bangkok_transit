@@ -6,9 +6,11 @@ import type { PathResult } from "@/lib/transit-graph";
  * operators' published tables, see scripts/scrape-fares.ts) computed in the
  * browser from a found route - nothing here touches a server. Each fare system
  * charges separately: a change of system, or a walk, starts a new fare, with no
- * through-ticket assumed - except the two transfers below, where a rider
- * actually pays less than the two fares added together. This module takes the data as an argument and imports
- * none, so the (large) JSON loads lazily - see lib/use-fares.ts.
+ * through-ticket assumed - except where an operator publishes a transfer rule
+ * or a daily cap (data/fare-rules.json), which is applied on top and shown to
+ * the rider with its condition (most need the same contactless EMV card). This
+ * module takes the data as an argument and imports none, so the (large) JSON
+ * loads lazily - see lib/use-fares.ts.
  */
 
 export interface FareSystem {
@@ -24,9 +26,50 @@ export interface FareSystem {
   stopFares?: number[];
 }
 
+export interface FareRule {
+  id: string;
+  /**
+   * entryOnce / refund: the second ride's table fare is reduced by `amount` when a ride on `from` is
+   * followed by one on `to` (at the same station, or between `fromStation` and `toStation`).
+   * dailyCap: the rides on `systems` together never cost more than `cap`.
+   * joint: recorded policy that is not applied (see `enabled`).
+   */
+  kind: "entryOnce" | "refund" | "dailyCap" | "joint";
+  from?: string;
+  to?: string;
+  sameStation?: boolean;
+  fromStation?: string;
+  toStation?: string;
+  systems?: string[];
+  amount?: number;
+  cap?: number;
+  windowMinutes?: number | null;
+  payment: "any" | "emv-same-card";
+  effectiveFrom: string | null;
+  effectiveTo: string | null;
+  enabled: boolean;
+  confidence: "confirmed" | "reported";
+  source: string;
+  /** Shown to the rider; `{amount}` is replaced by the baht saved. */
+  message: { en: string; th: string };
+}
+
 export interface FareData {
   retrievedAt: string;
   systems: Record<string, FareSystem>;
+  /** Transfer and cap rules (data/fare-rules.json); none means every ride is charged its table fare. */
+  rules?: FareRule[];
+}
+
+/** Today's date in Bangkok (YYYY-MM-DD), the calendar the operators' effective dates use. */
+export function bangkokDay(now: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(now);
+}
+
+export function ruleActive(rule: FareRule, now: Date): boolean {
+  if (!rule.enabled) return false;
+  const day = bangkokDay(now);
+  return (!rule.effectiveFrom || day >= rule.effectiveFrom) && (!rule.effectiveTo || day <= rule.effectiveTo);
 }
 
 /** Which fare system charges for a ride on each line (BTS Sukhumvit, Silom and Gold share one table). */
@@ -43,27 +86,6 @@ const SYSTEM_OF: Record<LineKey, string> = {
   pink: "pink",
 };
 
-/**
- * Transfers where the second ride costs less than its table fare.
- *
- * - MRT Blue <-> Purple at Tao Poon, one station with one paid area: the
- *   second system's entry fee is not charged again. MRTA's own rule is
- *   "entry fare charged once" (Nation, "MRTA revises Purple Line fares", 2026;
- *   originally "ไม่มีค่าแรกเข้าสำหรับการเปลี่ยนระบบ", MRTA entry fee 14 baht).
- *   Checked against a rider's figure: Bang Sue -> Wong Sawang is 17 (Blue, one
- *   stop) + 20 (Purple, two stops) - 14 = 23 baht. The 14 is MRTA's published
- *   entry fee, not a figure from a current fare table; revisit if BEM changes it.
- * - MRT Blue -> Yellow at Lat Phrao (BL15 -> YL01): tap out of Blue and into
- *   Yellow within 30 minutes on the same EMV card and the Yellow entry fee is
- *   refunded - 15 baht (ebm.co.th/en/ticket-emv, refunded to the card within
- *   3-7 days). Only the Blue -> Yellow direction is documented.
- */
-const BLUE_PURPLE_ENTRY_FEE = 14;
-const BLUE_TO_YELLOW_DISCOUNT = 15;
-/** Internal ids (not display codes) of the Lat Phrao stations. */
-const LAT_PHRAO_BLUE = "BL26";
-const LAT_PHRAO_YELLOW = "YL01";
-
 export interface FareSegment {
   system: string;
   name: string;
@@ -71,8 +93,15 @@ export interface FareSegment {
   stops: number;
   /** Baht after any transfer discount, or null when no published fare covers this ride. */
   fare: number | null;
-  /** Baht taken off this ride's table fare by a transfer rule (0 when none). */
+  /** Baht taken off this ride's table fare by a transfer rule or a cap (0 when none). */
   discount: number;
+}
+
+export interface AppliedRule {
+  id: string;
+  /** Baht this rule took off. */
+  amount: number;
+  message: { en: string; th: string };
 }
 
 export interface FareResult {
@@ -83,6 +112,8 @@ export interface FareResult {
   complete: boolean;
   /** Baht saved in total by transfer rules; the route sheet says so, because it is refunded or waived rather than shown on a gate. */
   discount: number;
+  /** Which rules produced that saving, with the wording that states their condition. */
+  applied: AppliedRule[];
   /** When the figures were last refreshed (YYYY-MM-DD). */
   asOf: string;
 }
@@ -98,9 +129,15 @@ export function fareFor(table: FareSystem, from: string, to: string, stops: numb
   return null;
 }
 
-export function computeFare(path: PathResult | null, data: FareData | null): FareResult | null {
+const fill = (rule: FareRule, amount: number): AppliedRule => ({
+  id: rule.id,
+  amount,
+  message: { en: rule.message.en.replace("{amount}", String(amount)), th: rule.message.th.replace("{amount}", String(amount)) },
+});
+
+export function computeFare(path: PathResult | null, data: FareData | null, now: Date = new Date()): FareResult | null {
   if (!path || !data) return null;
-  const runs: { system: string; lines: Set<LineKey>; from: string; to: string; stops: number; discount: number }[] = [];
+  const runs: { system: string; lines: Set<LineKey>; from: string; to: string; stops: number; discount: number; ruleIds: string[] }[] = [];
   let current: (typeof runs)[number] | null = null;
   path.legs.forEach((leg, i) => {
     if (leg.mode !== "ride" || !leg.line) {
@@ -109,7 +146,7 @@ export function computeFare(path: PathResult | null, data: FareData | null): Far
     }
     const system = SYSTEM_OF[leg.line];
     if (!current || current.system !== system) {
-      current = { system, lines: new Set(), from: path.legs[i - 1].station.code, to: leg.station.code, stops: 0, discount: 0 };
+      current = { system, lines: new Set(), from: path.legs[i - 1].station.code, to: leg.station.code, stops: 0, discount: 0, ruleIds: [] };
       runs.push(current);
     }
     current.lines.add(leg.line);
@@ -118,15 +155,24 @@ export function computeFare(path: PathResult | null, data: FareData | null): Far
   });
   if (runs.length === 0) return null;
 
+  const rules = (data.rules ?? []).filter((r) => ruleActive(r, now));
+  const applied: AppliedRule[] = [];
+
   // A run that begins where the previous one ended (no walk between) or at the
-  // station walked to (Lat Phrao) may qualify for a transfer discount.
+  // station walked to may qualify for a transfer rule.
   runs.forEach((run, i) => {
     const before = runs[i - 1];
     if (!before) return;
-    const pair = [before.system, run.system].sort().join("+");
-    if (pair === "blue+purple" && before.to === run.from) run.discount = BLUE_PURPLE_ENTRY_FEE;
-    else if (before.system === "blue" && run.system === "yellow" && before.to === LAT_PHRAO_BLUE && run.from === LAT_PHRAO_YELLOW) {
-      run.discount = BLUE_TO_YELLOW_DISCOUNT;
+    const rule = rules.find(
+      (r) =>
+        (r.kind === "entryOnce" || r.kind === "refund") &&
+        r.from === before.system &&
+        r.to === run.system &&
+        (r.sameStation ? before.to === run.from : before.to === r.fromStation && run.from === r.toStation),
+    );
+    if (rule) {
+      run.discount = rule.amount ?? 0;
+      run.ruleIds.push(rule.id);
     }
   });
 
@@ -145,11 +191,40 @@ export function computeFare(path: PathResult | null, data: FareData | null): Far
       discount,
     };
   });
+  runs.forEach((run, i) => {
+    const seg = segments[i];
+    if (seg.discount > 0) {
+      const rule = rules.find((r) => r.id === run.ruleIds[0])!;
+      applied.push(fill(rule, seg.discount));
+    }
+  });
+
+  // A daily cap trims the rides it covers to its figure. It needs every one of
+  // them priced (otherwise we cannot know what the cap would save), and takes
+  // the saving off the later rides first.
+  for (const rule of rules.filter((r) => r.kind === "dailyCap")) {
+    const covered = segments.filter((seg) => rule.systems?.includes(seg.system));
+    if (covered.length === 0 || covered.some((seg) => seg.fare === null) || rule.cap === undefined) continue;
+    let excess = covered.reduce((sum, seg) => sum + seg.fare!, 0) - rule.cap;
+    if (excess <= 0) continue;
+    let saved = 0;
+    for (const seg of [...covered].reverse()) {
+      const take = Math.min(excess, seg.fare!);
+      seg.fare = seg.fare! - take;
+      seg.discount += take;
+      excess -= take;
+      saved += take;
+      if (excess <= 0) break;
+    }
+    applied.push(fill(rule, saved));
+  }
+
   return {
     segments,
     total: segments.reduce((sum, s) => sum + (s.fare ?? 0), 0),
     complete: segments.every((s) => s.fare !== null),
     discount: segments.reduce((sum, s) => sum + s.discount, 0),
+    applied,
     asOf: data.retrievedAt,
   };
 }

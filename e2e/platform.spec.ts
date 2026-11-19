@@ -22,7 +22,16 @@ test.describe("security headers", () => {
     expect(csp).not.toMatch(/(^|\s)\*(\s|;|$)/);
     // Every origin the app may talk to, exactly - a new one must be a conscious change.
     expect([...directives["connect-src"]].sort()).toEqual(
-      ["'self'", "https://cloudflareinsights.com", "https://live.bangkok-transit.com", "https://photon.komoot.io", "https://tiles.openfreemap.org"].sort(),
+      [
+        "'self'",
+        "https://cloudflareinsights.com",
+        "https://live.bangkok-transit.com",
+        "https://maps.googleapis.com",
+        "https://places.googleapis.com",
+        "https://tiles.openfreemap.org",
+        "https://*.googleapis.com",
+        "https://*.gstatic.com",
+      ].sort(),
     );
   });
 

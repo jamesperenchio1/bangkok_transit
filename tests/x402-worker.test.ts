@@ -274,6 +274,50 @@ describe("when something is wrong, nobody gets data for free and nobody is charg
   });
 });
 
+describe("no URL trick gets paid data without paying", () => {
+  // hono's router had advisories where wildcard middleware (which is what our payment
+  // gate is) could be skipped for some paths, including ones with an encoded line
+  // terminator (GHSA-h7mg-cq63-vhpq, fixed in 4.13.16). Whatever the router does with
+  // an odd path, the answer must be a 402 (gate ran) or a 404 (no such route) - never data.
+  const PAID_DATA = /"minutes"|"neighbours"|"terminalStations"|"ageSeconds"|"steps"/;
+  const tricks = [
+    "/api/v1/route%0A?from=N8&to=CEN",
+    "/api/v1/route%0D?from=N8&to=CEN",
+    "/api/v1/route%0D%0A?from=N8&to=CEN",
+    "/api/v1/route%E2%80%A8?from=N8&to=CEN",
+    "/api/v1/route%E2%80%A9?from=N8&to=CEN",
+    "/api/v1%0A/route?from=N8&to=CEN",
+    "/api/v1/stations/siam-cen%0A",
+    "/api/v1/stations/siam-cen%0D%0A",
+    "/api/v1/stations/%0Asiam-cen",
+    "/api/v1/lines/bts-sukhumvit-line%0A",
+    "/api/v1/arrivals%0A?station=N8",
+    "/api%0A/v1/route?from=N8&to=CEN",
+    "//api/v1/route?from=N8&to=CEN",
+    "/api/v1//route?from=N8&to=CEN",
+    "/api/v1/route/?from=N8&to=CEN",
+    "/API/v1/route?from=N8&to=CEN",
+    "/api/v1/ROUTE?from=N8&to=CEN",
+    "/api/v1/route%2F?from=N8&to=CEN",
+    "/api/v1/%72oute?from=N8&to=CEN",
+    "/api/v1/stations/%73iam-cen",
+    "/api/v1/stations/siam-cen/",
+    "/api/v1/lines/%62ts-sukhumvit-line",
+  ];
+
+  it.each(tricks)("%s", async (path) => {
+    const res = await createApp(env).request(path, {}, env);
+    expect([402, 404], `${path} -> ${res.status}`).toContain(res.status);
+    expect(await res.text(), `${path} leaked paid data`).not.toMatch(PAID_DATA);
+    expect(calls.arrivals, "the live feed must not be read for an unpaid request").toBe(0);
+  });
+
+  it("and the sanity check holds: the data patterns above really do appear in a paid response", async () => {
+    const res = await pay(createApp(env), "/api/v1/route?from=N8&to=CEN");
+    expect(await res.text()).toMatch(PAID_DATA);
+  });
+});
+
 describe("the free parts", () => {
   it("the index is free, lists the prices, and says the network is a test one", async () => {
     const res = await createApp(env).request("/api/v1", {}, env);

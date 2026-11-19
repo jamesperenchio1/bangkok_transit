@@ -78,7 +78,7 @@ const doc = await waitFor(
   "arrivals.json to be published",
 );
 
-if (doc.total !== 61 || typeof doc.complete !== "boolean" || !doc.status?.state || !doc.poll) {
+if (doc.total !== 60 || typeof doc.complete !== "boolean" || !doc.status?.state || !doc.poll) {
   finish(1, `✗ malformed document: ${JSON.stringify(doc).slice(0, 300)}`);
 }
 finish(
