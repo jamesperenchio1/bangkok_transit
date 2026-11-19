@@ -3,7 +3,7 @@
 // Pure data in, plain objects out - no React, no runtime-specific imports -
 // so the pages, sitemap, llms.txt and tests all agree on one source of truth.
 import type { Metadata } from "next";
-import { stations, stationsByCode, type LineKey, type Station } from "@/data/stations";
+import { shownCode, stations, stationsByCode, type LineKey, type Station } from "@/data/stations";
 import lineSequences from "@/data/line-sequences.json";
 import { findPath, type PathResult } from "@/lib/transit-graph";
 
@@ -15,6 +15,23 @@ export const SITE_DESCRIPTION =
 
 export function absoluteUrl(path: string): string {
   return `${SITE_URL}${path}`;
+}
+
+/**
+ * What the site tells AI crawlers it allows (contentsignals.org), written into
+ * robots.txt. Searchable and usable as input to an AI answer (the site publishes
+ * llms.txt so assistants can cite it), but not for model training. This is a
+ * statement of preference, separate from the Allow rules that govern access.
+ */
+export const CONTENT_SIGNAL = "search=yes, ai-input=yes, ai-train=no";
+
+/**
+ * Where a page's markdown twin lives (generated at build time, see
+ * lib/markdown.ts): `/` -> `/md/index.md`, `/lines` -> `/md/lines.md`,
+ * `/lines/mrt-blue-line` -> `/md/lines/mrt-blue-line.md`.
+ */
+export function markdownPath(htmlPath: string): string {
+  return htmlPath === "/" ? "/md/index.md" : `/md${htmlPath}.md`;
 }
 
 export interface LineInfo {
@@ -42,7 +59,8 @@ export const LINES: LineInfo[] = ([
   { key: "yellow", slug: "mrt-yellow-line", nameEn: "MRT Yellow Line", nameTh: "รถไฟฟ้ามหานคร สายสีเหลือง", live: false },
   { key: "pink", slug: "mrt-pink-line", nameEn: "MRT Pink Line", nameTh: "รถไฟฟ้ามหานคร สายสีชมพู", live: false },
   { key: "arl", slug: "airport-rail-link", nameEn: "Airport Rail Link", nameTh: "แอร์พอร์ต เรล ลิงก์", live: false },
-  { key: "srtRed", slug: "srt-red-line", nameEn: "SRT Red Line", nameTh: "รถไฟสายสีแดง (SRT)", live: false },
+  { key: "srtDarkRed", slug: "srt-dark-red-line", nameEn: "SRT Dark Red Line", nameTh: "รถไฟสายสีแดงเข้ม (SRT)", live: false },
+  { key: "srtLightRed", slug: "srt-light-red-line", nameEn: "SRT Light Red Line", nameTh: "รถไฟสายสีแดงอ่อน (SRT)", live: false },
 ] as Omit<LineInfo, "color">[]).map((l) => ({ ...l, color: lineColor(l.key) }));
 
 export const linesByKey = new Map(LINES.map((l) => [l.key, l]));
@@ -148,7 +166,7 @@ export function stationLines(s: Station): LineInfo[] {
 }
 
 // ---------------------------------------------------------------------------
-// Curated route pages. Every pair of 193 stations would be ~18k near-duplicate
+// Curated route pages. Every pair of 192 stations would be ~18k near-duplicate
 // pages; the hubs below are where riders actually go (airports, interchanges,
 // shopping, rail terminals), which keeps each page distinct and useful.
 // ---------------------------------------------------------------------------
@@ -218,12 +236,14 @@ export function describeRoute(path: PathResult): string[] {
     }
     const line = leg.line;
     let j = i;
-    while (j + 1 < path.legs.length && path.legs[j + 1].mode === "ride" && path.legs[j + 1].line === line) j++;
+    while (j + 1 < path.legs.length && path.legs[j + 1].mode === "ride" && path.legs[j + 1].service === leg.service) j++;
     const stops = j - i + 1;
     const info = line ? linesByKey.get(line) : undefined;
-    const towards = path.legs[i - 1].boardToward ?? leg.boardToward;
+    const boarding = path.legs[i - 1].boardToward ? path.legs[i - 1] : leg;
+    const towards = boarding.boardToward;
+    const via = boarding.boardVia;
     steps.push(
-      `Take the ${info?.nameEn ?? "train"}${towards ? ` toward ${towards.nameEn}` : ""} for ${stops} ${stops === 1 ? "stop" : "stops"} to ${path.legs[j].station.nameEn}.`,
+      `Take the ${info?.nameEn ?? "train"}${towards ? ` toward ${towards.nameEn}${via ? ` (first stop ${via.nameEn})` : ""}` : ""} for ${stops} ${stops === 1 ? "stop" : "stops"} to ${path.legs[j].station.nameEn}.`,
     );
     i = j + 1;
   }
@@ -293,7 +313,7 @@ export function stationLd(s: Station): Json {
     url: absoluteUrl(stationPath(s)),
     name: s.nameEn,
     alternateName: s.nameTh,
-    identifier: s.code,
+    identifier: shownCode(s),
     geo: { "@type": "GeoCoordinates", latitude: s.lat, longitude: s.lon },
     address: { "@type": "PostalAddress", addressLocality: "Bangkok", addressCountry: "TH" },
     isAccessibleForFree: false,
@@ -377,7 +397,7 @@ export function pageMeta(opts: { title: string; description: string; path: strin
   return {
     title,
     description: opts.description,
-    alternates: { canonical: url },
+    alternates: { canonical: url, types: { "text/markdown": absoluteUrl(markdownPath(opts.path)) } },
     openGraph: {
       type: opts.type ?? "website",
       siteName: SITE_NAME,

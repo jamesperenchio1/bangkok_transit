@@ -27,8 +27,8 @@ test("opens and routes offline after one visit", async ({ page, context, problem
   const sheet = page.getByRole("dialog", { name: /Route from National Stadium to Chit Lom/ });
   await expect(sheet.getByText(/2 stops · 1 change · ~\d+ min/)).toBeVisible();
 
-  await page.getByRole("button", { name: "Browse all stations" }).click();
-  await expect(page.getByRole("dialog", { name: "All stations by line" })).toBeVisible();
+  await page.getByRole("button", { name: "Search stations" }).click();
+  await expect(page.getByTestId("browse-stations")).toBeVisible();
 
   await context.setOffline(false);
   await expect(page.getByText("Offline — live times paused")).toBeHidden();

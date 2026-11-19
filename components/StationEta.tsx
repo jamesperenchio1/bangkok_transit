@@ -1,5 +1,6 @@
 "use client";
 
+import { useSettingsStore } from "@/lib/settings-store";
 import { useArrivals } from "@/lib/use-arrivals";
 import {
   arrivalClockTime,
@@ -82,7 +83,9 @@ function PlatformTimes({
 export function StationEta({ station }: { station: Station }) {
   const { data, live, settled, now, upstreamDown, offline } = useArrivals(station.hasLiveArrivals ? station.code : null);
   const { t } = useT();
+  const { showLiveTimes, upcomingCount: count } = useSettingsStore((s) => s.settings);
 
+  if (!showLiveTimes) return null;
   if (!station.hasLiveArrivals) {
     return <p className="text-xs text-neutral-500 dark:text-neutral-400">{t.noLiveDataLine}</p>;
   }
@@ -124,7 +127,7 @@ export function StationEta({ station }: { station: Station }) {
   }
 
   const platforms = (data.platforms ?? [])
-    .map((platform) => ({ platform, trains: upcomingTrains(platform.trains, data.timestamp, now).slice(0, 3) }))
+    .map((platform) => ({ platform, trains: upcomingTrains(platform.trains, data.timestamp, now).slice(0, count) }))
     .filter(({ trains }) => trains.length > 0);
 
   if (platforms.length === 0) {

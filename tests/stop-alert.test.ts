@@ -10,7 +10,7 @@ const at = (code: string, accuracy = 20) => {
 };
 
 describe("alertTargets", () => {
-  const path = findPath("N8", "CEN")!; // N8 N7 N6 N5 N4 N3 N2 N1 CEN
+  const path = findPath("N8", "CEN")!; // N8 N7 N5 N4 N3 N2 N1 CEN
 
   it("always rings at the destination, and one stop before by default", () => {
     const codes = alertTargets(path, settings()).map((t) => [t.station.code, t.kind, t.stopsLeft]);

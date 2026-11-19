@@ -1,7 +1,7 @@
 {
  "source": "สำนักงานนโยบายและแผนการขนส่งและจราจร (OTP), Namtang GTFS, CC-BY 4.0",
  "url": "https://namtang-api.otp.go.th/download/namtang-gtfs.zip",
- "feedVersion": "20261104",
+ "feedVersion": "20261111",
  "unit": "minutes of running time between adjacent stations; dwell is added per stop by the router",
  "lines": {
   "sukhumvit": {
@@ -50,8 +50,7 @@
     "N2|N3": 1,
     "N3|N4": 3,
     "N4|N5": 2,
-    "N5|N6": 0.87,
-    "N6|N7": 1.13,
+    "N5|N7": 2,
     "N7|N8": 1,
     "N8|N9": 3
    }
@@ -156,7 +155,7 @@
     "A07|A08": 3
    }
   },
-  "srtRed": {
+  "srtDarkRed": {
    "dwell": 0.5,
    "hops": {
     "RD04|RD05": 3,
@@ -168,6 +167,14 @@
     "RD10|RD11": 2,
     "RD11|RD12": 4,
     "RD12|RD13": 3
+   }
+  },
+  "srtLightRed": {
+   "dwell": 0.5,
+   "hops": {
+    "RD01|RD02": 7,
+    "RD01|RD04": 4,
+    "RD02|RD03": 5
    }
   }
  }

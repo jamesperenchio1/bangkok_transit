@@ -27,8 +27,8 @@ describe("seo data", () => {
   });
 
   it("never presents separate branches as one continuous run", () => {
-    // Pink runs PK01-PK30 plus a spur PK10 -> MT01 -> MT02; SRT Red fans out
-    // of RD04. A single flat list put PK30 next to MT01 and skipped the RD04
+    // Pink runs PK01-PK30 plus a spur PK10 -> MT01 -> MT02; the two SRT Red lines fan
+    // out of RD04. A single flat list put PK30 next to MT01 and skipped the RD04
     // junction, an order no train follows.
     const adjacent = new Map<string, Set<string>>();
     for (const l of LINES) {
@@ -48,7 +48,9 @@ describe("seo data", () => {
     expect(pink[1][0]).toBe("PK10");
     expect(pink[1]).toContain("MT01");
     expect(pink[0]).not.toContain("MT01");
-    for (const branch of lineBranches("srtRed")) expect(branch[0].code).toBe("RD04");
+    for (const line of ["srtDarkRed", "srtLightRed"] as const) {
+      for (const branch of lineBranches(line)) expect(branch[0].code).toBe("RD04");
+    }
     expect(lineBranches("sukhumvit")).toHaveLength(1);
   });
 

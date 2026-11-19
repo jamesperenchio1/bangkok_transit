@@ -1,4 +1,5 @@
 import type { Lang, Strings } from "./i18n";
+import { useSettingsStore } from "./settings-store";
 
 export function minutesLabel(minutes: number | null | undefined, t: Strings): string {
   if (minutes === undefined || minutes === null) return "—";
@@ -10,6 +11,24 @@ const bangkokClocks: Record<Lang, Intl.DateTimeFormat> = {
   en: new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Bangkok" }),
   th: new Intl.DateTimeFormat("th-TH", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" }),
 };
+
+const forcedClocks = new Map<string, Intl.DateTimeFormat>();
+/** A 12- or 24-hour clock regardless of the language's habit (cached: building a formatter is slow). */
+function forcedClock(lang: Lang, hour12: boolean): Intl.DateTimeFormat {
+  const key = `${lang}${hour12}`;
+  let format = forcedClocks.get(key);
+  if (!format) {
+    format = new Intl.DateTimeFormat(lang === "th" ? "th-TH" : "en-US", {
+      hour: hour12 ? "numeric" : "2-digit",
+      minute: "2-digit",
+      // h23, not hour12:false - the latter prints midnight as "24:07".
+      hourCycle: hour12 ? "h12" : "h23",
+      timeZone: "Asia/Bangkok",
+    });
+    forcedClocks.set(key, format);
+  }
+  return format;
+}
 
 /**
  * Wall-clock arrival time in Bangkok, computed from the payload's own
@@ -24,7 +43,9 @@ export function arrivalClockTime(
   if (etaMinutes === undefined || etaMinutes === null || !Number.isFinite(etaMinutes)) return null;
   const from = parseUtc(fromIso);
   if (Number.isNaN(from)) return null;
-  return bangkokClocks[lang].format(new Date(from + etaMinutes * 60_000));
+  const clock = useSettingsStore.getState().settings.clock;
+  const format = clock === "auto" ? bangkokClocks[lang] : forcedClock(lang, clock === "12h");
+  return format.format(new Date(from + etaMinutes * 60_000));
 }
 
 /**

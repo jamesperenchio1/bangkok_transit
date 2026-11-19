@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { stations } from "@/data/stations";
+import { shownCode, stations } from "@/data/stations";
 import {
   pageMeta, breadcrumbLd, linePath, mapLink, neighbours, routePairs, stationLd, stationLines, stationPath, stationSlug,
   stationsBySlug, linesByKey,
@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: PageProps<"/stations/[slug]">
   if (!s) return {};
   const lines = stationLines(s).map((l) => l.nameEn);
   const title = `${s.nameEn} Station (${s.nameTh}): ${lines.length > 1 ? "Interchange" : lines[0]}`;
-  const description = `${s.nameEn} (${s.nameTh}, ${s.code}) station on the ${lines.join(" and ")}. Neighbouring stations, interchanges, map location${s.hasLiveArrivals ? " and live BTS train arrivals" : ""}.`;
+  const description = `${s.nameEn} (${s.nameTh}, ${shownCode(s)}) station on the ${lines.join(" and ")}. Neighbouring stations, interchanges, map location${s.hasLiveArrivals ? " and live BTS train arrivals" : ""}.`;
   return pageMeta({ title, description, path: stationPath(s) });
 }
 
@@ -50,7 +50,7 @@ export default async function StationPage({ params }: PageProps<"/stations/[slug
       <h1 className="text-2xl font-bold">{s.nameEn} station</h1>
       <p lang="th" className="text-neutral-600 dark:text-neutral-400">{s.nameTh}</p>
       <p className="mt-3">
-        {s.nameEn} ({s.code}) is on the{" "}
+        {s.nameEn} ({shownCode(s)}) is on the{" "}
         {lines.map((l, i) => (
           <span key={l.key}>
             {i > 0 && " and "}

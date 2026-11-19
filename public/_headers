@@ -8,11 +8,36 @@
   # 'unsafe-inline' for scripts is unavoidable for a static export: Next
   # inlines its bootstrap scripts and nonces need a server per request.
   # Everything the page talks to is listed explicitly: map tiles/fonts/
-  # sprites (OpenFreeMap), the live arrivals document, and Cloudflare Web
-  # Analytics, whose beacon Cloudflare injects into the page at the edge (so
-  # it never appears in the build or in local/e2e runs). The e2e suite
-  # fails on any CSP violation, so a new origin can't slip in unnoticed.
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org; font-src 'self' data:; connect-src 'self' https://tiles.openfreemap.org https://live.bangkok-transit.com https://cloudflareinsights.com; worker-src 'self' blob:; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
+  # sprites (OpenFreeMap), the live arrivals document, Cloudflare Web
+  # Analytics (whose beacon Cloudflare injects at the edge, so it never
+  # appears in the build or in local/e2e runs), and Google Maps/Places for
+  # riders who opt into the Google map. The e2e suite fails on any CSP
+  # violation, so a new origin can't slip in unnoticed.
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://maps.googleapis.com https://maps.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://tiles.openfreemap.org https://maps.googleapis.com https://maps.gstatic.com https://*.googleapis.com https://*.gstatic.com https://*.googleusercontent.com https://*.ggpht.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://tiles.openfreemap.org https://live.bangkok-transit.com https://cloudflareinsights.com https://places.googleapis.com https://maps.googleapis.com https://*.googleapis.com https://*.gstatic.com; worker-src 'self' blob:; media-src 'self' blob:; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
+
+# The home page names what it will need first, as `Link` headers. With Cloudflare's
+# Early Hints switched on (dashboard: Speed > Settings > Content Optimization;
+# see docs/operations.md) the edge sends these as a 103 response while it is
+# still fetching the page, so the browser opens the tile connection and starts
+# the map style and line geometry before the HTML has even arrived. Without the
+# toggle they still work as ordinary headers, just a little later.
+# Keep each one identical to how the page requests it, or the browser downloads
+# it twice: the style is preloaded in app/layout.tsx (MAP_STYLE_URL) and the
+# geometry is fetched by lib/line-geometry.ts, both in anonymous CORS mode
+# (hence `crossorigin`). Measured: one request each, lines ~0.1-0.9 s sooner on
+# slow 4G. The MapLibre worker is deliberately not listed: its own request does
+# not reuse a preloaded copy, so it downloaded three times.
+/
+  Link: <https://tiles.openfreemap.org>; rel=preconnect; crossorigin
+  Link: <https://tiles.openfreemap.org/styles/liberty>; rel=preload; as=fetch; crossorigin
+  Link: </line-geometry.json>; rel=preload; as=fetch; crossorigin
+  # For agents (RFC 8288 / RFC 9727): where the machine-readable resources are.
+  # Plain headers only - Early Hints just uses the preload/preconnect ones above.
+  Link: </.well-known/api-catalog>; rel="api-catalog"
+  Link: </openapi.json>; rel="service-desc"; type="application/openapi+json"
+  Link: </llms.txt>; rel="service-doc"; type="text/plain"
+  Link: </llms.txt>; rel="describedby"; type="text/plain"
+  Link: </md/index.md>; rel="alternate"; type="text/markdown"
 
 # Content-hashed build output never changes under the same name.
 /_next/static/*
@@ -43,3 +68,17 @@
   Cache-Control: public, max-age=3600
 /og/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+# Agent discovery files. The catalog has no file extension, so Workers assets
+# would send no Content-Type at all; RFC 9727 wants application/linkset+json.
+/.well-known/api-catalog
+  Content-Type: application/linkset+json
+  Cache-Control: public, max-age=3600
+/openapi.json
+  Content-Type: application/openapi+json
+  Cache-Control: public, max-age=3600
+# Markdown twins of the content pages (lib/markdown.ts). Set here because a
+# route handler's own headers are not kept in a static export.
+/md/*
+  Content-Type: text/markdown; charset=utf-8
+  Cache-Control: public, max-age=3600

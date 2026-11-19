@@ -16,9 +16,10 @@
  * of stops (72 min end to end for ~30 km) and Pink has 0 min between stops
  * with a flat 1 min dwell (28 min for ~35 km, i.e. ~75 km/h with 30 stops).
  * Those are placeholders, so they stay on the formula. Light Red is left on
- * the formula as well: four stops is too little to judge. Purple is flat 2 min
- * a hop, which is plausible for a line with near-uniform spacing, so it is
- * kept. If OTP fixes a placeholder line, add it to LINES and re-run.
+ * the feed's SRT Light Red trips are measured (4 / 7 / 5 min hops that differ by
+ * direction and track the real spacing) and match SRTET's own timetable, so it
+ * is included. Purple is flat 2 min a hop, which is plausible for a line with
+ * near-uniform spacing, so it is kept. If OTP fixes a placeholder line, add it to LINES and re-run.
  *
  * How feed stops become our station codes. The feed has its own stop ids, and
  * MRT/ARL/SRT codes here are locally assigned (see AGENTS.md), so ids can't be
@@ -29,9 +30,9 @@
  * What a figure means. For two consecutive stops A then B on a trip, the hop
  * is arrival(B) - departure(A): pure running time, in minutes. Each line also
  * gets one `dwell` (median stop time at intermediate stops), which the router
- * adds per stop. Where the feed skips a station we list (Sukhumvit's N6 Sena
- * Ruam, which was never built, is in line-sequences.json), the run is split
- * between the hops in proportion to their straight-line length. A hop seen on
+ * adds per stop. Where the feed skips a station we list, the run is split between the hops
+ * in proportion to their straight-line length. (Sukhumvit's N6 Sena Ruam was
+ * never built and is not in line-sequences.json, so N5 to N7 is one hop.) A hop seen on
  * several trips (both directions, short-turn patterns) takes the median.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -42,9 +43,11 @@ const OUT = path.join(ROOT, "data", "hop-times.json");
 
 /**
  * A feed stop further than this from every station of its line is an error.
- * Generous on purpose: some coordinates in data/stations.json are off (PP06
- * Tha It is ~475 m from the feed's "Bang Rak Noi Tha It"), so the match is
- * also required to be unambiguous, see AMBIGUITY.
+ * Generous on purpose (large stations have several entrances, and Bang Sue and
+ * Itsaraphap sit 150-220 m from the feed's stop), so the match is also required
+ * to be unambiguous, see AMBIGUITY. (PP06 Tha It was 475 m off until it was
+ * corrected to the feed's "Bang Rak Noi Tha It" position, which Wikipedia
+ * agrees with to ~7 m.)
  */
 const MAX_MATCH_METERS = 600;
 /** The nearest station must be at least this many times closer than the runner-up. */
@@ -71,7 +74,8 @@ const LINES: LineSpec[] = [
   { line: "blue", agency: "BEM", shortName: "Blue" },
   { line: "purple", agency: "BEM", shortName: "Purple" },
   { line: "arl", agency: "SRTET", shortName: "ARL" },
-  { line: "srtRed", agency: "SRTET", shortName: "Red", longName: "Dark Red" },
+  { line: "srtDarkRed", agency: "SRTET", shortName: "Red", longName: "Dark Red" },
+  { line: "srtLightRed", agency: "SRTET", shortName: "Red", longName: "Light Red" },
 ];
 
 type Row = Record<string, string>;
@@ -265,10 +269,7 @@ function main() {
         if (!(key in hops)) missing.push(key);
       }
     }
-    // Light Red shares the srtRed key but is deliberately not in the feed
-    // selection above; its hops fall back to the formula.
-    const expectedMissing = spec.line === "srtRed" ? new Set(segments[0].slice(0, -1).map((c, i) => [c, segments[0][i + 1]].sort().join("|"))) : new Set<string>();
-    const unexpected = missing.filter((k) => !expectedMissing.has(k));
+    const unexpected = missing;
     console.log(
       `${spec.line.padEnd(9)} routes ${routeIds.join(",")}  trips used ${used} (skipped ${skippedTrips})  ` +
         `hops ${Object.keys(hops).length}  dwell ${lines[spec.line].dwell}  ` +

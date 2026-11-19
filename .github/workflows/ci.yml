@@ -8,6 +8,10 @@
 # end-to-end suite is ~380 tests, mostly the station-alert matrix across 29
 # phone profiles, rendered in software GL - one serial job took 13-17 minutes
 # for the tests alone. All runners are GitHub-hosted (free for a public repo).
+#
+# This replaces the single Site job whose timeout was raised from 20 to 30
+# minutes as a stopgap: sharding brings the wall time well under either limit,
+# so each shard keeps a 15-minute cap and a slow run still reads as slow.
 name: CI
 
 on:

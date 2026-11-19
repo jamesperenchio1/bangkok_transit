@@ -59,7 +59,10 @@ beforeEach(() => {
   vi.stubGlobal("AudioContext", FakeContext);
   vi.stubGlobal("navigator", {});
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe("unlockAudio", () => {
   it("asks iOS for a playback audio session so the silent switch doesn't mute the chime", async () => {
@@ -289,5 +292,126 @@ describe("holdScreenAwake", () => {
     vi.stubGlobal("navigator", { wakeLock: { request: async () => Promise.reject(new DOMException("battery", "NotAllowedError")) } });
     const { holdScreenAwake } = await load();
     expect(() => holdScreenAwake()()).not.toThrow();
+  });
+});
+
+describe("chimeWav (the media-element copy, heard even with the iPhone ringer on silent)", () => {
+  it("is a valid 16-bit mono PCM WAV whose length follows the repeats", async () => {
+    const { chimeWav } = await load();
+    const one = chimeWav({ repeats: 1 });
+    const three = chimeWav({ repeats: 3 });
+    const text = (b: Uint8Array, at: number, n: number) => String.fromCharCode(...b.slice(at, at + n));
+    expect(text(one, 0, 4)).toBe("RIFF");
+    expect(text(one, 8, 8)).toBe("WAVEfmt ");
+    const view = new DataView(one.buffer);
+    expect(view.getUint16(20, true)).toBe(1); // PCM
+    expect(view.getUint16(22, true)).toBe(1); // mono
+    expect(view.getUint32(40, true)).toBe(one.length - 44);
+    expect(three.length).toBeGreaterThan(one.length);
+  });
+
+  it("is louder at higher volume, and never clips", async () => {
+    const { chimeWav } = await load();
+    const peak = (b: Uint8Array) => {
+      const v = new DataView(b.buffer);
+      let max = 0;
+      for (let i = 44; i < b.length; i += 2) max = Math.max(max, Math.abs(v.getInt16(i, true)));
+      return max;
+    };
+    const quiet = peak(chimeWav({ volume: 0.2 }));
+    const loud = peak(chimeWav({ volume: 1 }));
+    expect(loud).toBeGreaterThan(quiet * 3);
+    expect(loud).toBeLessThanOrEqual(0x7fff);
+  });
+});
+
+describe("chimeWav has no click", () => {
+  const samples = (b: Uint8Array) => {
+    const v = new DataView(b.buffer, b.byteOffset);
+    return Float32Array.from({ length: (b.length - 44) / 2 }, (_, i) => v.getInt16(44 + i * 2, true) / 32768);
+  };
+  // Loudest sample in each millisecond (22.05 kHz mono), for the first note only:
+  // the second note starts at 280 ms.
+  const perMs = (x: Float32Array) =>
+    Array.from({ length: 270 }, (_, ms) => {
+      let m = 0;
+      for (let i = Math.round(ms * 22.05); i < Math.round((ms + 1) * 22.05); i++) m = Math.max(m, Math.abs(x[i]));
+      return m;
+    });
+
+  it("never drops in level from one millisecond to the next: the attack ends where the fade begins", async () => {
+    // It once fell from 0.47 to 0.28 in one sample at 20 ms, a tick at the start of every note.
+    const { chimeWav } = await load();
+    for (const volume of [0.2, 0.6, 1]) {
+      const level = perMs(samples(chimeWav({ volume, repeats: 2 })));
+      for (let ms = 1; ms < level.length; ms++) {
+        expect(level[ms], `${volume}: ${ms} ms`).toBeGreaterThanOrEqual(level[ms - 1] * 0.9);
+      }
+    }
+  });
+
+  it("peaks at 20 ms and fades smoothly after it, like the Web Audio chime", async () => {
+    const { chimeWav } = await load();
+    const level = perMs(samples(chimeWav({ volume: 0.6, repeats: 1 })));
+    const peakAt = level.indexOf(Math.max(...level));
+    expect(peakAt).toBeGreaterThanOrEqual(18);
+    expect(peakAt).toBeLessThanOrEqual(22);
+    expect(level[100]).toBeLessThan(level[peakAt]);
+    expect(level[200]).toBeLessThan(level[100]);
+  });
+
+  it("starts and ends near silence, so there is no step at either end", async () => {
+    const { chimeWav } = await load();
+    const x = samples(chimeWav({ volume: 1, repeats: 1 }));
+    expect(Math.abs(x[0])).toBeLessThan(0.001);
+    expect(Math.abs(x[x.length - 1])).toBeLessThan(0.001);
+  });
+});
+
+describe("playDing result", () => {
+  it("reports the media copy as unsupported where there is no <audio>, and the Web Audio state", async () => {
+    const { unlockAudio, playDing } = await load();
+    unlockAudio();
+    FakeContext.created[0].state = "running";
+    await expect(playDing()).resolves.toEqual({ webAudio: "running", media: "unsupported" });
+  });
+
+  it("plays the chime a second way through an <audio> element and reports it", async () => {
+    const played: string[] = [];
+    class FakeAudio {
+      src = "";
+      muted = false;
+      currentTime = 0;
+      play() {
+        played.push(this.src);
+        return Promise.resolve();
+      }
+      pause() {}
+    }
+    vi.stubGlobal("Audio", FakeAudio);
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:chime");
+    vi.spyOn(URL, "revokeObjectURL").mockReturnValue(undefined);
+    const { unlockAudio, playDing } = await load();
+    unlockAudio();
+    const status = await playDing({ volume: 0.5 });
+    expect(status.media).toBe("played");
+    expect(played.at(-1)).toBe("blob:chime");
+  });
+
+  it("reports a refused play() as blocked, never an unhandled rejection", async () => {
+    class BlockedAudio {
+      src = "";
+      muted = false;
+      currentTime = 0;
+      play() {
+        return Promise.reject(new DOMException("not allowed", "NotAllowedError"));
+      }
+      pause() {}
+    }
+    vi.stubGlobal("Audio", BlockedAudio);
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:chime");
+    vi.spyOn(URL, "revokeObjectURL").mockReturnValue(undefined);
+    const { playDing } = await load();
+    await expect(playDing()).resolves.toMatchObject({ media: "blocked" });
   });
 });

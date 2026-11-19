@@ -1,6 +1,6 @@
 <!-- BEGIN:nextjs-agent-rules -->
 
-# This is NOT the Next.js you know
+## This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
 
@@ -22,6 +22,12 @@ live BTS arrivals, live at bangkok-transit.com. Read `README.md` first, then
   file written by one Durable Object. Don't add API routes, per-user fetches
   to the upstream, or anything that needs a paid plan. Keep the Cloudflare
   free-tier numbers in `docs/architecture.md#cost-model` true.
+  - Default users stay on MapLibre/OpenFreeMap and make zero Google requests.
+    The map is cached on the device so it works offline; that is why it is
+    the default. The opt-in Google map and Google Places search are the one exception: a
+    browser key restricted by HTTP referrer and API, with daily quotas and a
+    budget alert. They are billed per request when enabled; never put them in
+    the default path.
 - **Never per-user calls to `bts-api.topmile.com`.** It has no CORS, no batch
   endpoint and a ~180/min rate limit; only `cloudflare/poller` talks to it.
 - **Honest live data.** Old readings are shown as last-known with their age
@@ -38,6 +44,21 @@ live BTS arrivals, live at bangkok-transit.com. Read `README.md` first, then
   cards are MapLibre popups rendered as separate React roots, which is why
   language lives in a Zustand store (`lib/i18n.ts`), not context.
   `window.__map` exposes the map for debugging and e2e.
+- `components/GoogleTransitMap.tsx` — the opt-in Google basemap (Settings →
+  Map). It must stay a *twin* of `TransitMap`, not a second app: everything
+  that decides **what** to draw lives in shared, library-free modules —
+  `lib/map-data.ts` (station visuals, line/route geometry, label text,
+  camera padding), `lib/train-model.ts` (train placement, text, arrow shape),
+  `lib/label-layout.ts` (collision), `components/map-cards.tsx` (station /
+  place / train cards) — and both maps only differ in **how** they draw it.
+  Change what the map shows in those modules first; never in one map only.
+  `lib/map-provider.ts` decides which map mounts and falls back to MapLibre
+  (offline, no key, load failure). `components/google-layer.ts` is the one
+  DOM overlay the Google map keeps its markers in (zero-size anchors, so a
+  dot is exactly on its coordinate).
+- `components/settings/` — Settings: a category list plus one section at a
+  time (full screen on phones). Rows are data in `catalog/*.ts`; every stored
+  setting is owned by one section in `SECTION_KEYS` (a test pins it).
 - `components/RoutePanel.tsx` — the route sheet (legs, walks, boarding
   direction, live times at each boarding point).
 - `lib/transit-graph.ts` — routing (see below). `lib/line-geometry.ts` —
@@ -60,15 +81,32 @@ live BTS arrivals, live at bangkok-transit.com. Read `README.md` first, then
 Consecutive codes are adjacent; branches are extra segments sharing a station;
 MRT Blue is one segment visiting Tha Phra twice. Termini are segment ends —
 used for "board toward X" and to match BTS live platforms (`direction_key`).
+A loop-closing end hands over to the other end, so every Blue train ends at
+Lak Song; where both ways out of a station end at the same place the leg also
+carries `boardVia` (the next station) so the rider can pick the platform. Each
+segment is a separate *service*: switching segment on one line (Pink trunk ↔
+Muang Thong Thani spur) is a change.
 `interchanges.json` lists walking transfers between distinct stations;
 same-building interchanges are one node with several `lines`. `findPath`
-runs Dijkstra over (station, mode, line) states with a minutes cost model and
+runs Dijkstra over (station, mode, service) states with a minutes cost model and
 returns legs with `mode: "start" | "ride" | "walk"`.
 
-Station codes for BTS/Gold/Yellow/Pink are the operators'; MRT Blue/Purple,
-ARL and SRT Red use locally assigned codes (`BL01`…, `PP01`…, `A01`…,
-`RD01`…) that do **not** match the operators' numbering. Don't renumber them;
-fix names/order against an authoritative source and let the tests guard it.
+A place picked from search routes through the station that gets there soonest,
+not the geographically nearest: `lib/place-station.ts` compares the closest few
+by `findPath(...).minutes + walkEstimate(meters)` (one minute of tie-break in
+favour of the nearest). The route then ends with the walk to the place, dashed
+on both maps and counted in the sheet's total (`finalWalk`).
+
+A station's `code` is a stable **internal id**: it is in `?from=`/`?to=` links,
+page slugs and the fare/hop data, so never renumber it. For BTS/Gold/Yellow/Pink
+and Purple it is also the operator's code. MRT Blue, ARL and SRT Red use local
+ids (`BL07`, `A01`, `RD04`…) that do **not** match the operators' numbering
+(Tha Phra is BL01, Suvarnabhumi A1, Krung Thep Aphiwat RN01 / RW01), so those
+stations carry a `displayCode` with the official code(s). Always show
+`shownCode(station)` to people and search on `codeAliases(station)`, never the
+id. The `official station codes` test in `tests/data.test.ts` pins every one by
+name; check any new station against the operator's list. SRT Dark Red (RN) and
+Light Red (RW) are separate lines that share Krung Thep Aphiwat.
 
 ## Conventions
 
@@ -98,6 +136,11 @@ fix names/order against an authoritative source and let the tests guard it.
   `npm run test:alert` (add a device to `e2e/alert-devices.ts`, a capability
   case to `tests/alert-output.test.ts`) and the real-phone checklist in
   `docs/operations.md`. iPhones have no Vibration API; don't "fix" that.
+- **Map first.** The lines, stations and basemap get the connection before
+  anything else: start new background work (polls, downloads, prefetches) from
+  `whenMapPainted()` in `lib/map-ready.ts`, never at hydration. The lines must
+  draw even if `line-geometry.json` doesn't arrive (`stationLineSegments()` is
+  the stand-in), so don't make them wait on a second request.
 - Timers in the poller must be cancellable (`deadlineAfter` in `lib/bts.ts`),
   not `AbortSignal.timeout()` — a pending timer keeps the Durable Object
   busy and billed.

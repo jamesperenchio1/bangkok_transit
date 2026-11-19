@@ -262,3 +262,31 @@ export function estimateTrains(arrivals: Record<string, Arrivals>, now: number):
   }
   return out;
 }
+
+/** A leg of a planned route, as far as train matching needs it. */
+interface RouteLegLike {
+  mode: string;
+  station: { code: string };
+}
+
+/**
+ * The directed hops ("N8>N7") a planned route rides on, from consecutive
+ * ride legs. A walk or a change breaks the chain: only the stretches the
+ * rider actually sits on a train count.
+ */
+export function routeHops(legs: readonly RouteLegLike[]): Set<string> {
+  const hops = new Set<string>();
+  for (let i = 1; i < legs.length; i++) {
+    if (legs[i].mode === "ride") hops.add(`${legs[i - 1].station.code}>${legs[i].station.code}`);
+  }
+  return hops;
+}
+
+/**
+ * Whether a train is travelling along the planned route: its heading (two
+ * adjacent stops, in the direction it is facing) is one of the route's hops.
+ * With no route every train counts.
+ */
+export function trainOnRoute(train: Pick<TrainEstimate, "heading">, hops: ReadonlySet<string> | null): boolean {
+  return hops === null || hops.has(`${train.heading[0]}>${train.heading[1]}`);
+}

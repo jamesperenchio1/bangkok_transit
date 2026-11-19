@@ -8,6 +8,10 @@ test.describe("search & AI discoverability", () => {
     expect(body).toContain("Sitemap: https://bangkok-transit.com/sitemap.xml");
     expect(body).toContain("ClaudeBot");
     expect(body).not.toMatch(/Disallow:\s*\//);
+    // The AI-use preference, stated in the `*` group and in a named crawler's group.
+    const signal = "Content-Signal: search=yes, ai-input=yes, ai-train=no";
+    expect(body.split("\n").filter((l) => l === signal).length).toBeGreaterThan(10);
+    expect(body).toMatch(/User-Agent: ClaudeBot\nAllow: \/\nContent-Signal: /i);
 
     const sitemap = await (await request.get("/sitemap.xml")).text();
     expect(sitemap).toContain("<loc>https://bangkok-transit.com/lines/bts-sukhumvit-line</loc>");
@@ -16,6 +20,35 @@ test.describe("search & AI discoverability", () => {
     expect(llms.ok()).toBe(true);
     expect(llms.headers()["content-type"]).toContain("text/plain");
     expect(await llms.text()).toContain("# Bangkok Transit");
+  });
+
+  test("publishes an API catalog, its OpenAPI description, and markdown twins with the right types", async ({ request }) => {
+    // These files have no (or an unusual) extension, so their Content-Type
+    // comes from public/_headers; only the real asset server shows whether it applies.
+    const catalog = await request.get("/.well-known/api-catalog");
+    expect(catalog.status()).toBe(200);
+    expect(catalog.headers()["content-type"]).toContain("application/linkset+json");
+    expect((await catalog.json()).linkset[0].anchor).toBe("https://live.bangkok-transit.com/arrivals.json");
+
+    const api = await request.get("/openapi.json");
+    expect(api.status()).toBe(200);
+    expect(api.headers()["content-type"]).toContain("application/openapi+json");
+    expect(Object.keys((await api.json()).paths)).toEqual(["/arrivals.json"]);
+
+    for (const path of ["/md/index.md", "/md/lines/mrt-blue-line.md", "/md/stations/siam-cen.md"]) {
+      const res = await request.get(path);
+      expect(res.status(), path).toBe(200);
+      expect(res.headers()["content-type"], path).toContain("text/markdown");
+      expect(await res.text(), path).toMatch(/^# .+\n\nCanonical page: https:\/\/bangkok-transit\.com/);
+    }
+    expect((await request.get("/md/lines/nope.md")).status()).toBe(404);
+  });
+
+  test("each content page links to its markdown twin", async ({ request }) => {
+    const html = await (await request.get("/lines/mrt-blue-line")).text();
+    expect(html).toContain('rel="alternate" type="text/markdown" href="https://bangkok-transit.com/md/lines/mrt-blue-line.md"');
+    const home = await (await request.get("/")).text();
+    expect(home).toContain('type="text/markdown" href="https://bangkok-transit.com/md/index.md"');
   });
 
   test("every sitemap URL resolves", async ({ request }) => {

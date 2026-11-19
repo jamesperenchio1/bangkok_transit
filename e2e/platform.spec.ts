@@ -22,7 +22,16 @@ test.describe("security headers", () => {
     expect(csp).not.toMatch(/(^|\s)\*(\s|;|$)/);
     // Every origin the app may talk to, exactly - a new one must be a conscious change.
     expect([...directives["connect-src"]].sort()).toEqual(
-      ["'self'", "https://cloudflareinsights.com", "https://live.bangkok-transit.com", "https://tiles.openfreemap.org"].sort(),
+      [
+        "'self'",
+        "https://cloudflareinsights.com",
+        "https://live.bangkok-transit.com",
+        "https://maps.googleapis.com",
+        "https://places.googleapis.com",
+        "https://tiles.openfreemap.org",
+        "https://*.googleapis.com",
+        "https://*.gstatic.com",
+      ].sort(),
     );
   });
 
@@ -31,6 +40,20 @@ test.describe("security headers", () => {
     expect(headers["x-content-type-options"]).toBe("nosniff");
     expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
     expect(headers["permissions-policy"]).toBe("geolocation=(self)");
+  });
+
+  test("the home page, and only the home page, names the map's first downloads for Early Hints and where agents find the API catalog", async ({ request }) => {
+    // public/_headers: Cloudflare turns these into a 103 once Early Hints is on.
+    const link = (await request.get("/")).headers()["link"] ?? "";
+    expect(link).toContain("<https://tiles.openfreemap.org>; rel=preconnect");
+    expect(link).toContain("<https://tiles.openfreemap.org/styles/liberty>; rel=preload; as=fetch; crossorigin");
+    expect(link).toContain("</line-geometry.json>; rel=preload; as=fetch; crossorigin");
+    // Agent discovery (RFC 8288 / 9727), on the same header.
+    expect(link).toContain('</.well-known/api-catalog>; rel="api-catalog"');
+    expect(link).toContain('</openapi.json>; rel="service-desc"');
+    expect(link).toContain('</md/index.md>; rel="alternate"; type="text/markdown"');
+    // Only the page that has the map: the SEO pages don't need these downloads.
+    expect((await request.get("/lines")).headers()["link"]).toBeUndefined();
   });
 });
 

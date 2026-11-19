@@ -1,4 +1,5 @@
 import stations from "@/data/stations.json";
+import { useSettingsStore } from "@/lib/settings-store";
 
 /**
  * Pre-fetches the basemap for the rail network once, on an idle moment after
@@ -7,8 +8,15 @@ import stations from "@/data/stations.json";
  * answers these fetches from / into its CacheFirst OpenFreeMap cache, so
  * this module never stores anything itself.
  *
- * Bounded and polite: skipped on Data Saver or a slow/cellular-metered
- * connection, a few requests at a time, and recorded as done so it runs once.
+ * This is what makes the default (MapLibre) map work offline, and why it is the
+ * default: Google's tiles cannot be stored, these can.
+ *
+ * Bounded and polite, and sized to the connection: on Wi-Fi the whole set
+ * (the network at overview zooms, plus street level around every station);
+ * on mobile data only the overview zooms (~150 tiles, a few MB), so the map
+ * is still there offline without a surprise bill; nothing on Data Saver or a
+ * slow link. A few requests at a time, and recorded as done so each runs once.
+ * Whatever the rider views is cached as they go either way (app/sw.ts).
  */
 
 const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
@@ -16,7 +24,10 @@ const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 // the opening view's tiles were cached only if the service worker already
 // controlled the page during the first visit, so offline could open on stations
 // over an empty basemap. Bumping re-runs it for installs that did the v1 pass.
-const DONE_KEY = "bts:map-warm:v2";
+export const OFFLINE_DONE_KEY = "bts:map-warm:v2";
+/** The lighter pass done on mobile data; the full one (above) later replaces it. */
+export const OFFLINE_OVERVIEW_KEY = "bts:map-warm:overview:v1";
+const DONE_KEY = OFFLINE_DONE_KEY;
 const CONCURRENCY = 4;
 /** Whole-network overview zooms (9 is where the map opens), then street-level zoom only around stations. */
 const OVERVIEW_ZOOMS = [9, 10, 11, 12, 13];
@@ -69,13 +80,26 @@ function detailTiles(): [number, number, number][] {
   return out;
 }
 
-function shouldSkip(): boolean {
-  const conn = (navigator as Navigator & { connection?: { saveData?: boolean; type?: string; effectiveType?: string } })
-    .connection;
-  if (conn?.saveData) return true;
-  if (conn?.type === "cellular") return true;
-  if (conn?.effectiveType && conn.effectiveType !== "4g") return true;
-  return !navigator.onLine;
+export type WarmMode = "full" | "overview" | "skip";
+
+export interface WarmEnvironment {
+  dataSaver: boolean;
+  onLine: boolean;
+  /** The Network Information API, where the browser has it. */
+  connection?: { saveData?: boolean; type?: string; effectiveType?: string };
+}
+
+/** How much of the map to download now, given what the connection and the rider allow. */
+export function warmMode({ dataSaver, onLine, connection }: WarmEnvironment): WarmMode {
+  if (dataSaver || !onLine || connection?.saveData) return "skip";
+  // A slow link: not now. It will be tried again on a later visit.
+  if (connection?.effectiveType && connection.effectiveType !== "4g") return "skip";
+  return connection?.type === "cellular" ? "overview" : "full";
+}
+
+function currentWarmMode(): WarmMode {
+  const connection = (navigator as Navigator & { connection?: WarmEnvironment["connection"] }).connection;
+  return warmMode({ dataSaver: useSettingsStore.getState().settings.dataSaver, onLine: navigator.onLine, connection });
 }
 
 async function mapPool<T>(items: T[], run: (item: T) => Promise<void>): Promise<boolean> {
@@ -95,11 +119,13 @@ async function mapPool<T>(items: T[], run: (item: T) => Promise<void>): Promise<
   return !failed;
 }
 
-async function warm(): Promise<void> {
+async function warm(mode: "full" | "overview"): Promise<boolean> {
   // Same flags as MapLibre's own requests (CORS, no credentials) so the
   // cache entries are reused rather than duplicated.
+  // priority "low": this is a background download, and must never queue ahead
+  // of a tile the rider's own panning needs.
   const get = async (url: string) => {
-    const res = await fetch(url, { mode: "cors", credentials: "omit" });
+    const res = await fetch(url, { mode: "cors", credentials: "omit", priority: "low" });
     if (!res.ok) throw new Error(String(res.status));
     return res;
   };
@@ -126,7 +152,8 @@ async function warm(): Promise<void> {
     const tilejson = (await (await get(vector.url)).json()) as { tiles?: string[] };
     const template = tilejson.tiles?.[0];
     if (template) {
-      for (const [z, x, y] of [...OVERVIEW_ZOOMS.flatMap(overviewTiles), ...detailTiles()])
+      const tiles = [...OVERVIEW_ZOOMS.flatMap(overviewTiles), ...(mode === "full" ? detailTiles() : [])];
+      for (const [z, x, y] of tiles)
         urls.push(template.replace("{z}", String(z)).replace("{x}", String(x)).replace("{y}", String(y)));
     }
   }
@@ -134,16 +161,17 @@ async function warm(): Promise<void> {
   // Missing tiles (404 in empty ocean/edges) are normal; only a transport
   // failure should leave the job unfinished so it retries next visit.
   const ok = await mapPool(urls, async (url) => {
-    const res = await fetch(url, { mode: "cors", credentials: "omit" });
+    const res = await fetch(url, { mode: "cors", credentials: "omit", priority: "low" });
     if (!res.ok && res.status !== 404 && res.status !== 204) throw new Error(String(res.status));
   });
   if (ok) {
     try {
-      window.localStorage.setItem(DONE_KEY, String(Date.now()));
+      window.localStorage.setItem(mode === "full" ? DONE_KEY : OFFLINE_OVERVIEW_KEY, String(Date.now()));
     } catch {
       // non-fatal: it will simply run again next visit
     }
   }
+  return ok;
 }
 
 /** Ask the browser not to evict the cached map/app under storage pressure. */
@@ -167,20 +195,35 @@ export function scheduleOfflineWarm(): void {
     // proceed
   }
   const start = async () => {
-    if (shouldSkip()) return;
+    const mode = currentWarmMode();
+    if (mode === "skip") return;
+    // The light pass is done once; only Wi-Fi (the full set) goes further.
+    if (mode === "overview" && window.localStorage.getItem(OFFLINE_OVERVIEW_KEY)) return;
     // Wait for the worker to control the page, or the fetches would go
     // straight to the network and never be cached.
     await navigator.serviceWorker.ready;
     if (!navigator.serviceWorker.controller) return;
     await requestPersistence();
     try {
-      await warm();
+      await warm(mode);
     } catch {
       // offline or upstream hiccup: try again next visit
     }
   };
   const idle = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void })
     .requestIdleCallback;
-  // Well after first paint and the first live-times poll.
+  // Called once the map has painted (see HomeClient), and then still waits:
+  // well after first paint and the first live-times poll.
   setTimeout(() => (idle ? idle(() => void start(), { timeout: 10_000 }) : void start()), 8_000);
+}
+
+/** "Download the map for offline use now" (Settings): ignores the data-saver / cellular checks, because the rider asked. */
+export async function warmMapNow(): Promise<void> {
+  // Without the service worker in control, fetches go straight to the network
+  // and nothing is stored: that is a failure to report, not a success.
+  if (!("serviceWorker" in navigator)) throw new Error("no service worker support");
+  await navigator.serviceWorker.ready;
+  if (!navigator.serviceWorker.controller) throw new Error("page not controlled by the service worker yet");
+  await requestPersistence();
+  if (!(await warm("full"))) throw new Error("some tiles could not be downloaded");
 }

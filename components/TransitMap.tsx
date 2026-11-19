@@ -4,15 +4,41 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import * as maplibregl from "maplibre-gl";
 import { useEffect, useMemo, useRef, type RefObject } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { LocateFixed } from "lucide-react";
-import { stations, type Station } from "@/data/stations";
-import { fetchLineGeometry, fullLineSegments, trackBetween, type LineSegments } from "@/lib/line-geometry";
+import { LocateButton } from "@/components/LocateButton";
+import { stations, type LineKey, type Station } from "@/data/stations";
+import {
+  fetchLineGeometry,
+  loadedLineGeometry,
+  loadLineGeometryInBackground,
+  stationLineSegments,
+  type LineSegments,
+} from "@/lib/line-geometry";
+import {
+  ENDPOINT_COLOR,
+  FOCUS_PADDING,
+  FOCUS_ZOOM_CAP,
+  FOCUS_ZOOM_FLOOR,
+  LOCATE_ZOOM,
+  MARKER_FACTOR,
+  PLACE_ZOOM,
+  lineKeys,
+  lineTracks,
+  routeBounds,
+  routeFitPadding,
+  routeParts,
+  stationVisuals,
+} from "@/lib/map-data";
+import { markMapPainted } from "@/lib/map-ready";
 import type { GeoPosition } from "@/lib/use-geolocation";
-import type { PathResult } from "@/lib/transit-graph";
-import { StationActions } from "@/components/StationActions";
-import { addLiveTrainsLayer, startLiveTrains, TRAINS_LAYER } from "@/components/live-trains-layer";
-import { LINE_COLORS, readableTextColor } from "@/lib/line-colors";
-import { stationName, useLangStore, useT, type Lang } from "@/lib/i18n";
+import type { PathOptions, PathResult } from "@/lib/transit-graph";
+import type { FinalWalk } from "@/lib/place-station";
+import { PlaceCard, StationCard } from "@/components/map-cards";
+import type { Place } from "@/lib/google-places";
+import { applyTrainStyle, startLiveTrainsWhenIdle } from "@/components/live-trains-layer";
+import { routeHops } from "@/lib/live-trains";
+import { LINE_COLORS } from "@/lib/line-colors";
+import { useLangStore, useT, type Lang } from "@/lib/i18n";
+import { motionDuration, useSettingsStore } from "@/lib/settings-store";
 
 // MapLibre uses [lon, lat] everywhere, the opposite of Leaflet's [lat, lon] -
 // every coordinate pair in this file is in that order.
@@ -38,8 +64,7 @@ const FALLBACK_STYLE: maplibregl.StyleSpecification = {
 };
 
 /** Camera animations collapse to instant jumps for people who ask for less motion. */
-const motionMs = (ms: number) =>
-  typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : ms;
+const motionMs = motionDuration;
 
 // Basemap layers this app has no use for. `poi_transit` is the basemap's own
 // station icons/names, which would duplicate (and fight for space with) our
@@ -91,20 +116,21 @@ function transformStyle(
 }
 
 /** Our own station labels: the name in the chosen language, plus the code once zoomed in. */
-function stationLabelField(lang: Lang): maplibregl.ExpressionSpecification {
-  const name = ["get", lang === "th" ? "nameTh" : "nameEn"] as maplibregl.ExpressionSpecification;
-  return [
-    "step",
-    ["zoom"],
-    name,
-    14,
-    ["format", name, {}, "\n", {}, ["get", "code"], { "font-scale": 0.8 }],
-  ];
+function stationLabelField(lang: Lang, codes = true, both = false): maplibregl.ExpressionSpecification {
+  const nameOf = (l: Lang) => ["get", l === "th" ? "nameTh" : "nameEn"] as maplibregl.ExpressionSpecification;
+  // `format` cannot nest, so each variant is one flat `format`: the name (and,
+  // for "both", the second language, smaller) then, zoomed in, the code.
+  const parts = (withCode: boolean): unknown[] => {
+    const out: unknown[] = both
+      ? [nameOf("en"), {}, "\n", {}, nameOf("th"), { "font-scale": 0.85 }]
+      : [nameOf(lang), {}];
+    if (withCode) out.push("\n", {}, ["get", "shownCode"], { "font-scale": 0.8 });
+    return out;
+  };
+  const plain = both ? (["format", ...parts(false)] as unknown as maplibregl.ExpressionSpecification) : nameOf(lang);
+  if (!codes) return plain;
+  return ["step", ["zoom"], plain, 14, ["format", ...parts(true)]] as unknown as maplibregl.ExpressionSpecification;
 }
-
-// Start/destination marker accent color, shared by the station GeoJSON
-// builder, the destination dashed-ring icon, and the popup content.
-const ENDPOINT_COLOR = "#16a34a";
 
 // MapLibre's `new Worker(new URL('./maplibre-gl-worker.mjs', import.meta.url))`
 // pattern doesn't resolve correctly under Next's bundler (Turbopack or
@@ -115,16 +141,27 @@ maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
 export interface TransitMapProps {
   onSelectStation: (station: Station) => void;
-  onSetStart: (station: Station) => void;
-  onSetDestination: (station: Station) => void;
+  /** A place card passes its place, so the route can end with the walk to it. */
+  onSetStart: (station: Station, place?: Place) => void;
+  onSetDestination: (station: Station, place?: Place) => void;
   startCode: string | null;
   destinationCode: string | null;
   path: PathResult | null;
+  /** The walk from the destination station to a place picked as the destination. */
+  finalWalk?: FinalWalk | null;
+  /** The walk from the rider to the first station (when starting from current location). */
+  firstWalk?: FinalWalk | null;
+  /** Route preferences, so a place card picks its station the same way the route does. */
+  pathOptions?: PathOptions;
   userPosition: GeoPosition | null;
   /** Set (e.g. from a search result) to fly the map to a station on demand. */
   focusStation: Station | null;
+  /** Set (from a place search result) to show a place and its nearest station. */
+  focusPlace: Place | null;
   /** Whether the route sheet covers the bottom of the screen (up to 70vh). */
   sheetOpen: boolean;
+  /** Called once, after the first style load and initial fit. */
+  onLoad?: () => void;
 }
 
 const LINES_SOURCE = "transit-lines";
@@ -144,8 +181,6 @@ const GPS_RING_LAYER = "gps-ring-layer";
 const GPS_RING_OUTLINE_LAYER = "gps-ring-outline-layer";
 const GPS_DOT_LAYER = "gps-dot-layer";
 
-const lineKeys = [...new Set(stations.flatMap((s) => s.lines.map((l) => l.line)))];
-
 const LINE_COLOR_MATCH = [
   "match",
   ["get", "line"],
@@ -153,53 +188,30 @@ const LINE_COLOR_MATCH = [
   "#666",
 ] as unknown as maplibregl.ExpressionSpecification;
 
-/** The line-brand color for a station's primary line, or a neutral fallback. */
-function stationLineColor(station: Station): string {
-  return station.lines[0] ? LINE_COLORS[station.lines[0].line] : "#666";
-}
-
 function baseLinesGeoJSON(segmentsByLine: LineSegments): GeoJSON.FeatureCollection<GeoJSON.LineString> {
   return {
     type: "FeatureCollection",
-    features: lineKeys.flatMap((line) =>
-      fullLineSegments(segmentsByLine, line).map((positions) => ({
-        type: "Feature",
-        properties: { line },
-        geometry: {
-          type: "LineString",
-          coordinates: positions.map(([lat, lon]) => [lon, lat]),
-        },
-      })),
-    ),
+    features: lineTracks(segmentsByLine).map(({ line, points }) => ({
+      type: "Feature",
+      properties: { line },
+      geometry: { type: "LineString", coordinates: points.map(([lat, lon]) => [lon, lat]) },
+    })),
   };
 }
 
 function routeGeoJSON(
   path: PathResult,
   segmentsByLine: LineSegments,
+  finalWalk?: FinalWalk | null,
+  firstWalk?: FinalWalk | null,
 ): GeoJSON.FeatureCollection<GeoJSON.LineString> {
   return {
     type: "FeatureCollection",
-    features: path.legs.slice(1).map((leg, i) => {
-      const prevStation = path.legs[i].station;
-      // Rides follow the real track; a walking transfer is a short straight
-      // dashed line between the two stations.
-      const positions =
-        leg.mode === "ride" && leg.line
-          ? trackBetween(segmentsByLine, leg.line, prevStation, leg.station)
-          : [
-              [prevStation.lat, prevStation.lon],
-              [leg.station.lat, leg.station.lon],
-            ];
-      return {
-        type: "Feature" as const,
-        properties: { line: leg.line ?? "", walk: leg.mode === "walk" },
-        geometry: {
-          type: "LineString" as const,
-          coordinates: positions.map(([lat, lon]) => [lon, lat]),
-        },
-      };
-    }),
+    features: routeParts(path, segmentsByLine, finalWalk, firstWalk).map(({ line, walk, points }) => ({
+      type: "Feature" as const,
+      properties: { line, walk },
+      geometry: { type: "LineString" as const, coordinates: points.map(([lat, lon]) => [lon, lat]) },
+    })),
   };
 }
 
@@ -208,38 +220,28 @@ function stationsGeoJSON(
   startCode: string | null,
   destinationCode: string | null,
   isRouting: boolean,
+  hiddenLines: readonly LineKey[] = [],
 ): GeoJSON.FeatureCollection<GeoJSON.Point> {
   return {
     type: "FeatureCollection",
-    features: stations.map((s) => {
-      const onPath = pathCodes.has(s.code);
-      const isStart = s.code === startCode;
-      const isDestination = s.code === destinationCode;
-      const isEndpoint = isStart || isDestination;
-      const dimmed = isRouting && !onPath;
-      // Lower sorts first and so wins label collisions: route ends, then the
-      // rest of the route, then interchanges, then everything else.
-      const sortKey = isEndpoint ? 0 : onPath ? 1 : s.lines.length > 1 ? 2 : 3;
-      return {
-        type: "Feature",
-        properties: {
-          code: s.code,
-          nameEn: s.nameEn,
-          nameTh: s.nameTh || s.nameEn,
-          sortKey,
-          labelOpacity: dimmed ? 0.45 : 1,
-          radius: isEndpoint ? 8 : s.lines.length > 1 ? 6 : 4,
-          // Green fill = start, white fill/green outline = destination, so
-          // the two ends of the route are distinguishable at a glance.
-          strokeColor: dimmed ? "#ccc" : isEndpoint ? ENDPOINT_COLOR : "#fff",
-          strokeWidth: isEndpoint ? 4 : 1.5,
-          fillColor: dimmed ? "#ddd" : isStart ? ENDPOINT_COLOR : stationLineColor(s),
-          fillOpacity: dimmed ? 0.7 : 1,
-          isDestination,
-        },
-        geometry: { type: "Point", coordinates: [s.lon, s.lat] },
-      };
-    }),
+    features: stationVisuals(pathCodes, startCode, destinationCode, isRouting, hiddenLines).map((v) => ({
+      type: "Feature",
+      properties: {
+        code: v.code, // the id: clicks look the station up by it
+        shownCode: v.shownCode, // the operator's code, which is what the label shows
+        nameEn: v.nameEn,
+        nameTh: v.nameTh,
+        sortKey: v.sortKey,
+        labelOpacity: v.labelOpacity,
+        radius: v.radius,
+        strokeColor: v.strokeColor,
+        strokeWidth: v.strokeWidth,
+        fillColor: v.fillColor,
+        fillOpacity: v.fillOpacity,
+        isDestination: v.isDestination,
+      },
+      geometry: { type: "Point", coordinates: [v.station.lon, v.station.lat] },
+    })),
   };
 }
 
@@ -290,16 +292,30 @@ export function TransitMap({
   startCode,
   destinationCode,
   path,
+  finalWalk,
+  firstWalk,
+  pathOptions,
   userPosition,
   focusStation,
+  focusPlace,
   sheetOpen,
+  onLoad,
 }: TransitMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const loadedRef = useRef(false);
+  // Keep the newest callback without re-running the map-creation effect.
+  const onLoadRef = useRef(onLoad);
+  useEffect(() => {
+    onLoadRef.current = onLoad;
+  }, [onLoad]);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const geometryRef = useRef<LineSegments | null>(null);
   const stopTrainsRef = useRef<(() => void) | null>(null);
+  const stopGeometryRef = useRef<(() => void) | null>(null);
+  const dimmedRef = useRef(false);
+  // The hops the planned route rides, for the trains layer (null: no route).
+  const routeHopsRef = useRef<Set<string> | null>(null);
   const popupsRef = useRef(new Map<string, { popup: maplibregl.Popup; root: Root; render: () => void }>());
 
   const pathCodes = useMemo(
@@ -307,7 +323,13 @@ export function TransitMap({
     [path],
   );
   const isRouting = path !== null;
-  const { lang, t } = useT();
+  const routeHopsSet = useMemo(() => (path ? routeHops(path.legs) : null), [path]);
+  useEffect(() => {
+    routeHopsRef.current = routeHopsSet;
+  }, [routeHopsSet]);
+  const { lang } = useT();
+  const settings = useSettingsStore((s) => s.settings);
+  const { hiddenLines } = settings;
 
   // Keep the latest callbacks/state in refs so the map's own click handler
   // (registered once, at style-load time) always sees current values without
@@ -318,9 +340,10 @@ export function TransitMap({
     onSetDestination,
     startCode,
     destinationCode,
+    pathOptions,
   });
   useEffect(() => {
-    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode };
+    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions };
   });
 
   // Create the map once per mount. Like the Leaflet canvas renderer this
@@ -373,6 +396,11 @@ export function TransitMap({
     };
     map.on("sourcedata", deferSprite);
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
+    map.on("dragstart", (e: { originalEvent?: unknown }) => {
+      if (e.originalEvent && useSettingsStore.getState().settings.followMe) {
+        useSettingsStore.getState().update({ followMe: false });
+      }
+    });
 
     // Our own layers go on at `style.load`, not `load`. `load` waits for the
     // basemap's first tiles and fonts - on a slow connection the transit
@@ -380,11 +408,18 @@ export function TransitMap({
     // takes, though nothing here depends on it. The basemap fills in beneath.
     map.once("style.load", () => {
       styleReady = true;
-      // Starts empty and fills in once the line-geometry fetch (kicked off
-      // below, in parallel with the map/style itself) resolves, rather than
-      // blocking the rest of this handler (fitBounds, click handlers, other
-      // sources) on that fetch.
-      map.addSource(LINES_SOURCE, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      // The lines are drawn from the first frame. If the curved track has
+      // already arrived (it is requested while the map's own code downloads)
+      // it is used straight away; if not, the network is drawn as straight
+      // station-to-station track from data already in the bundle and the
+      // curves swap in when they land. Either way no line is ever missing or
+      // left unconnected while waiting on a second download.
+      const known = loadedLineGeometry();
+      if (known) geometryRef.current = known;
+      map.addSource(LINES_SOURCE, {
+        type: "geojson",
+        data: baseLinesGeoJSON(known ?? stationLineSegments()),
+      });
       map.addLayer({
         id: LINES_LAYER,
         type: "line",
@@ -396,13 +431,15 @@ export function TransitMap({
           "line-opacity": 0.9,
         },
       });
-      fetchLineGeometry().then((segmentsByLine) => {
-        geometryRef.current = segmentsByLine;
-        // The component may have unmounted (and torn down `map`) before
-        // this fetch resolved - `mapRef` is nulled out in that cleanup.
-        if (mapRef.current !== map) return;
-        map.getSource<maplibregl.GeoJSONSource>(LINES_SOURCE)?.setData(baseLinesGeoJSON(segmentsByLine));
-      });
+      if (!known) {
+        stopGeometryRef.current = loadLineGeometryInBackground((segmentsByLine) => {
+          // The component may have unmounted (and torn down `map`) before
+          // this resolved - `mapRef` is nulled out in that cleanup.
+          if (mapRef.current !== map) return;
+          geometryRef.current = segmentsByLine;
+          map.getSource<maplibregl.GeoJSONSource>(LINES_SOURCE)?.setData(baseLinesGeoJSON(segmentsByLine));
+        });
+      }
 
       map.addSource(ROUTE_SOURCE, {
         type: "geojson",
@@ -520,10 +557,12 @@ export function TransitMap({
       // Estimated live train positions (BTS only), drawn under the station
       // names so labels stay readable. Fed from the arrivals the app already
       // holds, so it adds no requests (see lib/live-trains.ts).
-      addLiveTrainsLayer(map, STATIONS_LABEL_LAYER);
-      stopTrainsRef.current = startLiveTrains(map, {
+      // Added after the map is idle, not here: the map comes first.
+      stopTrainsRef.current = startLiveTrainsWhenIdle(map, STATIONS_LABEL_LAYER, {
         getSegments: () => geometryRef.current,
         stationHitLayer: STATIONS_HIT_LAYER,
+        isDimmed: () => dimmedRef.current,
+        getRouteHops: () => routeHopsRef.current,
       });
 
       map.addSource(GPS_SOURCE, {
@@ -602,11 +641,21 @@ export function TransitMap({
         resizeObserverRef.current = observer;
         observer.observe(container);
       }
+      // First view fully drawn (lines, stations, basemap tiles): from here the
+      // page may start everything that is not the map - live times, the
+      // offline-map download - and the instant SVG can hand over to the map.
+      // See lib/map-ready.ts.
+      map.once("idle", () => {
+        markMapPainted();
+        onLoadRef.current?.();
+      });
     });
 
     return () => {
       stopTrainsRef.current?.();
       stopTrainsRef.current = null;
+      stopGeometryRef.current?.();
+      stopGeometryRef.current = null;
       resizeObserverRef.current?.disconnect();
       resizeObserverRef.current = null;
       popups.forEach(({ popup, root }) => {
@@ -620,20 +669,30 @@ export function TransitMap({
     };
   }, []);
 
-  // Base line styling: dim to grey while a route is highlighted.
+  // Lines: grey while a route is highlighted (unless "dim" is off), width
+  // from settings, and only the route's own lines when asked.
+  const routeLineKeys = useMemo(() => (path ? [...new Set(path.legs.map((l) => l.line).filter(Boolean))] : []), [path]);
+  const { dimLines, onlyRouteLines, lineWidth, hiddenLines: hidden } = settings;
   useEffect(() => {
+    // Remembered for the trains layer, which is added later (once the map is idle).
+    dimmedRef.current = isRouting;
     const map = mapRef.current;
     if (!map) return;
     const apply = () => {
-      map.setPaintProperty(LINES_LAYER, "line-color", isRouting ? "#ccc" : LINE_COLOR_MATCH);
-      map.setPaintProperty(LINES_LAYER, "line-width", isRouting ? 3 : 4);
-      map.setPaintProperty(LINES_LAYER, "line-opacity", isRouting ? 0.6 : 0.9);
-      // Trains sit back while a route is highlighted, like the lines they run on.
-      map.setPaintProperty(TRAINS_LAYER, "icon-opacity", isRouting ? 0.5 : 1);
+      const grey = isRouting && dimLines;
+      map.setPaintProperty(LINES_LAYER, "line-color", grey ? "#ccc" : LINE_COLOR_MATCH);
+      map.setPaintProperty(LINES_LAYER, "line-width", grey ? Math.max(2, lineWidth - 1) : lineWidth);
+      map.setPaintProperty(LINES_LAYER, "line-opacity", grey ? 0.6 : 0.9);
+      // Hidden lines, and (while routing, if asked) every line the route doesn't use.
+      const filters: maplibregl.ExpressionSpecification[] = [];
+      if (hidden.length) filters.push(["!", ["in", ["get", "line"], ["literal", hidden]]]);
+      if (isRouting && onlyRouteLines) filters.push(["in", ["get", "line"], ["literal", routeLineKeys]]);
+      map.setFilter(LINES_LAYER, filters.length ? (["all", ...filters] as maplibregl.FilterSpecification) : null);
+      applyTrainStyle(map, isRouting);
     };
     if (loadedRef.current) apply();
     else map.once("style.load", apply);
-  }, [isRouting]);
+  }, [isRouting, dimLines, onlyRouteLines, lineWidth, hidden, routeLineKeys]);
 
   // Highlighted route geometry. Needs the fetched line-geometry data (see
   // lib/line-geometry.ts) only when there's an actual path to draw; an
@@ -644,7 +703,9 @@ export function TransitMap({
     const applyWith = (segmentsByLine: LineSegments) => {
       const apply = () => {
         const source = map.getSource<maplibregl.GeoJSONSource>(ROUTE_SOURCE);
-        source?.setData(path ? routeGeoJSON(path, segmentsByLine) : { type: "FeatureCollection", features: [] });
+        source?.setData(
+          path ? routeGeoJSON(path, segmentsByLine, finalWalk, firstWalk) : { type: "FeatureCollection", features: [] },
+        );
       };
       if (loadedRef.current) apply();
       else map.once("style.load", apply);
@@ -659,7 +720,7 @@ export function TransitMap({
         applyWith(segmentsByLine);
       });
     }
-  }, [path]);
+  }, [path, finalWalk, firstWalk]);
 
   // Keep a planned route in view: fitted to whatever part of the map the
   // route sheet (fixed to the bottom of the screen, up to 70vh) leaves
@@ -668,24 +729,16 @@ export function TransitMap({
     const map = mapRef.current;
     if (!map || !path) return;
     const apply = () => {
-      const lons = path.legs.map((l) => l.station.lon);
-      const lats = path.legs.map((l) => l.station.lat);
       const rect = map.getContainer().getBoundingClientRect();
-      const sheetTop = window.innerHeight * 0.3;
-      const covered = sheetOpen ? Math.max(0, rect.bottom - sheetTop) : 0;
-      // Never pad away the whole map (MapLibre refuses to fit then).
-      const bottom = Math.min(covered + 24, rect.height - 120);
-      map.fitBounds(
-        [
-          [Math.min(...lons), Math.min(...lats)],
-          [Math.max(...lons), Math.max(...lats)],
-        ],
-        { padding: { top: 40, left: 40, right: 40, bottom: Math.max(40, bottom) }, maxZoom: 15, duration: motionMs(600) },
-      );
+      map.fitBounds(routeBounds(path, finalWalk, firstWalk), {
+        padding: routeFitPadding(sheetOpen, rect.bottom, rect.height, window.innerHeight),
+        maxZoom: FOCUS_ZOOM_CAP,
+        duration: motionMs(600),
+      });
     };
     if (loadedRef.current) apply();
     else map.once("style.load", apply);
-  }, [path, sheetOpen]);
+  }, [path, finalWalk, firstWalk, sheetOpen]);
 
   // Station marker styling (start/destination/on-path/dimmed).
   useEffect(() => {
@@ -693,11 +746,47 @@ export function TransitMap({
     if (!map) return;
     const apply = () => {
       const source = map.getSource<maplibregl.GeoJSONSource>(STATIONS_SOURCE);
-      source?.setData(stationsGeoJSON(pathCodes, startCode, destinationCode, isRouting));
+      source?.setData(stationsGeoJSON(pathCodes, startCode, destinationCode, isRouting, hiddenLines));
     };
     if (loadedRef.current) apply();
     else map.once("style.load", apply);
-  }, [pathCodes, startCode, destinationCode, isRouting]);
+  }, [pathCodes, startCode, destinationCode, isRouting, hiddenLines]);
+
+  // Settings: station labels, markers, route width, basemap names, the GPS
+  // marker, trains, gestures and the map's buttons. The route highlight is
+  // never filtered - hiding a line must not break a planned trip.
+  const { showLabels, labelCodes, labelLanguage, labelMinZoom, markerSize, routeWidth, basemapLabels, showLocation, rotateGestures } =
+    settings;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      map.setLayoutProperty(STATIONS_LABEL_LAYER, "visibility", showLabels ? "visible" : "none");
+      map.setLayerZoomRange(STATIONS_LABEL_LAYER, labelMinZoom, 24);
+      const k = MARKER_FACTOR[markerSize];
+      map.setPaintProperty(STATIONS_LAYER, "circle-radius", ["*", ["get", "radius"], k]);
+      map.setPaintProperty(STATIONS_HIT_LAYER, "circle-radius", ["+", ["*", ["get", "radius"], k], 12]);
+      map.setPaintProperty(ROUTE_LAYER, "line-width", routeWidth);
+      map.setPaintProperty(ROUTE_WALK_LAYER, "line-width", Math.max(2, routeWidth - 2));
+      for (const id of basemapLabelLayers) {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", basemapLabels ? "visible" : "none");
+      }
+      for (const id of [GPS_RING_LAYER, GPS_RING_OUTLINE_LAYER, GPS_DOT_LAYER]) {
+        map.setLayoutProperty(id, "visibility", showLocation ? "visible" : "none");
+      }
+      applyTrainStyle(map, isRouting);
+      if (rotateGestures) {
+        map.dragRotate.enable();
+        map.touchZoomRotate.enableRotation();
+      } else {
+        map.dragRotate.disable();
+        map.touchZoomRotate.disableRotation();
+        if (map.getBearing() !== 0 || map.getPitch() !== 0) map.easeTo({ bearing: 0, pitch: 0, duration: motionMs(300) });
+      }
+    };
+    if (loadedRef.current) apply();
+    else map.once("style.load", apply);
+  }, [showLabels, labelMinZoom, markerSize, routeWidth, basemapLabels, showLocation, rotateGestures, settings.showTrains, settings.otherTrains, settings.trainSize, settings.trainLabels, isRouting]);
 
   // Keep any open popup's Start/Destination checkmarks in sync if route
   // state changes from elsewhere (e.g. search) while it's still open.
@@ -723,9 +812,10 @@ export function TransitMap({
     const map = mapRef.current;
     if (!map) return;
     const apply = () => {
-      map.setLayoutProperty(STATIONS_LABEL_LAYER, "text-field", stationLabelField(lang));
+      const labelLang: Lang = labelLanguage === "ui" || labelLanguage === "both" ? lang : labelLanguage;
+      map.setLayoutProperty(STATIONS_LABEL_LAYER, "text-field", stationLabelField(labelLang, labelCodes, labelLanguage === "both"));
       for (const id of basemapLabelLayers) {
-        if (map.getLayer(id)) map.setLayoutProperty(id, "text-field", basemapLabelField(lang));
+        if (map.getLayer(id)) map.setLayoutProperty(id, "text-field", basemapLabelField(labelLang));
       }
     };
     // React flushes effects synchronously inside a click, so doing this here
@@ -745,7 +835,18 @@ export function TransitMap({
       clearTimeout(timer);
       map.off("style.load", later);
     };
-  }, [lang]);
+  }, [lang, labelLanguage, labelCodes]);
+
+  // "Follow me": keep the map centred on the rider as they move, at the zoom
+  // they chose. Dragging the map turns it off (they moved it on purpose), as
+  // in other map apps; the Settings switch turns it back on.
+  useEffect(() => {
+    const map = mapRef.current;
+    // Not while the camera is already travelling (a route fit, a station
+    // pick): the next GPS fix must not cancel it.
+    if (!map || !userPosition || !settings.followMe || map.isMoving()) return;
+    map.easeTo({ center: [userPosition.lon, userPosition.lat], duration: motionMs(500) });
+  }, [userPosition, settings.followMe]);
 
   // Bring a station into view on demand (a search result, "nearest station")
   // and open its card, same as tapping it. The camera moves as little as it
@@ -761,8 +862,10 @@ export function TransitMap({
       const otherCode = [startCode, destinationCode].find((c) => c && c !== focusStation.code);
       const other = otherCode ? stations.find((s) => s.code === otherCode) : undefined;
       // Room for the card above the marker, and for the header/pills.
-      const padding = { top: 200, bottom: 90, left: 40, right: 40 };
-      const move = focusCamera(map, focusStation, other, padding);
+      const padding = FOCUS_PADDING;
+      // With "zoom in" off the camera only pans (and only when the station is
+      // off screen); the rider's zoom level is never changed.
+      const move = focusCamera(map, focusStation, other, padding, useSettingsStore.getState().settings.autoZoom);
       if (move) map.stop().easeTo({ ...move, duration: motionMs(600) });
       openPopup(map, popupsRef, focusStation, latest);
     };
@@ -770,40 +873,41 @@ export function TransitMap({
     else map.once("style.load", apply);
   }, [focusStation]);
 
+  // A place picked from search: a pin, and a card naming its nearest station
+  // with the usual Start / Destination buttons, so "go to the mall" is one tap.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !focusPlace) return;
+    const apply = () => {
+      const move = {
+        center: [focusPlace.lon, focusPlace.lat] as [number, number],
+        zoom: useSettingsStore.getState().settings.autoZoom ? Math.max(map.getZoom(), PLACE_ZOOM) : map.getZoom(),
+      };
+      map.stop().easeTo({ ...move, duration: motionMs(600) });
+      openPlacePopup(map, popupsRef, focusPlace, latest);
+    };
+    if (loadedRef.current) apply();
+    else map.once("style.load", apply);
+  }, [focusPlace]);
+
   return (
-    <div className="relative h-full w-full">
+    <div className={`relative h-full w-full ${settings.zoomButtons ? "" : "[&_.maplibregl-ctrl-top-left]:hidden"}`}>
       <div ref={containerRef} className="h-full w-full" />
-      <button
-        type="button"
-        onClick={() => {
-          const map = mapRef.current;
-          if (map && userPosition) {
+      {settings.locateButton && (
+        <LocateButton
+          position={userPosition}
+          onLocate={(p) => {
+            const map = mapRef.current;
+            if (!map) return;
             map.flyTo({
-              center: [userPosition.lon, userPosition.lat],
-              zoom: Math.max(map.getZoom(), 16),
+              center: [p.lon, p.lat],
+              zoom: Math.max(map.getZoom(), LOCATE_ZOOM),
               duration: motionMs(600),
             });
-          }
-        }}
-        disabled={!userPosition}
-        aria-label={t.centerOnMe}
-        title={userPosition ? t.centerOnMe : t.waitingLocation}
-        className="absolute top-3 right-3 z-[1000] flex h-11 w-11 items-center justify-center rounded-full border border-neutral-300 bg-white text-neutral-700 shadow-md hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
-      >
-        <LocateFixed size={18} />
-      </button>
+          }}
+        />
+      )}
     </div>
-  );
-}
-
-// Its own component so the name re-renders when the language changes - the
-// popup is a separate React root that only re-renders on demand otherwise.
-function PopupStationName({ station }: { station: Station }) {
-  const { lang } = useT();
-  return (
-    <span className="truncate text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-      {stationName(station, lang)}
-    </span>
   );
 }
 
@@ -813,17 +917,16 @@ function PopupStationName({ station }: { station: Station }) {
  * screen, in which case the map stays exactly where the rider left it.
  *
  * - Already visible: no move.
- * - Both ends of a route: fit them together (never closer than ZOOM_CAP).
- * - Just one: centre it, zooming in only as far as ZOOM_FLOOR when the rider
+ * - Both ends of a route: fit them together (never closer than FOCUS_ZOOM_CAP).
+ * - Just one: centre it, zooming in only as far as FOCUS_ZOOM_FLOOR when the rider
  *   is zoomed further out than that, never past what they already chose.
  */
-const ZOOM_FLOOR = 13;
-const ZOOM_CAP = 15;
 function focusCamera(
   map: maplibregl.Map,
   target: Station,
   other: Station | undefined,
   padding: { top: number; bottom: number; left: number; right: number },
+  allowZoom = true,
 ): { center: [number, number]; zoom: number } | null {
   const { width, height } = map.getCanvas().getBoundingClientRect();
   const visible = (s: Station) => {
@@ -832,20 +935,21 @@ function focusCamera(
   };
   const points = other ? [target, other] : [target];
   if (points.every(visible)) return null;
+  if (!allowZoom) return { center: [target.lon, target.lat], zoom: map.getZoom() };
   if (other) {
     const cam = map.cameraForBounds(
       [
         [Math.min(target.lon, other.lon), Math.min(target.lat, other.lat)],
         [Math.max(target.lon, other.lon), Math.max(target.lat, other.lat)],
       ],
-      { padding, maxZoom: ZOOM_CAP },
+      { padding, maxZoom: FOCUS_ZOOM_CAP },
     );
     if (cam?.center && cam.zoom !== undefined) {
       const c = maplibregl.LngLat.convert(cam.center);
       return { center: [c.lng, c.lat], zoom: cam.zoom };
     }
   }
-  return { center: [target.lon, target.lat], zoom: Math.max(map.getZoom(), ZOOM_FLOOR) };
+  return { center: [target.lon, target.lat], zoom: Math.max(map.getZoom(), FOCUS_ZOOM_FLOOR) };
 }
 
 function openPopup(
@@ -905,37 +1009,93 @@ function openPopup(
   });
 
   const render = () => {
-    const color = stationLineColor(station);
     root.render(
-      <div className="flex flex-col gap-2 py-0.5">
-        <div className="flex items-center gap-2">
-          <span
-            className="shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold"
-            style={{ backgroundColor: color, color: readableTextColor(color) }}
-          >
-            {station.code}
-          </span>
-          <PopupStationName station={station} />
-        </div>
-        <StationActions
-          station={station}
-          startCode={latest.current.startCode}
-          destinationCode={latest.current.destinationCode}
-          onSetStart={(s) => {
-            latest.current.onSetStart(s);
-            // Deferred: popup.remove() unmounts this very React root, which
-            // is unsafe to do synchronously from inside its own event
-            // handler while React is still flushing this click.
-            queueMicrotask(() => popup.remove());
-          }}
-          onSetDestination={(s) => {
-            latest.current.onSetDestination(s);
-            queueMicrotask(() => popup.remove());
-          }}
-        />
-      </div>,
+      <StationCard
+        station={station}
+        startCode={latest.current.startCode}
+        destinationCode={latest.current.destinationCode}
+        onSetStart={(s) => {
+          latest.current.onSetStart(s);
+          // Deferred: popup.remove() unmounts this very React root, which
+          // is unsafe to do synchronously from inside its own event
+          // handler while React is still flushing this click.
+          queueMicrotask(() => popup.remove());
+        }}
+        onSetDestination={(s) => {
+          latest.current.onSetDestination(s);
+          queueMicrotask(() => popup.remove());
+        }}
+      />,
     );
   };
   popupsRef.current.set(station.code, { popup, root, render });
+  render();
+}
+
+const PLACE_KEY = "__place";
+
+function openPlacePopup(
+  map: maplibregl.Map,
+  popupsRef: RefObject<Map<string, { popup: maplibregl.Popup; root: Root; render: () => void }>>,
+  place: Place,
+  latest: RefObject<{
+    onSetStart: (s: Station, place?: Place) => void;
+    onSetDestination: (s: Station, place?: Place) => void;
+    startCode: string | null;
+    destinationCode: string | null;
+    pathOptions?: PathOptions;
+  }>,
+) {
+  // One card at a time, same as station cards.
+  popupsRef.current.forEach(({ popup }) => popup.remove());
+
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  const marker = new maplibregl.Marker({ color: "#dc2626" }).setLngLat([place.lon, place.lat]).addTo(map);
+  const popup = new maplibregl.Popup({
+    offset: 36,
+    maxWidth: "min(300px, calc(100vw - 24px))",
+    closeButton: true,
+    focusAfterOpen: false,
+  })
+    .setLngLat([place.lon, place.lat])
+    .setDOMContent(container)
+    .addTo(map);
+
+  const closeButton = popup.getElement()?.querySelector<HTMLElement>(".maplibregl-popup-close-button");
+  if (closeButton) {
+    closeButton.style.width = "44px";
+    closeButton.style.height = "44px";
+    closeButton.style.display = "flex";
+    closeButton.style.alignItems = "center";
+    closeButton.style.justifyContent = "center";
+    closeButton.style.padding = "0";
+    closeButton.focus({ preventScroll: true });
+  }
+
+  popup.on("close", () => {
+    marker.remove();
+    queueMicrotask(() => root.unmount());
+    if (popupsRef.current.get(PLACE_KEY)?.popup === popup) popupsRef.current.delete(PLACE_KEY);
+  });
+
+  const render = () =>
+    root.render(
+      <PlaceCard
+        place={place}
+        startCode={latest.current.startCode}
+        destinationCode={latest.current.destinationCode}
+        pathOptions={latest.current.pathOptions}
+        onSetStart={(s) => {
+          latest.current.onSetStart(s, place);
+          queueMicrotask(() => popup.remove());
+        }}
+        onSetDestination={(s) => {
+          latest.current.onSetDestination(s, place);
+          queueMicrotask(() => popup.remove());
+        }}
+      />,
+    );
+  popupsRef.current.set(PLACE_KEY, { popup, root, render });
   render();
 }

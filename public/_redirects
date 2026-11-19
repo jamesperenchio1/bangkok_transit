@@ -1,0 +1,5 @@
+# Pages renamed with the station and line data (SRT Red split into Dark and Light Red; "Si lam" corrected to "Si Iam").
+/lines/srt-red-line /lines/srt-dark-red-line 301
+/lines/srt-red-line/ /lines/srt-dark-red-line 301
+/stations/si-lam-yl17 /stations/si-iam-yl17 301
+/stations/si-lam-yl17/ /stations/si-iam-yl17 301

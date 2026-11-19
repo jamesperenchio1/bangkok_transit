@@ -1,5 +1,6 @@
 "use client";
 
+import { useSettingsStore } from "@/lib/settings-store";
 import { create } from "zustand";
 import { ageMs, isShowable, isValidArrivals, type Arrivals } from "./bts";
 import { ARRIVALS_URL } from "./arrivals-url";
@@ -206,6 +207,14 @@ export function startArrivalsPolling() {
     timer = null;
   }
 
+  // Un-pausing fetches at once instead of waiting out the idle interval.
+  let wasPaused = useSettingsStore.getState().settings.pauseLive;
+  useSettingsStore.subscribe((state) => {
+    const paused = state.settings.pauseLive;
+    if (wasPaused && !paused) pollNow();
+    wasPaused = paused;
+  });
+
   /** Poll right now (unless one is already running), resetting the schedule. */
   function pollNow() {
     if (inFlight || document.hidden) return;
@@ -221,6 +230,14 @@ export function startArrivalsPolling() {
 
   async function poll() {
     timer = null;
+    // "Pause live updates" in Settings: no request at all; held times keep
+    // counting down and, as they age, are shown as last-known (never as live).
+    if (useSettingsStore.getState().settings.pauseLive) {
+      // Settled: "nothing held" is the honest answer now, not "still checking".
+      if (!useArrivalsStore.getState().settled) useArrivalsStore.setState({ settled: true });
+      if (!document.hidden) timer = setTimeout(poll, POLL_MS);
+      return;
+    }
     inFlight = true;
     lastPollStart = Date.now();
     let complete = false;

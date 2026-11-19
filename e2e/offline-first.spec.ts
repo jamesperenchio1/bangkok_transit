@@ -20,6 +20,11 @@ const stationsDrawn = (page: Page) =>
     const m = (window as unknown as { __map?: MapLike }).__map;
     return m && m.getLayer("stations-layer") ? m.queryRenderedFeatures({ layers: ["stations-layer"] }).length : 0;
   });
+const linesDrawn = (page: Page) =>
+  page.evaluate(() => {
+    const m = (window as unknown as { __map?: MapLike }).__map;
+    return m && m.getLayer("transit-lines-layer") ? m.queryRenderedFeatures({ layers: ["transit-lines-layer"] }).length : 0;
+  });
 const usingFallbackBasemap = (page: Page) =>
   page.evaluate(() => (window as unknown as { __map: MapLike }).__map.getStyle().layers.some((l) => l.id === "fallback-background"));
 
@@ -138,5 +143,54 @@ test.describe("when the basemap is slow or missing", () => {
     await expect.poll(() => stationsDrawn(page), { timeout: 6000 }).toBeGreaterThan(10);
     const basemapDone = await page.evaluate(() => (window as unknown as { __map: MapLike }).__map.loaded());
     expect(basemapDone, "the basemap is still loading while the stations are already drawn").toBe(false);
+  });
+});
+
+test.describe("the map comes first", () => {
+  test("the lines are drawn, joined station to station, even if the curved track cannot be downloaded", async ({ page, problems }) => {
+    // Before: one failed request for public/line-geometry.json left the map with
+    // stations and no lines at all until the next reload. (A fresh first load,
+    // so the service worker has not taken over yet and cannot answer from its
+    // precache.)
+    await page.route("**/line-geometry.json", (route) => route.abort("failed"));
+    await page.goto("/");
+    await expect.poll(() => linesDrawn(page), { timeout: 30_000 }).toBeGreaterThan(10);
+    await expect.poll(() => stationsDrawn(page), { timeout: 30_000 }).toBeGreaterThan(10);
+    // Last, so it covers the blocked requests logged by the retries too.
+    forgiveNetworkErrors(problems);
+  });
+
+  test("live times are not requested until the lines are on screen", async ({ page, context }) => {
+    // A slow basemap keeps the map busy for a few seconds. Live times and the
+    // offline-map download are not the map, so they wait for it: before, the
+    // first poll went out as soon as the page hydrated, in front of the map's
+    // own files, and the lines were not drawn yet when it did.
+    await context.route(/tiles\.openfreemap\.org\/(planet|fonts)\//, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await route.continue().catch(() => {});
+    });
+    // Measured inside the page, at the moment of the fetch: once the service
+    // worker controls the page Playwright can no longer see (or route) the
+    // request, and a check made afterwards would be too late to mean anything.
+    await page.addInitScript(() => {
+      const w = window as unknown as {
+        __map?: MapLike;
+        __linesAtArrivals?: number;
+        fetch: typeof fetch;
+      };
+      const realFetch = w.fetch.bind(window);
+      w.fetch = (input, init) => {
+        const url = input instanceof Request ? input.url : String(input);
+        if (url.includes("/arrivals.json") && w.__linesAtArrivals === undefined) {
+          const m = w.__map;
+          w.__linesAtArrivals = m && m.getLayer("transit-lines-layer") ? m.queryRenderedFeatures({ layers: ["transit-lines-layer"] }).length : 0;
+        }
+        return realFetch(input, init);
+      };
+    });
+    await page.goto("/");
+    const linesAtFirstPoll = () => page.evaluate(() => (window as unknown as { __linesAtArrivals?: number }).__linesAtArrivals);
+    await expect.poll(linesAtFirstPoll, { timeout: 30_000, message: "live times are still requested" }).toBeDefined();
+    expect(await linesAtFirstPoll(), "lines already drawn when live times were first requested").toBeGreaterThan(10);
   });
 });

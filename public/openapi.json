@@ -1,0 +1,137 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Bangkok Transit live arrivals",
+    "version": "1.0.0",
+    "summary": "One shared, read-only JSON document of live BTS train arrivals.",
+    "description": "The document behind the live times on https://bangkok-transit.com. A background job refreshes it every few seconds from a public BTS arrivals feed and publishes it as a single file on Cloudflare's CDN, so every client reads the same cached copy. There is nothing to sign up for and no API key. Covers BTS Sukhumvit and BTS Silom stations only; the other rail lines have no live feed. Times are estimates from that feed, not a timetable. Poll no more often than every 15 seconds: the file only changes about every 10 seconds at the edge.",
+    "x-provided-as-is": "Estimates from a third-party public arrivals feed; no warranty or timetable guarantee."
+  },
+  "servers": [{ "url": "https://live.bangkok-transit.com" }],
+  "externalDocs": {
+    "description": "Site overview for agents (llms.txt)",
+    "url": "https://bangkok-transit.com/llms.txt"
+  },
+  "paths": {
+    "/arrivals.json": {
+      "get": {
+        "operationId": "getLiveArrivals",
+        "summary": "Live arrivals for every BTS Sukhumvit and Silom station",
+        "description": "Returns the whole document. Each station's reading carries its own `timestamp` (UTC, with no trailing Z). Treat a reading older than about 90 seconds as last-known and drop one older than 30 minutes. The `Date` and `Age` response headers (exposed to browsers) give the edge copy's age.",
+        "responses": {
+          "200": {
+            "description": "The current document.",
+            "headers": {
+              "Cache-Control": { "description": "Short edge cache (a few seconds) with stale-if-error.", "schema": { "type": "string" } },
+              "Date": { "description": "When the edge answered.", "schema": { "type": "string" } },
+              "Age": { "description": "Seconds the edge copy has been cached.", "schema": { "type": "integer" } },
+              "Access-Control-Allow-Origin": { "description": "`*`: readable from any web page.", "schema": { "type": "string" } }
+            },
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/ArrivalsDocument" } }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ArrivalsDocument": {
+        "type": "object",
+        "required": ["arrivals", "total", "complete"],
+        "properties": {
+          "arrivals": {
+            "type": "object",
+            "description": "Latest reading per station, keyed by the station's code (for example `N8`, `CEN`).",
+            "additionalProperties": { "$ref": "#/components/schemas/Arrivals" }
+          },
+          "total": { "type": "integer", "description": "How many stations have live arrivals at all." },
+          "complete": { "type": "boolean", "description": "True once the latest full poll has landed and is current, or the source is known to be down." },
+          "status": { "$ref": "#/components/schemas/UpstreamStatus" },
+          "poll": { "$ref": "#/components/schemas/PollReport" }
+        }
+      },
+      "Arrivals": {
+        "type": "object",
+        "required": ["station", "platforms", "near_end_of_service", "service_active", "next_service", "server_time", "timestamp"],
+        "properties": {
+          "station": {
+            "type": "object",
+            "required": ["code", "name_en", "name_th", "line_color"],
+            "properties": {
+              "code": { "type": "string" },
+              "name_en": { "type": "string" },
+              "name_th": { "type": "string" },
+              "line_color": { "type": "string", "description": "Hex colour of the line." }
+            }
+          },
+          "platforms": { "type": "array", "items": { "$ref": "#/components/schemas/Platform" } },
+          "near_end_of_service": { "type": "boolean" },
+          "service_active": { "type": "boolean" },
+          "next_service": { "type": "string", "description": "When service next starts, if it is not running." },
+          "server_time": { "type": "string", "description": "The source's own clock when it answered, as Bangkok local time (UTC+7) written dd/mm/yyyy HH:mm, for example `09/11/2026 15:47`. Not ISO 8601: use `timestamp` for the time of the reading." },
+          "timestamp": { "type": "string", "description": "When this reading was taken: UTC, ISO 8601 with fractional seconds and no trailing Z, for example `2026-11-09T08:47:08.157629`. Append Z before parsing." }
+        }
+      },
+      "Platform": {
+        "type": "object",
+        "required": ["platform", "line_color", "line_id", "direction", "direction_key", "trains"],
+        "properties": {
+          "platform": { "type": "string" },
+          "line_color": { "type": "string" },
+          "line_id": { "type": "integer" },
+          "direction": { "type": "string", "description": "Thai and English destination joined in one string." },
+          "direction_key": { "type": "string", "description": "Code of the terminus station in this direction." },
+          "trains": { "type": "array", "items": { "$ref": "#/components/schemas/Train" } },
+          "carried_from": { "type": "string", "description": "Set when these trains come from an older reading because the newest listed none for this direction. It is that older reading's `timestamp`: UTC, ISO 8601 with no trailing Z. Append Z before parsing." }
+        }
+      },
+      "Train": {
+        "type": "object",
+        "required": ["train_no", "destination", "destination_key", "status"],
+        "properties": {
+          "train_no": { "type": "string" },
+          "destination": { "type": "string" },
+          "destination_key": { "type": "string" },
+          "eta_minutes": { "type": "number", "description": "Minutes until arrival, as reported by the source." },
+          "eta_precise": { "type": "number", "description": "The same, with a fractional part." },
+          "status": { "type": "string" }
+        }
+      },
+      "UpstreamStatus": {
+        "type": "object",
+        "description": "Health of the upstream arrivals feed, as the poller sees it.",
+        "required": ["state", "since", "lastSuccessAt", "incidents"],
+        "properties": {
+          "state": { "type": "string", "enum": ["ok", "degraded", "down"] },
+          "since": { "type": "string", "format": "date-time" },
+          "lastSuccessAt": { "type": ["string", "null"], "format": "date-time" },
+          "incidents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["start", "end"],
+              "properties": {
+                "start": { "type": "string", "format": "date-time" },
+                "end": { "type": ["string", "null"], "format": "date-time" }
+              }
+            }
+          }
+        }
+      },
+      "PollReport": {
+        "type": "object",
+        "description": "What the latest poll did. Diagnostics only.",
+        "required": ["at", "ms", "polled", "ok", "failed"],
+        "properties": {
+          "at": { "type": "string", "format": "date-time" },
+          "ms": { "type": "number" },
+          "polled": { "type": "integer" },
+          "ok": { "type": "integer" },
+          "failed": { "type": "object", "additionalProperties": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

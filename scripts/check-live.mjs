@@ -51,6 +51,44 @@ if (site) {
   for (const header of ["content-security-policy", "x-content-type-options", "permissions-policy"]) {
     if (!site.headers.get(header)) fail(`${SITE_URL}: missing ${header} header`);
   }
+  // public/_headers: what Cloudflare's Early Hints turns into a 103. (The 103
+  // itself is invisible to fetch(); `curl -sv --http2 <site> 2>&1 | grep -i "< HTTP/2 103"`
+  // shows it, see docs/operations.md.)
+  const link = site.headers.get("link") ?? "";
+  for (const want of ["rel=preconnect", "/styles/liberty", "/line-geometry.json"]) {
+    if (!link.includes(want)) fail(`${SITE_URL}: Link header is missing ${want} (public/_headers)`);
+  }
+  // Agent discovery: the same header names the catalog, the API description and the markdown twin.
+  for (const want of ['rel="api-catalog"', 'rel="service-desc"', 'rel="alternate"; type="text/markdown"']) {
+    if (!link.includes(want)) fail(`${SITE_URL}: Link header is missing ${want} (public/_headers)`);
+  }
+}
+
+// Agent discovery files (public/_headers sets the types of the extensionless / unusual ones).
+const robots = await get(`${SITE_URL}/robots.txt`);
+if (robots) {
+  if (!(await robots.text()).includes("Content-Signal:")) fail(`${SITE_URL}/robots.txt: no Content-Signal line (app/robots.ts)`);
+}
+const catalog = await get(`${SITE_URL}/.well-known/api-catalog`);
+if (catalog) {
+  if (!catalog.ok) fail(`${SITE_URL}/.well-known/api-catalog: HTTP ${catalog.status}`);
+  else {
+    if (!(catalog.headers.get("content-type") ?? "").includes("application/linkset+json")) {
+      fail(`${SITE_URL}/.well-known/api-catalog: Content-Type is "${catalog.headers.get("content-type")}", not application/linkset+json`);
+    }
+    try {
+      if ((await catalog.json()).linkset?.[0]?.anchor !== ARRIVALS_URL) fail(`api-catalog: first entry is not ${ARRIVALS_URL}`);
+    } catch {
+      fail(`${SITE_URL}/.well-known/api-catalog: not valid JSON`);
+    }
+  }
+}
+const twin = await get(`${SITE_URL}/md/index.md`);
+if (twin) {
+  if (!twin.ok) fail(`${SITE_URL}/md/index.md: HTTP ${twin.status}`);
+  else if (!(twin.headers.get("content-type") ?? "").includes("text/markdown")) {
+    fail(`${SITE_URL}/md/index.md: Content-Type is "${twin.headers.get("content-type")}", not text/markdown`);
+  }
 }
 
 // The live document, requested the way the page does (cross-origin).

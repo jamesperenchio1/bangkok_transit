@@ -49,9 +49,9 @@ describe("ArrivalsPoller", () => {
     expect(doc.status?.state).toBe("ok");
 
     expect(await runDurableObjectAlarm(stub)).toBe(true);
-    expect(new Set(calls).size).toBe(61); // the second alarm took the other half
+    expect(new Set(calls).size).toBe(60); // the second alarm took the other half
     ({ doc, cacheControl } = await published());
-    expect(Object.keys(doc.arrivals)).toHaveLength(61);
+    expect(Object.keys(doc.arrivals)).toHaveLength(60);
     expect(doc.complete).toBe(true);
     expect(cacheControl).toBe("public, max-age=0, s-maxage=10, stale-if-error=300");
   });

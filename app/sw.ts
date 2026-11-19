@@ -36,6 +36,17 @@ const liveArrivals: RuntimeCaching = {
   handler: new NetworkOnly(),
 };
 
+// Google Places and Maps are only fetched when the rider opts into Google.
+// They stay live and uncached: Google's terms limit how long Places content
+// may be stored, and a cached map script would outlive a key rotation.
+const googleMaps: RuntimeCaching = {
+  matcher: ({ url }) =>
+    url.hostname === "places.googleapis.com" ||
+    url.hostname === "maps.googleapis.com" ||
+    url.hostname === "maps.gstatic.com",
+  handler: new NetworkOnly(),
+};
+
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   // The shell ("/", added in next.config.ts) is precached, so a cold start
@@ -46,7 +57,7 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: [liveArrivals, openFreeMapCache, ...defaultCache],
+  runtimeCaching: [liveArrivals, googleMaps, openFreeMapCache, ...defaultCache],
 });
 
 serwist.addEventListeners();

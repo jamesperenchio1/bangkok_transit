@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "@/lib/seo";
+import { CONTENT_SIGNAL, SITE_URL } from "@/lib/seo";
 
 export const dynamic = "force-static";
 
@@ -12,11 +12,17 @@ const AI_CRAWLERS = [
   "DuckAssistBot", "cohere-ai", "YouBot", "Bytespider",
 ];
 
+// Each group repeats the Content-Signal line: a crawler that matches a named
+// group ignores the `*` one, so the preference has to be stated in every group.
+// It says what the content may be used for (see CONTENT_SIGNAL); access itself
+// is still governed by the Allow lines.
+const other = { "Content-Signal": CONTENT_SIGNAL };
+
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
-      { userAgent: "*", allow: "/" },
-      ...AI_CRAWLERS.map((userAgent) => ({ userAgent, allow: "/" })),
+      { userAgent: "*", allow: "/", other },
+      ...AI_CRAWLERS.map((userAgent) => ({ userAgent, allow: "/", other })),
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,
     host: SITE_URL,

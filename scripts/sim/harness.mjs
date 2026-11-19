@@ -204,7 +204,9 @@ async function buildAssetCheck(session) {
     const html = await readFile(indexPath, "utf8");
     const refs = [
       ...new Set(
-        [...html.matchAll(/_next\/static\/[^"'\\\s)]+/g)].map((m) =>
+        // Balanced "(...)" groups are part of a path (Next's route groups, e.g.
+        // app/(content)/layout-<hash>.js); a bare ")" ends it (CSS url(...)).
+        [...html.matchAll(/_next\/static\/(?:[^"'\\\s()]|\([^"'\\\s()]*\))+/g)].map((m) =>
           m[0].replace(/&amp;/g, "&"),
         ),
       ),
@@ -504,8 +506,8 @@ async function scenarioFirstTimer(session) {
     severity: "major",
     data: { text: route.changesText },
   });
-  // The app has no fare display yet, so this guards the ETA/route maths from
-  // leaking NaN into the panel text at all.
+  // Guards the ETA/route maths - and the fare text - from leaking NaN into
+  // the panel text at all.
   session.check("fare.not-nan", !route.hasNaN, {
     severity: "major",
     data: { stops: route.stops },
