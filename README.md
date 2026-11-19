@@ -35,7 +35,7 @@
                                               phones & laptops
 ```
 
-The site is a fully static Next.js export served as Cloudflare Workers static assets — no server code. Details, failure modes and the cost model: **[docs/architecture.md](docs/architecture.md)**. Dashboard configuration that isn't in code, and how to diagnose production: **[docs/operations.md](docs/operations.md)**.
+The site is a fully static Next.js export served as Cloudflare Workers static assets — no server code runs for page views. The only exception is a small pay-per-call x402 API for AI agents under `/api/*`. Details, failure modes and the cost model: **[docs/architecture.md](docs/architecture.md)**. Dashboard configuration that isn't in code, and how to diagnose production: **[docs/operations.md](docs/operations.md)**.
 
 ## Stack
 

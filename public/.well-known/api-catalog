@@ -3,10 +3,33 @@
     {
       "anchor": "https://live.bangkok-transit.com/arrivals.json",
       "service-desc": [
-        { "href": "https://bangkok-transit.com/openapi.json", "type": "application/openapi+json" }
+        {
+          "href": "https://bangkok-transit.com/openapi.json",
+          "type": "application/openapi+json"
+        }
       ],
       "service-doc": [
-        { "href": "https://bangkok-transit.com/llms.txt", "type": "text/plain", "title": "Bangkok Transit for AI assistants" }
+        {
+          "href": "https://bangkok-transit.com/llms.txt",
+          "type": "text/plain",
+          "title": "Bangkok Transit for AI assistants"
+        }
+      ]
+    },
+    {
+      "anchor": "https://bangkok-transit.com/api/v1",
+      "service-desc": [
+        {
+          "href": "https://bangkok-transit.com/openapi.json",
+          "type": "application/openapi+json"
+        }
+      ],
+      "service-doc": [
+        {
+          "href": "https://bangkok-transit.com/llms.txt",
+          "type": "text/plain",
+          "title": "Bangkok Transit for AI assistants"
+        }
       ]
     }
   ]

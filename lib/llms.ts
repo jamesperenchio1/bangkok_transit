@@ -5,6 +5,7 @@ import {
   LINES, SITE_DESCRIPTION, SITE_URL, absoluteUrl, linePath, lineStations, lineTermini, markdownPath, routePairs, stationPath,
 } from "@/lib/seo";
 import { ARRIVALS_URL } from "@/lib/arrivals-url";
+import { PAID_ENDPOINTS } from "@/lib/paid-api";
 
 export function llmsTxt(): string {
   const lines = LINES.map(
@@ -30,6 +31,9 @@ Every page above has a plain-markdown twin under ${SITE_URL}/md/, for example [t
 
 ## Live arrivals data
 BTS Sukhumvit and Silom live arrivals are one shared, read-only JSON document, cached on a CDN, with no account or key: ${ARRIVALS_URL} (CORS open to any origin; it refreshes about every 10 seconds, so poll no faster than every 15). Its shape is described in [OpenAPI](${SITE_URL}/openapi.json) and listed in the [API catalog](${SITE_URL}/.well-known/api-catalog). Each reading carries its own timestamp; treat one older than about 90 seconds as last-known and ignore one older than 30 minutes. Times are estimates, not a timetable.
+
+## Paid API for agents (x402)
+Pay-per-call endpoints under ${SITE_URL}/api/v1, paid with x402 (HTTP 402, USDC), no account or key: ${PAID_ENDPOINTS.map((e) => `\`${e.openapiPath}\` ${e.price}`).join(", ")}. Everything else on this site stays free. \`GET ${SITE_URL}/api/v1\` is free and states the current price list, the network, the pay-to address and whether payments are in test mode. A failed call (unknown station, no current reading) is not charged. See [OpenAPI](${SITE_URL}/openapi.json).
 
 ## Optional
 - [Full station and route index](${SITE_URL}/llms-full.txt)
