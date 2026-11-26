@@ -43,5 +43,9 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     timeout: 240_000,
     reuseExistingServer: !process.env.CI,
+    // The app only offers online place search when a build-time key exists;
+    // without one the mocks below would never see a request. A dummy key is
+    // enough: the tests intercept the call before it leaves the browser.
+    env: { NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: "e2e-test-key" },
   },
 });

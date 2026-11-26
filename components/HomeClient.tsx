@@ -27,6 +27,8 @@ import { restoreLang, stationName, useLangStore, useT } from "@/lib/i18n";
 import { restoreSettings, useSettingsStore } from "@/lib/settings-store";
 import { googleMapsKey } from "@/lib/google-maps";
 import { chooseMap } from "@/lib/map-provider";
+import { firstRideLeg, tripTiming } from "@/lib/trip-time";
+import { useArrivals } from "@/lib/use-arrivals";
 
 // Line geometry starts downloading with hydration. The map chunk itself is
 // requested when its component first renders: MapLibre by default, Google
@@ -121,6 +123,9 @@ export function HomeClient({
   // grey tile; the fallback holds for the rest of the visit.
   const [googleFailed, setGoogleFailed] = useState(false);
   const [startedOffline] = useState(() => typeof navigator !== "undefined" && !navigator.onLine);
+  // PWA shortcut / shared link asked for "route from where I am"; resolved
+  // once geolocation settles, never from a guessed position.
+  const [nearRequested, setNearRequested] = useState(false);
 
   // Recent trips (localStorage)
   useEffect(() => {
@@ -205,10 +210,48 @@ export function HomeClient({
     // initializer: the page is prerendered, where there's no URL to read,
     // and the header would then mismatch on hydration.
     /* eslint-disable react-hooks/set-state-in-effect */
+    const sharedLang = params.get("lang");
+    if (sharedLang === "en" || sharedLang === "th") useLangStore.getState().setLang(sharedLang);
     if (from) setStart(from);
-    if (to && to.code !== from?.code) setDestination(to);
+    if (to && to.code !== from?.code) {
+      setDestination(to);
+      // A shared link can end at a place, not a station: restore the last
+      // walk too instead of silently dropping it and rerouting to the station.
+      const name = params.get("toName");
+      const latRaw = params.get("toLat");
+      const lonRaw = params.get("toLon");
+      const lat = latRaw === null ? NaN : Number(latRaw);
+      const lon = lonRaw === null ? NaN : Number(lonRaw);
+      if (name && Number.isFinite(lat) && Number.isFinite(lon)) {
+        setDestinationPlace({ id: "shared", name, detail: "", kind: "place", lat, lon });
+      }
+    }
+    if (params.get("near") === "1") setNearRequested(true);
+    // Web Share Target: a maps link or coordinates shared into the installed
+    // app becomes a route. The station is the nearest one to the pin; the pin
+    // itself is kept as the destination place so the final walk is shown.
+    if (!to) {
+      const shared = `${params.get("title") ?? ""} ${params.get("text") ?? ""} ${params.get("url") ?? ""}`;
+      const match =
+        /@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/.exec(shared) ??
+        /[?&](?:q|query|destination|ll)=(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/.exec(shared);
+      if (match) {
+        const lat = Number(match[1]);
+        const lon = Number(match[2]);
+        if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+          const near = nearestStation(lat, lon);
+          setDestination(near.station);
+          const name = (params.get("title") || params.get("text") || t.sharedPlace).trim().slice(0, 80);
+          setDestinationPlace({ id: "shared", name, detail: "", kind: "place", lat, lon });
+        }
+      }
+    }
     setUrlRead(true);
     /* eslint-enable react-hooks/set-state-in-effect */
+    // Mount-only: deep links are read once, before the URL mirror starts.
+    // `t.sharedPlace` is only the fallback name; the language itself is set
+    // from the same URL above, so re-running on a language switch is wrong.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     if (!urlRead) return;
@@ -217,9 +260,21 @@ export function HomeClient({
     else params.delete("from");
     if (destination) params.set("to", destination.code);
     else params.delete("to");
+    // `toName`/`toLat`/`toLon` belong to the current destination place; a
+    // plain station selection must clear them or a reload would resurrect it.
+    if (destinationPlace) {
+      params.set("toName", destinationPlace.name);
+      params.set("toLat", String(destinationPlace.lat));
+      params.set("toLon", String(destinationPlace.lon));
+    } else {
+      params.delete("toName");
+      params.delete("toLat");
+      params.delete("toLon");
+    }
+    params.delete("near");
     const query = params.toString();
     window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
-  }, [urlRead, start, destination]);
+  }, [urlRead, start, destination, destinationPlace]);
 
   // The dot follows every fix; anything that decides something for the rider
   // (nearest station, stop alerts) waits for `settled`, so a jittery fix can't
@@ -228,6 +283,16 @@ export function HomeClient({
     () => (settled ? nearestStation(settled.lat, settled.lon) : null),
     [settled],
   );
+
+  // Resolve a "route from here" shortcut once, after the position is trusted.
+  useEffect(() => {
+    if (!nearRequested || !nearest) return;
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setStart(nearest.station);
+    setStartPlace(null);
+    setNearRequested(false);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [nearRequested, nearest]);
 
   // The route is derived, not staged: as soon as both ends exist the path is
   // highlighted. There is no separate confirm step to get stuck on.
@@ -267,7 +332,13 @@ export function HomeClient({
       name: stationName(start, lang),
     };
   }, [start, position, startPlace, walkSpeed, lang]);
-  const totalMinutes = (path?.minutes ?? 0) + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0);
+  // Door-to-door time now includes the wait for the first train (live when
+  // BTS data is fresh, otherwise half the line's headway). Same helper as
+  // the route sheet, so the header and the sheet cannot disagree.
+  const firstLeg = path ? firstRideLeg(path) : null;
+  const firstArrivals = useArrivals(firstLeg?.station.code ?? null);
+  const timing = path ? tripTiming(path, firstArrivals.data, firstArrivals.now) : null;
+  const totalMinutes = (timing?.minutes ?? path?.minutes ?? 0) + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0);
 
   // No route, but only because of lines turned off for routes: say which.
   const blockedBy = useMemo(
@@ -418,7 +489,7 @@ export function HomeClient({
               startCode: start?.code ?? null,
               destinationCode: destination?.code ?? null,
               focusStationCode: focusStation?.code ?? null,
-              routeMinutes: path ? path.minutes + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0) : null,
+              routeMinutes: path ? totalMinutes : null,
               routeChanges: path?.changes ?? null,
             }}
           />
@@ -543,7 +614,7 @@ export function HomeClient({
           >
             <Navigation size={14} className="shrink-0 text-blue-700 dark:text-blue-400" aria-hidden="true" />
             <span className="truncate">
-              {t.nearest}: {stationName(nearest.station, lang)} — start route
+              {t.nearest}: {stationName(nearest.station, lang)} — {t.startRoute}
             </span>
             <span className="shrink-0 text-xs text-neutral-600 dark:text-neutral-400">
               {distanceLabel(nearest.meters)}

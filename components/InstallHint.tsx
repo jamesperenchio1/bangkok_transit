@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { X, Download } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 const DISMISSED_KEY = "bts:install-hint-dismissed";
 
 export function InstallHint() {
+  const { t } = useT();
   const [show, setShow] = useState(false);
   type BeforeInstallPromptEvent = Event & { prompt: () => void; userChoice: Promise<{ outcome: string }> };
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
@@ -51,16 +53,14 @@ export function InstallHint() {
     <div role="status" className="flex items-center gap-2 border-b border-neutral-200 bg-neutral-50 px-4 py-2 text-xs text-neutral-800 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-200">
       <Download size={14} className="shrink-0" aria-hidden="true" />
       <span className="flex-1">
-        {ios
-          ? "Install this app: tap Share, then \u201CAdd to Home Screen\u201D."
-          : "Install Bangkok Transit for offline use."}
+        {ios ? t.installIos : t.installBody}
       </span>
       {!ios && deferred && (
         <button onClick={install} className="shrink-0 rounded-full bg-green-700 px-3 py-1 text-xs font-medium text-white hover:bg-green-800">
-          Install
+          {t.installAction}
         </button>
       )}
-      <button onClick={dismiss} aria-label="Dismiss" className="shrink-0 p-1">
+      <button onClick={dismiss} aria-label={t.dismiss} className="shrink-0 p-1">
         <X size={14} aria-hidden="true" />
       </button>
     </div>

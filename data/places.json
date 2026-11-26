@@ -1,0 +1,3886 @@
+{
+  "generatedAt": "2026-11-26T16:26:17.080Z",
+  "source": "OpenStreetMap contributors (Overpass API, ODbL 1.0) plus OSM Nominatim lookups for curated entries",
+  "places": [
+    {
+      "id": "curated-suvarnabhumi-airport",
+      "name": "Suvarnabhumi Airport",
+      "nameTh": "ท่าอากาศยานสุวรรณภูมิ",
+      "kind": "airport",
+      "lat": 13.6818767,
+      "lon": 100.7485803,
+      "stationCode": "A08",
+      "meters": 1401
+    },
+    {
+      "id": "curated-don-mueang-airport",
+      "name": "Don Mueang Airport",
+      "nameTh": "ท่าอากาศยานดอนเมือง",
+      "kind": "airport",
+      "lat": 13.9126097,
+      "lon": 100.60675,
+      "stationCode": "RD11",
+      "meters": 972
+    },
+    {
+      "id": "curated-queen-sirikit-national-convention-center",
+      "name": "Queen Sirikit National Convention Center",
+      "nameTh": "ศูนย์การประชุมแห่งชาติสิริกิติ์",
+      "kind": "attraction",
+      "lat": 13.7242403,
+      "lon": 100.558736,
+      "stationCode": "BL18",
+      "meters": 200
+    },
+    {
+      "id": "curated-bitec-bang-na",
+      "name": "BITEC Bang Na",
+      "nameTh": "ไบเทค บางนา",
+      "kind": "attraction",
+      "lat": 13.669801,
+      "lon": 100.6085436,
+      "stationCode": "E13",
+      "meters": 460
+    },
+    {
+      "id": "curated-impact-muang-thong-thani",
+      "name": "IMPACT Muang Thong Thani",
+      "nameTh": "อิมแพ็ค เมืองทองธานี",
+      "kind": "attraction",
+      "lat": 13.9134256,
+      "lon": 100.5476259,
+      "stationCode": "MT01",
+      "meters": 493
+    },
+    {
+      "id": "curated-wat-pho",
+      "name": "Wat Pho",
+      "nameTh": "วัดพระเชตุพนวิมลมังคลาราม",
+      "kind": "attraction",
+      "lat": 13.7463456,
+      "lon": 100.4927381,
+      "stationCode": "BL10",
+      "meters": 320
+    },
+    {
+      "id": "curated-wat-saket-golden-mount",
+      "name": "Wat Saket (Golden Mount)",
+      "nameTh": "วัดสระเกศราชวรมหาวิหาร",
+      "kind": "attraction",
+      "lat": 13.7538492,
+      "lon": 100.5066941,
+      "stationCode": "BL11",
+      "meters": 897
+    },
+    {
+      "id": "curated-museum-siam",
+      "name": "Museum Siam",
+      "nameTh": "มิวเซียมสยาม",
+      "kind": "attraction",
+      "lat": 13.7439935,
+      "lon": 100.4938519,
+      "stationCode": "BL10",
+      "meters": 92
+    },
+    {
+      "id": "curated-chulalongkorn-university",
+      "name": "Chulalongkorn University",
+      "nameTh": "จุฬาลงกรณ์มหาวิทยาลัย",
+      "kind": "university",
+      "lat": 13.7430893,
+      "lon": 100.5328725,
+      "stationCode": "CEN",
+      "meters": 328
+    },
+    {
+      "id": "curated-siriraj-hospital",
+      "name": "Siriraj Hospital",
+      "nameTh": "โรงพยาบาลศิริราช",
+      "kind": "hospital",
+      "lat": 13.7578222,
+      "lon": 100.4853833,
+      "stationCode": "BL37",
+      "meters": 1438
+    },
+    {
+      "id": "curated-bumrungrad-international-hospital",
+      "name": "Bumrungrad International Hospital",
+      "nameTh": "โรงพยาบาลบำรุงราษฎร์",
+      "kind": "hospital",
+      "lat": 13.7464113,
+      "lon": 100.5524335,
+      "stationCode": "E2",
+      "meters": 537
+    },
+    {
+      "id": "osm-way-25505429",
+      "name": "Emporium",
+      "kind": "mall",
+      "lat": 13.7300757,
+      "lon": 100.5688421,
+      "stationCode": "E5",
+      "meters": 100
+    },
+    {
+      "id": "osm-way-157656710",
+      "name": "Terminal 21",
+      "kind": "mall",
+      "lat": 13.7379237,
+      "lon": 100.5604208,
+      "stationCode": "E4",
+      "meters": 103
+    },
+    {
+      "id": "osm-way-680735864",
+      "name": "ICONSIAM",
+      "kind": "mall",
+      "lat": 13.7268256,
+      "lon": 100.5103251,
+      "stationCode": "G2",
+      "meters": 143
+    },
+    {
+      "id": "osm-way-781138575",
+      "name": "Siam Paragon",
+      "kind": "mall",
+      "lat": 13.7468007,
+      "lon": 100.5349375,
+      "stationCode": "CEN",
+      "meters": 147
+    },
+    {
+      "id": "osm-way-318785712",
+      "name": "EmQuartier",
+      "kind": "mall",
+      "lat": 13.7319619,
+      "lon": 100.5695423,
+      "stationCode": "E5",
+      "meters": 171
+    },
+    {
+      "id": "osm-way-872380813",
+      "name": "Yaowarat Road",
+      "nameTh": "ถนนเยาวราช",
+      "kind": "attraction",
+      "lat": 13.7406127,
+      "lon": 100.5094182,
+      "stationCode": "BL12",
+      "meters": 184
+    },
+    {
+      "id": "osm-way-157487610",
+      "name": "MBK Center",
+      "kind": "mall",
+      "lat": 13.7445119,
+      "lon": 100.5298569,
+      "stationCode": "W1",
+      "meters": 227
+    },
+    {
+      "id": "osm-way-341577338",
+      "name": "Jim Thompson House",
+      "nameTh": "พิพิธภัณฑ์บ้านจิม ทอมป์สัน",
+      "kind": "attraction",
+      "lat": 13.7492247,
+      "lon": 100.5282818,
+      "stationCode": "W1",
+      "meters": 325
+    },
+    {
+      "id": "osm-way-37911198",
+      "name": "Chatuchak Market",
+      "nameTh": "ตลาดนัดจตุจักร",
+      "kind": "market",
+      "lat": 13.8003894,
+      "lon": 100.5503771,
+      "stationCode": "BL29",
+      "meters": 358
+    },
+    {
+      "id": "osm-way-157482067",
+      "name": "Central World",
+      "kind": "mall",
+      "lat": 13.7465211,
+      "lon": 100.5390066,
+      "stationCode": "CEN",
+      "meters": 488
+    },
+    {
+      "id": "osm-way-23483299",
+      "name": "Lumphini Park",
+      "nameTh": "สวนลุมพินี",
+      "kind": "park",
+      "lat": 13.7304754,
+      "lon": 100.5416508,
+      "stationCode": "BL15",
+      "meters": 502
+    },
+    {
+      "id": "osm-way-23486417",
+      "name": "Chatuchak Park",
+      "nameTh": "สวนจตุจักร",
+      "kind": "park",
+      "lat": 13.8080737,
+      "lon": 100.5554938,
+      "stationCode": "BL28",
+      "meters": 586
+    },
+    {
+      "id": "osm-way-23481741",
+      "name": "Wat Arun",
+      "nameTh": "วัดอรุณ",
+      "kind": "attraction",
+      "lat": 13.7438235,
+      "lon": 100.4884885,
+      "stationCode": "BL10",
+      "meters": 670
+    },
+    {
+      "id": "osm-way-23482754",
+      "name": "Grand Palace",
+      "nameTh": "พระบรมมหาราชวัง",
+      "kind": "attraction",
+      "lat": 13.7495708,
+      "lon": 100.4917924,
+      "stationCode": "BL10",
+      "meters": 676
+    },
+    {
+      "id": "osm-way-1306732424",
+      "name": "Benjakitti Park",
+      "nameTh": "สวนเบญจกิติ",
+      "kind": "park",
+      "lat": 13.7293437,
+      "lon": 100.5586599,
+      "stationCode": "BL18",
+      "meters": 732
+    },
+    {
+      "id": "osm-way-145936260",
+      "name": "IT Square",
+      "kind": "mall",
+      "lat": 13.886266,
+      "lon": 100.5811337,
+      "stationCode": "RD09",
+      "meters": 82
+    },
+    {
+      "id": "osm-way-101521915",
+      "name": "Union Mall",
+      "kind": "mall",
+      "lat": 13.8135689,
+      "lon": 100.561908,
+      "stationCode": "BL27",
+      "meters": 91
+    },
+    {
+      "id": "osm-way-105567376",
+      "name": "Central Chaengwattana",
+      "kind": "mall",
+      "lat": 13.9036912,
+      "lon": 100.5281904,
+      "stationCode": "PK08",
+      "meters": 115
+    },
+    {
+      "id": "osm-node-6763296085",
+      "name": "Chatuchak 2 Minburi market",
+      "kind": "attraction",
+      "lat": 13.8133815,
+      "lon": 100.726008,
+      "stationCode": "PK29",
+      "meters": 100
+    },
+    {
+      "id": "osm-way-176761917",
+      "name": "Seacon Bangkae",
+      "nameTh": "ซีคอนบางแค",
+      "kind": "mall",
+      "lat": 13.7116118,
+      "lon": 100.4341157,
+      "stationCode": "BL03",
+      "meters": 144
+    },
+    {
+      "id": "osm-way-176298735",
+      "name": "Fortune Town",
+      "kind": "mall",
+      "lat": 13.7587419,
+      "lon": 100.5651381,
+      "stationCode": "BL21",
+      "meters": 154
+    },
+    {
+      "id": "osm-way-176298728",
+      "name": "Central Rama 9",
+      "kind": "mall",
+      "lat": 13.7585857,
+      "lon": 100.5660869,
+      "stationCode": "BL21",
+      "meters": 162
+    },
+    {
+      "id": "osm-way-174466200",
+      "name": "Central Ramindra",
+      "nameTh": "เซ็นทรัล รามอินทรา",
+      "kind": "mall",
+      "lat": 13.8723533,
+      "lon": 100.6019643,
+      "stationCode": "PK17",
+      "meters": 176
+    },
+    {
+      "id": "osm-way-157668553",
+      "name": "Central Ladprao",
+      "kind": "mall",
+      "lat": 13.8165939,
+      "lon": 100.5608517,
+      "stationCode": "N9",
+      "meters": 176
+    },
+    {
+      "id": "osm-way-25787548",
+      "name": "Gaysorn Amarin",
+      "kind": "mall",
+      "lat": 13.7435258,
+      "lon": 100.5412997,
+      "stationCode": "E1",
+      "meters": 197
+    },
+    {
+      "id": "osm-way-157770877",
+      "name": "Siam Discovery",
+      "kind": "mall",
+      "lat": 13.7466796,
+      "lon": 100.5314992,
+      "stationCode": "W1",
+      "meters": 233
+    },
+    {
+      "id": "osm-way-157591121",
+      "name": "Samyan Mitrtown",
+      "nameTh": "สามย่านมิตรทาวน์",
+      "kind": "mall",
+      "lat": 13.7342412,
+      "lon": 100.5282306,
+      "stationCode": "BL14",
+      "meters": 233
+    },
+    {
+      "id": "osm-way-244115004",
+      "name": "Central Embassy",
+      "kind": "mall",
+      "lat": 13.7440166,
+      "lon": 100.546689,
+      "stationCode": "E2",
+      "meters": 256
+    },
+    {
+      "id": "osm-way-155339977",
+      "name": "Central Northville",
+      "nameTh": "เซ็นทรัล นอร์ธวิลล์",
+      "kind": "mall",
+      "lat": 13.8659858,
+      "lon": 100.4969991,
+      "stationCode": "PP09",
+      "meters": 296
+    },
+    {
+      "id": "osm-way-33435000",
+      "name": "Paradise Park",
+      "nameTh": "พาราไดซ์ พาร์ค",
+      "kind": "mall",
+      "lat": 13.6876939,
+      "lon": 100.6476034,
+      "stationCode": "YL15",
+      "meters": 347
+    },
+    {
+      "id": "osm-way-1423814928",
+      "name": "Pak Khlong Talat",
+      "nameTh": "ปากคลองตลาด",
+      "kind": "market",
+      "lat": 13.7416754,
+      "lon": 100.4963172,
+      "stationCode": "BL10",
+      "meters": 329
+    },
+    {
+      "id": "osm-way-1324084977",
+      "name": "EM TOWER at EMSPHERE",
+      "kind": "mall",
+      "lat": 13.7312253,
+      "lon": 100.5666982,
+      "stationCode": "E5",
+      "meters": 335
+    },
+    {
+      "id": "osm-way-156639205",
+      "name": "Or Tor Kor Market",
+      "nameTh": "ตลาด อ.ต.ก.",
+      "kind": "market",
+      "lat": 13.7971301,
+      "lon": 100.5475747,
+      "stationCode": "BL29",
+      "meters": 144
+    },
+    {
+      "id": "osm-way-33434999",
+      "name": "Seacon Square",
+      "nameTh": "ซีคอนสแควร์",
+      "kind": "mall",
+      "lat": 13.694111,
+      "lon": 100.6483751,
+      "stationCode": "YL15",
+      "meters": 397
+    },
+    {
+      "id": "osm-way-121554548",
+      "name": "India Emporium",
+      "nameTh": "อินเดีย เอ็มโพเรียม",
+      "kind": "mall",
+      "lat": 13.7438214,
+      "lon": 100.5011517,
+      "stationCode": "BL11",
+      "meters": 377
+    },
+    {
+      "id": "osm-way-121239918",
+      "name": "JJ Mall",
+      "nameTh": "เจเจ มอลล์",
+      "kind": "mall",
+      "lat": 13.8019522,
+      "lon": 100.5491083,
+      "stationCode": "BL29",
+      "meters": 420
+    },
+    {
+      "id": "osm-node-4410702935",
+      "name": "Groove @ CentralWorld",
+      "kind": "mall",
+      "lat": 13.745438,
+      "lon": 100.5382485,
+      "stationCode": "CEN",
+      "meters": 394
+    },
+    {
+      "id": "osm-way-23487332",
+      "name": "Queen Sirikit Park",
+      "nameTh": "สวนสมเด็จพระนางเจ้าสิริกิติ์ฯ",
+      "kind": "park",
+      "lat": 13.8068593,
+      "lon": 100.5519729,
+      "stationCode": "BL28",
+      "meters": 443
+    },
+    {
+      "id": "osm-way-359413315",
+      "name": "Central Westgate",
+      "kind": "mall",
+      "lat": 13.8767926,
+      "lon": 100.4116638,
+      "stationCode": "PP02",
+      "meters": 534
+    },
+    {
+      "id": "osm-way-23486019",
+      "name": "Saranrom Park",
+      "nameTh": "สวนสราญรมย์",
+      "kind": "park",
+      "lat": 13.7483473,
+      "lon": 100.4952191,
+      "stationCode": "BL10",
+      "meters": 467
+    },
+    {
+      "id": "osm-way-1365786068",
+      "name": "The Wireless House",
+      "nameTh": "เดอะไวร์เลสเฮาส์",
+      "kind": "attraction",
+      "lat": 13.7265979,
+      "lon": 100.5458104,
+      "stationCode": "BL16",
+      "meters": 89
+    },
+    {
+      "id": "osm-way-23487144",
+      "name": "Benchasiri Park",
+      "nameTh": "อุทยานเบญจสิริ",
+      "kind": "park",
+      "lat": 13.7305,
+      "lon": 100.5672801,
+      "stationCode": "E5",
+      "meters": 260
+    },
+    {
+      "id": "osm-way-1388184387",
+      "name": "Plai Nern Palace",
+      "nameTh": "ตำหนักปลายเนิน",
+      "kind": "attraction",
+      "lat": 13.7214039,
+      "lon": 100.5541465,
+      "stationCode": "BL17",
+      "meters": 102
+    },
+    {
+      "id": "osm-way-342182317",
+      "name": "River City",
+      "nameTh": "ริเวอร์ซิตี",
+      "kind": "mall",
+      "lat": 13.7303493,
+      "lon": 100.5132623,
+      "stationCode": "G3",
+      "meters": 602
+    },
+    {
+      "id": "osm-way-31141565",
+      "name": "Phenix",
+      "nameTh": "พันธุ์ทิพย์พลาซ่า",
+      "kind": "mall",
+      "lat": 13.7504428,
+      "lon": 100.5372723,
+      "stationCode": "CEN",
+      "meters": 619
+    },
+    {
+      "id": "osm-way-31141613",
+      "name": "Platinum Fashion Mall",
+      "kind": "mall",
+      "lat": 13.7499969,
+      "lon": 100.5396899,
+      "stationCode": "A02",
+      "meters": 628
+    },
+    {
+      "id": "osm-node-4590299089",
+      "name": "Kamthieng House Museum",
+      "nameTh": "พิพิธภัณฑ์เรือนคำเที่ยง",
+      "kind": "attraction",
+      "lat": 13.7391534,
+      "lon": 100.5613203,
+      "stationCode": "BL19",
+      "meters": 177
+    },
+    {
+      "id": "osm-way-1552957093",
+      "name": "Nagaraphirom Park",
+      "nameTh": "สวนนาคราภิรมย์",
+      "kind": "park",
+      "lat": 13.7467797,
+      "lon": 100.489913,
+      "stationCode": "BL10",
+      "meters": 591
+    },
+    {
+      "id": "osm-way-1156218683",
+      "name": "Patchamit Fort",
+      "nameTh": "ป้อมป้องปัจจามิตร",
+      "kind": "attraction",
+      "lat": 13.7309298,
+      "lon": 100.5094533,
+      "stationCode": "G3",
+      "meters": 201
+    },
+    {
+      "id": "osm-way-321722223",
+      "name": "Sathorn Unique Tower",
+      "kind": "attraction",
+      "lat": 13.7173182,
+      "lon": 100.5152203,
+      "stationCode": "S6",
+      "meters": 205
+    },
+    {
+      "id": "osm-way-1464119566",
+      "name": "Royal Thai Air Force Museum",
+      "nameTh": "พิพิธภัณฑ์กองทัพอากาศและการบินแห่งชาติ",
+      "kind": "attraction",
+      "lat": 13.9199802,
+      "lon": 100.6217213,
+      "stationCode": "N22",
+      "meters": 226
+    },
+    {
+      "id": "osm-way-1410385850",
+      "name": "Suan Pakkad Palace",
+      "nameTh": "วังสวนผักกาด",
+      "kind": "attraction",
+      "lat": 13.7568308,
+      "lon": 100.537096,
+      "stationCode": "A01",
+      "meters": 237
+    },
+    {
+      "id": "osm-way-230891857",
+      "name": "Wang Suan Phakkat",
+      "nameTh": "สวนผักกาด",
+      "kind": "attraction",
+      "lat": 13.7566808,
+      "lon": 100.5371823,
+      "stationCode": "A01",
+      "meters": 246
+    },
+    {
+      "id": "osm-way-1516377328",
+      "name": "Khao San Road",
+      "nameTh": "ถนนข้าวสาร",
+      "kind": "attraction",
+      "lat": 13.7588989,
+      "lon": 100.497316,
+      "stationCode": "BL11",
+      "meters": 1423
+    },
+    {
+      "id": "osm-way-158185227",
+      "name": "Victory Monument",
+      "nameTh": "อนุสาวรีย์ชัยสมรภูมิ",
+      "kind": "attraction",
+      "lat": 13.7649304,
+      "lon": 100.5382855,
+      "stationCode": "N3",
+      "meters": 271
+    },
+    {
+      "id": "osm-node-4973143821",
+      "name": "Nana Plaza",
+      "kind": "attraction",
+      "lat": 13.7414838,
+      "lon": 100.5530342,
+      "stationCode": "E3",
+      "meters": 279
+    },
+    {
+      "id": "osm-way-248978431",
+      "name": "Museum of Contemporary Art",
+      "nameTh": "พิพิธภัณฑ์ศิลปะไทยร่วมสมัย",
+      "kind": "attraction",
+      "lat": 13.8519103,
+      "lon": 100.5626494,
+      "stationCode": "RD07",
+      "meters": 297
+    },
+    {
+      "id": "osm-way-1231343547",
+      "name": "Abdulrahim House",
+      "nameTh": "บ้านอับดุลราฮิม",
+      "kind": "attraction",
+      "lat": 13.7278174,
+      "lon": 100.5393976,
+      "stationCode": "BL15",
+      "meters": 298
+    },
+    {
+      "id": "osm-way-1232616670",
+      "name": "Chaloem La 56 Bridge",
+      "nameTh": "สะพานเฉลิมหล้า 56",
+      "kind": "attraction",
+      "lat": 13.7492315,
+      "lon": 100.5312318,
+      "stationCode": "N1",
+      "meters": 302
+    },
+    {
+      "id": "osm-way-83519055",
+      "name": "Children's Discovery Museum",
+      "nameTh": "พิพิธภัณฑ์เด็กกรุงเทพมหานคร",
+      "kind": "attraction",
+      "lat": 13.8034166,
+      "lon": 100.5507142,
+      "stationCode": "BL28",
+      "meters": 304
+    },
+    {
+      "id": "osm-way-820534940",
+      "name": "Chao Phraya Sky Park",
+      "nameTh": "สวนลอยฟ้าเจ้าพระยา",
+      "kind": "park",
+      "lat": 13.7389727,
+      "lon": 100.4984969,
+      "stationCode": "BL10",
+      "meters": 710
+    },
+    {
+      "id": "osm-way-1372588615",
+      "name": "Ban Mo Palace",
+      "nameTh": "วังบ้านหม้อ",
+      "kind": "attraction",
+      "lat": 13.7460172,
+      "lon": 100.4968655,
+      "stationCode": "BL10",
+      "meters": 312
+    },
+    {
+      "id": "osm-way-1193840615",
+      "name": "Thai-Chinese Hall of Commerce",
+      "kind": "attraction",
+      "lat": 13.7186384,
+      "lon": 100.5214994,
+      "stationCode": "S5",
+      "meters": 76
+    },
+    {
+      "id": "osm-way-37910308",
+      "name": "Sa Pathum Palace",
+      "nameTh": "วังสระปทุม",
+      "kind": "attraction",
+      "lat": 13.747958,
+      "lon": 100.5330391,
+      "stationCode": "CEN",
+      "meters": 320
+    },
+    {
+      "id": "osm-way-176298722",
+      "name": "Gateway Ekkamai",
+      "kind": "mall",
+      "lat": 13.7186522,
+      "lon": 100.5853402,
+      "stationCode": "E7",
+      "meters": 88
+    },
+    {
+      "id": "osm-way-305102098",
+      "name": "Tang To Kang Gold Shop",
+      "nameTh": "ห้างทองตั้งโต๊ะกัง",
+      "kind": "attraction",
+      "lat": 13.7406418,
+      "lon": 100.5073359,
+      "stationCode": "BL12",
+      "meters": 343
+    },
+    {
+      "id": "osm-way-1193776536",
+      "name": "Wang Pramuan",
+      "nameTh": "วังประมวล",
+      "kind": "attraction",
+      "lat": 13.7223808,
+      "lon": 100.5225633,
+      "stationCode": "S5",
+      "meters": 356
+    },
+    {
+      "id": "osm-way-138948425",
+      "name": "Nightingale Mall",
+      "nameTh": "ห้างไนติงเกล",
+      "kind": "attraction",
+      "lat": 13.7454923,
+      "lon": 100.49924,
+      "stationCode": "BL11",
+      "meters": 368
+    },
+    {
+      "id": "osm-way-32011053",
+      "name": "Wat Suthat Thep Wararam Ratchaworamahawihan",
+      "nameTh": "วัดสุทัศนเทพวรารามราชวรมหาวิหาร",
+      "kind": "attraction",
+      "lat": 13.7501169,
+      "lon": 100.5009642,
+      "stationCode": "BL11",
+      "meters": 370
+    },
+    {
+      "id": "osm-way-23487550",
+      "name": "Wachirabenchathat Park",
+      "nameTh": "สวนวชิรเบญจทัศ",
+      "kind": "park",
+      "lat": 13.8126898,
+      "lon": 100.5542426,
+      "stationCode": "BL27",
+      "meters": 772
+    },
+    {
+      "id": "osm-way-543817930",
+      "name": "Robinson Lifestyle Samut Prakarn",
+      "nameTh": "โรบินสัน ไลฟ์สไตล์ สมุทรปราการ",
+      "kind": "mall",
+      "lat": 13.5836126,
+      "lon": 100.6092775,
+      "stationCode": "E21",
+      "meters": 157
+    },
+    {
+      "id": "osm-way-539017238",
+      "name": "Nai Lert Park Heritage Home",
+      "nameTh": "บ้านปาร์คนายเลิศ",
+      "kind": "attraction",
+      "lat": 13.7462649,
+      "lon": 100.5471762,
+      "stationCode": "E2",
+      "meters": 400
+    },
+    {
+      "id": "osm-way-1455449484",
+      "name": "Big C Samrong 2",
+      "kind": "mall",
+      "lat": 13.6356471,
+      "lon": 100.5922535,
+      "stationCode": "E16",
+      "meters": 180
+    },
+    {
+      "id": "osm-way-159181929",
+      "name": "Big C Rattanathibeth 2",
+      "nameTh": "บิ๊กซี รัตนาธิเบศร์ 2",
+      "kind": "mall",
+      "lat": 13.8606334,
+      "lon": 100.5036057,
+      "stationCode": "PP10",
+      "meters": 180
+    },
+    {
+      "id": "osm-way-1204519132",
+      "name": "Wichai Prasit Fort",
+      "nameTh": "ป้อมวิไชยประสิทธิ์",
+      "kind": "attraction",
+      "lat": 13.7421727,
+      "lon": 100.4907762,
+      "stationCode": "BL10",
+      "meters": 477
+    },
+    {
+      "id": "osm-way-32005418",
+      "name": "Assumption Cathedral",
+      "nameTh": "อาสนวิหารอัสสัมชัญ",
+      "kind": "attraction",
+      "lat": 13.7231109,
+      "lon": 100.515162,
+      "stationCode": "S6",
+      "meters": 493
+    },
+    {
+      "id": "osm-node-2411920280",
+      "name": "Museum of Imaging Technology",
+      "nameTh": "พิพิธภัณฑ์เทคโนโลยีทางภาพ",
+      "kind": "attraction",
+      "lat": 13.7371239,
+      "lon": 100.529853,
+      "stationCode": "BL14",
+      "meters": 512
+    },
+    {
+      "id": "osm-node-2367434259",
+      "name": "King Rama I (Phra Buddha Yodfa) Statue",
+      "nameTh": "ปฐมบรมราชานุสรณ์",
+      "kind": "attraction",
+      "lat": 13.7406467,
+      "lon": 100.4980403,
+      "stationCode": "BL10",
+      "meters": 535
+    },
+    {
+      "id": "osm-way-1414550297",
+      "name": "Reunrudee Palace",
+      "nameTh": "วังรื่นฤดี",
+      "kind": "attraction",
+      "lat": 13.7189092,
+      "lon": 100.5803045,
+      "stationCode": "E7",
+      "meters": 540
+    },
+    {
+      "id": "osm-way-178353988",
+      "name": "Giant Swing",
+      "nameTh": "เสาชิงช้า",
+      "kind": "attraction",
+      "lat": 13.7518086,
+      "lon": 100.5012782,
+      "stationCode": "BL11",
+      "meters": 541
+    },
+    {
+      "id": "osm-way-231405193",
+      "name": "Old Customs House",
+      "nameTh": "ศุลกสถาน",
+      "kind": "attraction",
+      "lat": 13.7252442,
+      "lon": 100.5139315,
+      "stationCode": "G2",
+      "meters": 545
+    },
+    {
+      "id": "osm-way-1182846804",
+      "name": "Chak Phupha Su Maha Nathee Park",
+      "nameTh": "สวนจากภูผาสู่มหานที",
+      "kind": "park",
+      "lat": 13.8057748,
+      "lon": 100.5525686,
+      "stationCode": "BL28",
+      "meters": 307
+    },
+    {
+      "id": "osm-way-158656127",
+      "name": "Gateway Bangsue",
+      "kind": "mall",
+      "lat": 13.8057455,
+      "lon": 100.5238327,
+      "stationCode": "BL32",
+      "meters": 310
+    },
+    {
+      "id": "osm-node-373098282",
+      "name": "Museum of Natural History",
+      "nameTh": "พิพิธภัณฑสถานธรรมชาติวิทยา",
+      "kind": "attraction",
+      "lat": 13.7374778,
+      "lon": 100.5300846,
+      "stationCode": "BL14",
+      "meters": 554
+    },
+    {
+      "id": "osm-way-539268957",
+      "name": "The Venerable Phra Achan Man Bhuridatto Museum at Wat Pathum Wanaram",
+      "nameTh": "พิพิธภัณฑ์พระอาจารย์มั่น ภูริทตฺโต วัดปทุมวนาราม",
+      "kind": "attraction",
+      "lat": 13.7462558,
+      "lon": 100.5374064,
+      "stationCode": "CEN",
+      "meters": 314
+    },
+    {
+      "id": "osm-way-96359391",
+      "name": "The Mall Bangkae",
+      "kind": "mall",
+      "lat": 13.713274,
+      "lon": 100.4078613,
+      "stationCode": "BL01",
+      "meters": 319
+    },
+    {
+      "id": "osm-way-1348245391",
+      "name": "Wang Derm Palace",
+      "nameTh": "พระราชวังเดิม",
+      "kind": "attraction",
+      "lat": 13.742463,
+      "lon": 100.4897263,
+      "stationCode": "BL10",
+      "meters": 568
+    },
+    {
+      "id": "osm-way-539240363",
+      "name": "Withayu Palace",
+      "nameTh": "วังวิทยุ",
+      "kind": "attraction",
+      "lat": 13.7379945,
+      "lon": 100.5478341,
+      "stationCode": "E2",
+      "meters": 574
+    },
+    {
+      "id": "osm-way-305102093",
+      "name": "Siam Commercial Bank",
+      "nameTh": "ธนาคารไทยพาณิชย์",
+      "kind": "attraction",
+      "lat": 13.7319431,
+      "lon": 100.5127787,
+      "stationCode": "G3",
+      "meters": 577
+    },
+    {
+      "id": "osm-way-784424308",
+      "name": "Wat Ratchabophit Royal Cemetery",
+      "nameTh": "สุสานหลวง วัดราชบพิธสถิตมหาสีมารามราชวรวิหาร",
+      "kind": "attraction",
+      "lat": 13.7490837,
+      "lon": 100.4967295,
+      "stationCode": "BL10",
+      "meters": 589
+    },
+    {
+      "id": "osm-way-138947464",
+      "name": "Wat Ratchabophit Sathit Maha Simaram Ratchaworawihan",
+      "nameTh": "วัดราชบพิธสถิตมหาสีมารามราชวรวิหาร",
+      "kind": "attraction",
+      "lat": 13.7490605,
+      "lon": 100.4971839,
+      "stationCode": "BL11",
+      "meters": 593
+    },
+    {
+      "id": "osm-way-25745689",
+      "name": "Big C Supercenter",
+      "kind": "mall",
+      "lat": 13.7470519,
+      "lon": 100.5416309,
+      "stationCode": "E1",
+      "meters": 362
+    },
+    {
+      "id": "osm-way-30754265",
+      "name": "The Mall Lifestore Tha Phra",
+      "kind": "mall",
+      "lat": 13.713566,
+      "lon": 100.4800008,
+      "stationCode": "S10",
+      "meters": 366
+    },
+    {
+      "id": "osm-node-3096836185",
+      "name": "Samphanthawong Museum",
+      "nameTh": "พิพิธภัณฑ์ท้องถิ่นกรุงเทพมหานคร เขตสัมพันธวงศ์",
+      "kind": "attraction",
+      "lat": 13.7367162,
+      "lon": 100.5110977,
+      "stationCode": "BL12",
+      "meters": 610
+    },
+    {
+      "id": "osm-way-1003522890",
+      "name": "Chong Nonsi Canal Park",
+      "nameTh": "สวนสาธารณะคลองช่องนนทรี",
+      "kind": "park",
+      "lat": 13.7206303,
+      "lon": 100.5308825,
+      "stationCode": "S3",
+      "meters": 378
+    },
+    {
+      "id": "osm-node-1114352991",
+      "name": "King Taksin Monument",
+      "nameTh": "พระบรมราชานุสาวรีย์ สมเด็จพระเจ้าตากสินมหาราช",
+      "kind": "attraction",
+      "lat": 13.7263148,
+      "lon": 100.4930973,
+      "stationCode": "S8",
+      "meters": 620
+    },
+    {
+      "id": "osm-way-82543979",
+      "name": "Villa of Princess Dibyalangkarn",
+      "nameTh": "ตำหนักพระองค์เจ้าอัพภันตรีปชาและพระองค์เจ้าทิพยาลังการ",
+      "kind": "attraction",
+      "lat": 13.7491134,
+      "lon": 100.4920029,
+      "stationCode": "BL10",
+      "meters": 621
+    },
+    {
+      "id": "osm-way-241865727",
+      "name": "M.R. Kukrit's Heritage Home",
+      "nameTh": "บ้าน ม.ร.ว.คึกฤทธิ์ ปราโมช",
+      "kind": "attraction",
+      "lat": 13.7198439,
+      "lon": 100.533692,
+      "stationCode": "S3",
+      "meters": 631
+    },
+    {
+      "id": "osm-way-390232213",
+      "name": "Suan Lum Night Bazaar",
+      "kind": "market",
+      "lat": 13.803198,
+      "lon": 100.5744487,
+      "stationCode": "BL26",
+      "meters": 405
+    },
+    {
+      "id": "osm-way-99029135",
+      "name": "Santi Phap Park",
+      "nameTh": "สวนสันติภาพ",
+      "kind": "park",
+      "lat": 13.7616096,
+      "lon": 100.5407085,
+      "stationCode": "N3",
+      "meters": 413
+    },
+    {
+      "id": "osm-node-5820861955",
+      "name": "Pig Memorial",
+      "nameTh": "อนุสาวรีย์หมู",
+      "kind": "attraction",
+      "lat": 13.7498661,
+      "lon": 100.49621,
+      "stationCode": "BL10",
+      "meters": 654
+    },
+    {
+      "id": "osm-way-25620935",
+      "name": "Central Bangna",
+      "kind": "mall",
+      "lat": 13.6695773,
+      "lon": 100.6346164,
+      "stationCode": "YL17",
+      "meters": 1154
+    },
+    {
+      "id": "osm-way-158470345",
+      "name": "Big C",
+      "kind": "mall",
+      "lat": 13.8264771,
+      "lon": 100.5284444,
+      "stationCode": "PP14",
+      "meters": 439
+    },
+    {
+      "id": "osm-way-1382638055",
+      "name": "I.C.P. Flower market",
+      "nameTh": "ตลาดส่งเสริมเกษตรไทย",
+      "kind": "market",
+      "lat": 13.7432089,
+      "lon": 100.496246,
+      "stationCode": "BL10",
+      "meters": 200
+    },
+    {
+      "id": "osm-node-6317939185",
+      "name": "Bangkok Dolls Museum",
+      "kind": "attraction",
+      "lat": 13.7592456,
+      "lon": 100.5468246,
+      "stationCode": "A02",
+      "meters": 682
+    },
+    {
+      "id": "osm-way-231293478",
+      "name": "ไปรษณีย์กลาง",
+      "kind": "attraction",
+      "lat": 13.7271027,
+      "lon": 100.5153313,
+      "stationCode": "G2",
+      "meters": 682
+    },
+    {
+      "id": "osm-way-229772447",
+      "name": "Chakrapat Phiman Hall",
+      "nameTh": "พระที่นั่งจักรพรรดิพิมาน",
+      "kind": "attraction",
+      "lat": 13.7498262,
+      "lon": 100.4920211,
+      "stationCode": "BL10",
+      "meters": 691
+    },
+    {
+      "id": "osm-way-368893104",
+      "name": "Train Night Market Ratchada",
+      "nameTh": "ตลาดนัดรถไฟรัชดา",
+      "kind": "market",
+      "lat": 13.7671461,
+      "lon": 100.5685054,
+      "stationCode": "BL22",
+      "meters": 216
+    },
+    {
+      "id": "osm-way-539591695",
+      "name": "Wat Hua Lamphong Rukkhaniwet Park",
+      "nameTh": "สวนวัดหัวลำโพงรุกขนิเวศน์",
+      "kind": "park",
+      "lat": 13.7309334,
+      "lon": 100.5306413,
+      "stationCode": "BL14",
+      "meters": 217
+    },
+    {
+      "id": "osm-way-539806478",
+      "name": "Platinum Pop",
+      "kind": "mall",
+      "lat": 13.7480945,
+      "lon": 100.5420539,
+      "stationCode": "E1",
+      "meters": 458
+    },
+    {
+      "id": "osm-way-231405237",
+      "name": "Bang Rak Market",
+      "nameTh": "ตลาดบางรัก",
+      "kind": "market",
+      "lat": 13.7204966,
+      "lon": 100.515263,
+      "stationCode": "S6",
+      "meters": 227
+    },
+    {
+      "id": "osm-way-31141120",
+      "name": "The Mall Lifestore Bangkapi",
+      "nameTh": "เดอะมอลล์ บางกะปิ",
+      "kind": "mall",
+      "lat": 13.7661388,
+      "lon": 100.6426574,
+      "stationCode": "YL08",
+      "meters": 469
+    },
+    {
+      "id": "osm-node-4200510216",
+      "name": "Queen Sunanda Kumariratana Memorial",
+      "nameTh": "อนุสาวรีย์สมเด็จพระนางเจ้าสุนันทากุมารีรัตน์",
+      "kind": "attraction",
+      "lat": 13.7484049,
+      "lon": 100.4953406,
+      "stationCode": "BL10",
+      "meters": 476
+    },
+    {
+      "id": "osm-way-82543520",
+      "name": "Boromphiman Hall",
+      "nameTh": "พระที่นั่งบรมพิมาน",
+      "kind": "attraction",
+      "lat": 13.750414,
+      "lon": 100.4929686,
+      "stationCode": "BL10",
+      "meters": 718
+    },
+    {
+      "id": "osm-way-229891966",
+      "name": "Moon Satharn Borom Ard Hall",
+      "nameTh": "พระที่นั่งมูลสถานบรมอาสน์",
+      "kind": "attraction",
+      "lat": 13.7498626,
+      "lon": 100.4915309,
+      "stationCode": "BL10",
+      "meters": 718
+    },
+    {
+      "id": "osm-way-826834644",
+      "name": "Praisaniyakarn",
+      "nameTh": "ไปรสนียาคาร",
+      "kind": "attraction",
+      "lat": 13.7399492,
+      "lon": 100.4997199,
+      "stationCode": "BL10",
+      "meters": 719
+    },
+    {
+      "id": "osm-way-82538505",
+      "name": "Paisal Taksin Hall",
+      "nameTh": "พระที่นั่งไพศาลทักษิณ",
+      "kind": "attraction",
+      "lat": 13.7501501,
+      "lon": 100.4920203,
+      "stationCode": "BL10",
+      "meters": 724
+    },
+    {
+      "id": "osm-way-151991140",
+      "name": "Sam Yan Market",
+      "nameTh": "ตลาดสามย่าน",
+      "kind": "market",
+      "lat": 13.7370037,
+      "lon": 100.5241003,
+      "stationCode": "BL13",
+      "meters": 737
+    },
+    {
+      "id": "osm-way-1331925616",
+      "name": "Jodd Fairs Ratchada",
+      "nameTh": "จ๊อดแฟร์ รัชดา",
+      "kind": "market",
+      "lat": 13.7683248,
+      "lon": 100.5709393,
+      "stationCode": "BL22",
+      "meters": 260
+    },
+    {
+      "id": "osm-way-229891969",
+      "name": "Sommuthi Thevaraj Uppabat Hall",
+      "nameTh": "พระที่นั่งสมมติเทวราชอุปบัติ",
+      "kind": "attraction",
+      "lat": 13.7498339,
+      "lon": 100.4910416,
+      "stationCode": "BL10",
+      "meters": 742
+    },
+    {
+      "id": "osm-way-1335315451",
+      "name": "Trimurti Shrine",
+      "nameTh": "ศาลพระตรีมูรติ",
+      "kind": "attraction",
+      "lat": 13.7477363,
+      "lon": 100.5402644,
+      "stationCode": "E1",
+      "meters": 503
+    },
+    {
+      "id": "osm-way-342352012",
+      "name": "Wat Thep Thidaram Worawihan",
+      "nameTh": "วัดเทพธิดารามวรวิหาร",
+      "kind": "attraction",
+      "lat": 13.753545,
+      "lon": 100.5039635,
+      "stationCode": "BL11",
+      "meters": 747
+    },
+    {
+      "id": "osm-way-205631558",
+      "name": "Amarin Winitchai Throne Hall",
+      "nameTh": "พระที่นั่งอมรินทรวินิจฉัย",
+      "kind": "attraction",
+      "lat": 13.7504002,
+      "lon": 100.4920135,
+      "stationCode": "BL10",
+      "meters": 750
+    },
+    {
+      "id": "osm-node-2156104165",
+      "name": "Patpong Night Market",
+      "nameTh": "ตลาดกลางคืนพัฒน์พงษ์",
+      "kind": "market",
+      "lat": 13.7286838,
+      "lon": 100.5318283,
+      "stationCode": "S2",
+      "meters": 272
+    },
+    {
+      "id": "osm-way-1466799252",
+      "name": "พิพิธภัณฑ์สุนทรภู่",
+      "kind": "attraction",
+      "lat": 13.7536147,
+      "lon": 100.5038878,
+      "stationCode": "BL11",
+      "meters": 753
+    },
+    {
+      "id": "osm-way-1335315452",
+      "name": "Ganesha Shrine",
+      "nameTh": "ศาลพระพิฆเนศวร",
+      "kind": "attraction",
+      "lat": 13.7478749,
+      "lon": 100.5402857,
+      "stationCode": "E1",
+      "meters": 515
+    },
+    {
+      "id": "osm-node-4801754122",
+      "name": "Huai Kwang night market",
+      "kind": "attraction",
+      "lat": 13.7782677,
+      "lon": 100.5731802,
+      "stationCode": "BL23",
+      "meters": 51
+    },
+    {
+      "id": "osm-way-784424309",
+      "name": "Chao Chom Manda Uam Memorial",
+      "nameTh": "อนุสาวรีย์เจ้าจอมมารดาอ่วม",
+      "kind": "attraction",
+      "lat": 13.7486379,
+      "lon": 100.4965878,
+      "stationCode": "BL10",
+      "meters": 537
+    },
+    {
+      "id": "osm-node-4892016221",
+      "name": "Street market",
+      "kind": "attraction",
+      "lat": 13.7630418,
+      "lon": 100.5376345,
+      "stationCode": "N3",
+      "meters": 65
+    },
+    {
+      "id": "osm-node-7328131724",
+      "name": "Chatchayanuson 2480",
+      "nameTh": "ฉัตรชยานุสสรณ ๒๔๘๐",
+      "kind": "attraction",
+      "lat": 13.7486882,
+      "lon": 100.4966836,
+      "stationCode": "BL10",
+      "meters": 546
+    },
+    {
+      "id": "osm-way-666021136",
+      "name": "Erawan Elephant Museum",
+      "nameTh": "พิพิธภัณฑ์ช้างเอราวัณ;พิพิธภัณฑ์ ช้างเอราวัณ",
+      "kind": "attraction",
+      "lat": 13.628573,
+      "lon": 100.5894894,
+      "stationCode": "E17",
+      "meters": 795
+    },
+    {
+      "id": "osm-way-1467232352",
+      "name": "Baan Kudichin Museum",
+      "nameTh": "พิพิธภัณฑ์บ้านกุฎีจีน",
+      "kind": "attraction",
+      "lat": 13.7394088,
+      "lon": 100.4930491,
+      "stationCode": "BL10",
+      "meters": 559
+    },
+    {
+      "id": "osm-way-863463383",
+      "name": "Phaya Thai Palace",
+      "nameTh": "พระราชวังพญาไท",
+      "kind": "attraction",
+      "lat": 13.7688205,
+      "lon": 100.5329953,
+      "stationCode": "N3",
+      "meters": 803
+    },
+    {
+      "id": "osm-way-82541999",
+      "name": "Dusit Maha Prasat Hall",
+      "nameTh": "พระที่นั่งดุสิตมหาปราสาท",
+      "kind": "attraction",
+      "lat": 13.7501601,
+      "lon": 100.4905116,
+      "stationCode": "BL10",
+      "meters": 803
+    },
+    {
+      "id": "osm-way-536866176",
+      "name": "Pathumwananurak Park",
+      "nameTh": "สวนปทุมวนานุรักษ์",
+      "kind": "park",
+      "lat": 13.7486777,
+      "lon": 100.5386889,
+      "stationCode": "CEN",
+      "meters": 564
+    },
+    {
+      "id": "osm-way-784424312",
+      "name": "Sukhuman Naruemit",
+      "nameTh": "สุขุมาลนฤมิตร์",
+      "kind": "attraction",
+      "lat": 13.7489068,
+      "lon": 100.4966946,
+      "stationCode": "BL10",
+      "meters": 569
+    },
+    {
+      "id": "osm-way-1489692515",
+      "name": "Worawan Palace",
+      "nameTh": "วังวรวรรณ",
+      "kind": "attraction",
+      "lat": 13.7525978,
+      "lon": 100.4974232,
+      "stationCode": "BL11",
+      "meters": 810
+    },
+    {
+      "id": "osm-node-12865797301",
+      "name": "Space & Time Cube+",
+      "kind": "attraction",
+      "lat": 13.7123724,
+      "lon": 100.4350126,
+      "stationCode": "BL03",
+      "meters": 92
+    },
+    {
+      "id": "osm-way-784424313",
+      "name": "Isariyabhorn Memorial",
+      "nameTh": "อนุสาวรีย์พระเจ้าบรมวงศ์เธอ พระองค์เจ้าอิศริยาภรณ์",
+      "kind": "attraction",
+      "lat": 13.748896,
+      "lon": 100.4968358,
+      "stationCode": "BL10",
+      "meters": 574
+    },
+    {
+      "id": "osm-way-1220585394",
+      "name": "Soi Cowboy",
+      "nameTh": "ซอยคาวบอย",
+      "kind": "attraction",
+      "lat": 13.7369824,
+      "lon": 100.5621519,
+      "stationCode": "BL19",
+      "meters": 97
+    },
+    {
+      "id": "osm-way-82078207",
+      "name": "Pavilion of Regalia, Royal Decorations and Coins",
+      "nameTh": "ศาลาเครื่องราชอิสริยยศ เครื่องราชอิสริยาภรณ์ และเหรียญกษาปณ์",
+      "kind": "attraction",
+      "lat": 13.7510087,
+      "lon": 100.4917303,
+      "stationCode": "BL10",
+      "meters": 824
+    },
+    {
+      "id": "osm-way-784335817",
+      "name": "Saowapha Praditsathan",
+      "nameTh": "เสาวภาประดิษฐาน",
+      "kind": "attraction",
+      "lat": 13.7490887,
+      "lon": 100.4967056,
+      "stationCode": "BL10",
+      "meters": 588
+    },
+    {
+      "id": "osm-way-1498869503",
+      "name": "Pahurat Market",
+      "nameTh": "ตลาดพาหุรัด",
+      "kind": "market",
+      "lat": 13.7442745,
+      "lon": 100.5007266,
+      "stationCode": "BL11",
+      "meters": 349
+    },
+    {
+      "id": "osm-way-23630232",
+      "name": "Sanam Luang",
+      "nameTh": "สนามหลวง",
+      "kind": "park",
+      "lat": 13.7551616,
+      "lon": 100.4930693,
+      "stationCode": "BL10",
+      "meters": 1234
+    },
+    {
+      "id": "osm-way-1562195823",
+      "name": "Sripatum University",
+      "nameTh": "มหาวิทยาลัยศรีปทุม",
+      "kind": "university",
+      "lat": 13.8549521,
+      "lon": 100.5850672,
+      "stationCode": "N15",
+      "meters": 116
+    },
+    {
+      "id": "osm-node-4959541921",
+      "name": "flower martket",
+      "kind": "attraction",
+      "lat": 13.7978091,
+      "lon": 100.5486752,
+      "stationCode": "BL29",
+      "meters": 119
+    },
+    {
+      "id": "osm-way-230010054",
+      "name": "Wat Phra Kaew",
+      "nameTh": "วัดพระศรีรัตนศาสดาราม",
+      "kind": "attraction",
+      "lat": 13.7515102,
+      "lon": 100.4926905,
+      "stationCode": "BL10",
+      "meters": 843
+    },
+    {
+      "id": "osm-way-784335818",
+      "name": "Rangsi Watthana",
+      "nameTh": "รังษีวัฒนา",
+      "kind": "attraction",
+      "lat": 13.7492635,
+      "lon": 100.4967041,
+      "stationCode": "BL10",
+      "meters": 606
+    },
+    {
+      "id": "osm-node-2962489061",
+      "name": "Thai Labour Museum",
+      "nameTh": "พิพิธภัณฑ์แรงงานไทย",
+      "kind": "attraction",
+      "lat": 13.7530368,
+      "lon": 100.5497571,
+      "stationCode": "A02",
+      "meters": 851
+    },
+    {
+      "id": "osm-node-6197828356",
+      "name": "Street Food",
+      "kind": "attraction",
+      "lat": 13.7809581,
+      "lon": 100.5444892,
+      "stationCode": "N5",
+      "meters": 132
+    },
+    {
+      "id": "osm-way-539990579",
+      "name": "Taksin Hospital",
+      "nameTh": "โรงพยาบาลตากสิน",
+      "kind": "hospital",
+      "lat": 13.7308535,
+      "lon": 100.5079233,
+      "stationCode": "G3",
+      "meters": 60
+    },
+    {
+      "id": "osm-way-784335820",
+      "name": "Sunanthanusawari",
+      "nameTh": "สุนันทานุสาวรีย์",
+      "kind": "attraction",
+      "lat": 13.7494564,
+      "lon": 100.4967195,
+      "stationCode": "BL10",
+      "meters": 627
+    },
+    {
+      "id": "osm-node-5814463453",
+      "name": "Little Japan",
+      "nameTh": "ลิตเติ้ลเจแปน",
+      "kind": "attraction",
+      "lat": 13.7295874,
+      "lon": 100.5335026,
+      "stationCode": "S2",
+      "meters": 147
+    },
+    {
+      "id": "osm-node-5325181021",
+      "name": "KidZania",
+      "kind": "attraction",
+      "lat": 13.7467705,
+      "lon": 100.5351687,
+      "stationCode": "CEN",
+      "meters": 152
+    },
+    {
+      "id": "osm-node-12404838923",
+      "name": "ป้ายกรุงเทพ • Bangkok",
+      "kind": "attraction",
+      "lat": 13.7462586,
+      "lon": 100.5307695,
+      "stationCode": "W1",
+      "meters": 155
+    },
+    {
+      "id": "osm-node-4677450589",
+      "name": "New On Nut Night Market",
+      "kind": "attraction",
+      "lat": 13.705143,
+      "lon": 100.6025008,
+      "stationCode": "E9",
+      "meters": 162
+    },
+    {
+      "id": "osm-node-4130721589",
+      "name": "Sea Life Bangkok Ocean World",
+      "kind": "attraction",
+      "lat": 13.7469747,
+      "lon": 100.5351985,
+      "stationCode": "CEN",
+      "meters": 175
+    },
+    {
+      "id": "osm-node-12468584279",
+      "name": "Bangkok Noi Floating Market",
+      "nameTh": "ตลาดน้ำบางกอกน้อย",
+      "kind": "market",
+      "lat": 13.7639377,
+      "lon": 100.4771577,
+      "stationCode": "BL37",
+      "meters": 418
+    },
+    {
+      "id": "osm-way-118171998",
+      "name": "Wat Mahannapharam Worawihan",
+      "nameTh": "วัดมหรรณพารามวรวิหาร",
+      "kind": "attraction",
+      "lat": 13.7547351,
+      "lon": 100.4993781,
+      "stationCode": "BL11",
+      "meters": 911
+    },
+    {
+      "id": "osm-node-2440347102",
+      "name": "Mayo Hospital",
+      "nameTh": "โรงพยาบาลเมโย",
+      "kind": "hospital",
+      "lat": 13.8354411,
+      "lon": 100.5738973,
+      "stationCode": "N12",
+      "meters": 130
+    },
+    {
+      "id": "osm-way-170218844",
+      "name": "Central Chest Institute of Thailand",
+      "nameTh": "สถาบันโรคทรวงอก",
+      "kind": "hospital",
+      "lat": 13.8620951,
+      "lon": 100.5217878,
+      "stationCode": "PK02",
+      "meters": 135
+    },
+    {
+      "id": "osm-node-5342565922",
+      "name": "TARS Gallery",
+      "kind": "attraction",
+      "lat": 13.7173225,
+      "lon": 100.5908092,
+      "stationCode": "E8",
+      "meters": 245
+    },
+    {
+      "id": "osm-way-82542417",
+      "name": "Queen Sirikit Museum of Textiles",
+      "nameTh": "พิพิธภัณฑ์ผ้าในสมเด็จพระนางเจ้าสิริกิติ์ พระบรมราชินีนาถ",
+      "kind": "attraction",
+      "lat": 13.7520265,
+      "lon": 100.4907235,
+      "stationCode": "BL10",
+      "meters": 972
+    },
+    {
+      "id": "osm-node-269347919",
+      "name": "Wiset Chaisri Gate",
+      "nameTh": "ประตูวิเสทชัยศรี",
+      "kind": "attraction",
+      "lat": 13.7522676,
+      "lon": 100.4911727,
+      "stationCode": "BL10",
+      "meters": 976
+    },
+    {
+      "id": "osm-way-443471833",
+      "name": "Chulalongkorn University Centennial Park",
+      "nameTh": "อุทยาน 100 ปี จุฬาลงกรณ์มหาวิทยาลัย",
+      "kind": "park",
+      "lat": 13.739626,
+      "lon": 100.5238071,
+      "stationCode": "BL13",
+      "meters": 744
+    },
+    {
+      "id": "osm-way-125735340",
+      "name": "Rajavithi Hospital",
+      "nameTh": "โรงพยาบาลราชวิถี",
+      "kind": "hospital",
+      "lat": 13.7640676,
+      "lon": 100.5359605,
+      "stationCode": "N3",
+      "meters": 187
+    },
+    {
+      "id": "osm-way-1230090274",
+      "name": "Sud-Aviation SE 210 Caravelle Royal Air Cambodge (XU-JTB)",
+      "kind": "attraction",
+      "lat": 13.8945639,
+      "lon": 100.5976603,
+      "stationCode": "N19",
+      "meters": 988
+    },
+    {
+      "id": "osm-way-210306786",
+      "name": "Bangkokian Museum",
+      "nameTh": "พิพิธภัณฑ์ชาวบางกอก",
+      "kind": "attraction",
+      "lat": 13.7281119,
+      "lon": 100.5181068,
+      "stationCode": "G2",
+      "meters": 995
+    },
+    {
+      "id": "osm-way-113107209",
+      "name": "On Nut Fresh Market",
+      "nameTh": "ตลาดอ่อนนุช",
+      "kind": "market",
+      "lat": 13.7101782,
+      "lon": 100.6006696,
+      "stationCode": "E9",
+      "meters": 517
+    },
+    {
+      "id": "osm-way-283722626",
+      "name": "Health Learning Center",
+      "nameTh": "ศูนย์เรียนรู้สุขภาวะ",
+      "kind": "attraction",
+      "lat": 13.719534,
+      "lon": 100.5429455,
+      "stationCode": "BL16",
+      "meters": 757
+    },
+    {
+      "id": "osm-way-405179463",
+      "name": "Yanhee International Hospital",
+      "nameTh": "โรงพยาบาลยันฮี",
+      "kind": "hospital",
+      "lat": 13.7996304,
+      "lon": 100.511543,
+      "stationCode": "BL33",
+      "meters": 200
+    },
+    {
+      "id": "osm-way-336050038",
+      "name": "Phyathai 3 Hospital",
+      "kind": "hospital",
+      "lat": 13.7230926,
+      "lon": 100.4640154,
+      "stationCode": "BL06",
+      "meters": 208
+    },
+    {
+      "id": "osm-way-309603082",
+      "name": "Royal Thai Naval Academy",
+      "nameTh": "โรงเรียนนายเรือ",
+      "kind": "university",
+      "lat": 13.6093786,
+      "lon": 100.5922963,
+      "stationCode": "E18",
+      "meters": 289
+    },
+    {
+      "id": "osm-node-8175742024",
+      "name": "Squirrel tree",
+      "kind": "attraction",
+      "lat": 13.8057867,
+      "lon": 100.5537999,
+      "stationCode": "BL28",
+      "meters": 293
+    },
+    {
+      "id": "osm-way-1414440505",
+      "name": "Krirk University",
+      "nameTh": "มหาวิทยาลัยเกริก",
+      "kind": "university",
+      "lat": 13.873277,
+      "lon": 100.5994692,
+      "stationCode": "PK16",
+      "meters": 299
+    },
+    {
+      "id": "osm-node-5130510225",
+      "name": "สนามบินดอนเมือง",
+      "kind": "attraction",
+      "lat": 13.9138972,
+      "lon": 100.6006839,
+      "stationCode": "RD11",
+      "meters": 302
+    },
+    {
+      "id": "osm-node-11422724270",
+      "name": "Khlong Sean Saep (Walking Street)",
+      "kind": "attraction",
+      "lat": 13.7491801,
+      "lon": 100.5307951,
+      "stationCode": "N1",
+      "meters": 316
+    },
+    {
+      "id": "osm-way-121239921",
+      "name": "JatuJak Plaza",
+      "nameTh": "จตุจักรพลาซ่า",
+      "kind": "attraction",
+      "lat": 13.8008007,
+      "lon": 100.5494052,
+      "stationCode": "BL29",
+      "meters": 320
+    },
+    {
+      "id": "osm-way-331795213",
+      "name": "Huai Khwang Market",
+      "nameTh": "ตลาดห้วยขวาง",
+      "kind": "market",
+      "lat": 13.7776626,
+      "lon": 100.5684882,
+      "stationCode": "BL23",
+      "meters": 561
+    },
+    {
+      "id": "osm-way-347928249",
+      "name": "Silom Thai Cooking school",
+      "kind": "attraction",
+      "lat": 13.7226512,
+      "lon": 100.5244448,
+      "stationCode": "S4",
+      "meters": 327
+    },
+    {
+      "id": "osm-way-864170465",
+      "name": "Benchakitti Forest Park",
+      "nameTh": "สวนป่าเบญจกิติ",
+      "kind": "park",
+      "lat": 13.7295625,
+      "lon": 100.5546105,
+      "stationCode": "BL17",
+      "meters": 807
+    },
+    {
+      "id": "osm-way-684178111",
+      "name": "Train Night Market Srinakarin",
+      "nameTh": "ตลาดนัดรถไฟ ศรีนครินทร์",
+      "kind": "market",
+      "lat": 13.6942327,
+      "lon": 100.6510906,
+      "stationCode": "YL15",
+      "meters": 580
+    },
+    {
+      "id": "osm-node-7121670285",
+      "name": "Mettique",
+      "kind": "attraction",
+      "lat": 13.7454334,
+      "lon": 100.5400656,
+      "stationCode": "E1",
+      "meters": 353
+    },
+    {
+      "id": "osm-way-1464127074",
+      "name": "Bhumibol Adulyadej Hospital",
+      "nameTh": "โรงพยาบาลภูมิพลอดุลยเดช",
+      "kind": "hospital",
+      "lat": 13.9087102,
+      "lon": 100.6188872,
+      "stationCode": "N21",
+      "meters": 274
+    },
+    {
+      "id": "osm-way-178329973",
+      "name": "Democracy Monument",
+      "nameTh": "อนุสาวรีย์ประชาธิปไตย",
+      "kind": "attraction",
+      "lat": 13.7566864,
+      "lon": 100.5018398,
+      "stationCode": "BL11",
+      "meters": 1074
+    },
+    {
+      "id": "osm-node-4294122090",
+      "name": "Channel 7 Boxing Stadium",
+      "nameTh": "สนามมวยเวทีสถานีโทรทัศน์สีกองทัพบกช่อง 7",
+      "kind": "attraction",
+      "lat": 13.8033784,
+      "lon": 100.5569663,
+      "stationCode": "N8",
+      "meters": 355
+    },
+    {
+      "id": "osm-way-1343480426",
+      "name": "Birdwatching tower",
+      "nameTh": "หอชมนก",
+      "kind": "attraction",
+      "lat": 13.8057899,
+      "lon": 100.551512,
+      "stationCode": "BL28",
+      "meters": 363
+    },
+    {
+      "id": "osm-node-4536966589",
+      "name": "Doggies",
+      "kind": "attraction",
+      "lat": 13.8008958,
+      "lon": 100.550015,
+      "stationCode": "BL29",
+      "meters": 368
+    },
+    {
+      "id": "osm-way-1533007942",
+      "name": "Phyathai 1 Hospital",
+      "nameTh": "โรงพยาบาลพญาไท 1",
+      "kind": "hospital",
+      "lat": 13.7561003,
+      "lon": 100.5396908,
+      "stationCode": "A02",
+      "meters": 289
+    },
+    {
+      "id": "osm-node-4429110690",
+      "name": "TRC on Monday 3-10-2016",
+      "kind": "attraction",
+      "lat": 13.7196256,
+      "lon": 100.5107158,
+      "stationCode": "S6",
+      "meters": 375
+    },
+    {
+      "id": "osm-way-347919475",
+      "name": "Saint Louis Hospital",
+      "nameTh": "โรงพยาบาลเซนต์หลุยส์",
+      "kind": "hospital",
+      "lat": 13.7191392,
+      "lon": 100.5250946,
+      "stationCode": "S4",
+      "meters": 297
+    },
+    {
+      "id": "osm-way-229966092",
+      "name": "King Prajadhipok Museum",
+      "nameTh": "พิพิธภัณฑ์พระบาทสมเด็จพระปกเกล้าเจ้าอยู่หัว",
+      "kind": "attraction",
+      "lat": 13.7560727,
+      "lon": 100.5064929,
+      "stationCode": "BL11",
+      "meters": 1104
+    },
+    {
+      "id": "osm-way-23482988",
+      "name": "Phra Si Rattana Chedi",
+      "nameTh": "พระศรีรัตนเจดีย์",
+      "kind": "attraction",
+      "lat": 13.7516182,
+      "lon": 100.4922873,
+      "stationCode": "BL10",
+      "meters": 867
+    },
+    {
+      "id": "osm-node-5899787685",
+      "name": "Cheeze POP-Up Market",
+      "kind": "attraction",
+      "lat": 13.7459507,
+      "lon": 100.5399313,
+      "stationCode": "E1",
+      "meters": 393
+    },
+    {
+      "id": "osm-way-341749639",
+      "name": "Nopparat Rajathanee Hospital",
+      "nameTh": "โรงพยาบาลนพรัตนราชธานี",
+      "kind": "hospital",
+      "lat": 13.8173643,
+      "lon": 100.6883458,
+      "stationCode": "PK26",
+      "meters": 314
+    },
+    {
+      "id": "osm-node-5598274622",
+      "name": "Wat Krathum Suea Pla",
+      "nameTh": "วัดกระทุ่มเสือปลา",
+      "kind": "attraction",
+      "lat": 13.7229806,
+      "lon": 100.6889969,
+      "stationCode": "A06",
+      "meters": 1118
+    },
+    {
+      "id": "osm-way-124851954",
+      "name": "Phyathai 2 Hospital",
+      "nameTh": "โรงพยาบาลพญาไท 2",
+      "kind": "hospital",
+      "lat": 13.7702654,
+      "lon": 100.5404351,
+      "stationCode": "N4",
+      "meters": 320
+    },
+    {
+      "id": "osm-way-103097698",
+      "name": "Loha Prasat",
+      "nameTh": "โลหะปราสาท",
+      "kind": "attraction",
+      "lat": 13.7548378,
+      "lon": 100.5042074,
+      "stationCode": "BL11",
+      "meters": 893
+    },
+    {
+      "id": "osm-way-177938414",
+      "name": "Siam University",
+      "nameTh": "มหาวิทยาลัยสยาม",
+      "kind": "university",
+      "lat": 13.7208335,
+      "lon": 100.4531953,
+      "stationCode": "BL05",
+      "meters": 416
+    },
+    {
+      "id": "osm-node-7299066786",
+      "name": "Food street",
+      "kind": "attraction",
+      "lat": 13.7611252,
+      "lon": 100.565283,
+      "stationCode": "BL21",
+      "meters": 418
+    },
+    {
+      "id": "osm-node-6351870585",
+      "name": "ปราสาทเทพนิยายแดนเนรมิต",
+      "kind": "attraction",
+      "lat": 13.8203866,
+      "lon": 100.5648474,
+      "stationCode": "N10",
+      "meters": 418
+    },
+    {
+      "id": "osm-way-539977676",
+      "name": "Lhong 1919",
+      "nameTh": "ล้ง 1919",
+      "kind": "attraction",
+      "lat": 13.7341217,
+      "lon": 100.5080476,
+      "stationCode": "G3",
+      "meters": 419
+    },
+    {
+      "id": "osm-way-231413622",
+      "name": "Bangkok Christian Hospital",
+      "nameTh": "โรงพยาบาลกรุงเทพคริสเตียน",
+      "kind": "hospital",
+      "lat": 13.7284252,
+      "lon": 100.5311844,
+      "stationCode": "S2",
+      "meters": 342
+    },
+    {
+      "id": "osm-way-191960055",
+      "name": "Chulabhorn Graduate Institute",
+      "nameTh": "สถาบันบัณฑิตศึกษาจุฬาภรณ์",
+      "kind": "university",
+      "lat": 13.8825015,
+      "lon": 100.5789704,
+      "stationCode": "PK14",
+      "meters": 425
+    },
+    {
+      "id": "osm-node-6163747800",
+      "name": "Soi Japan (soi 33)",
+      "kind": "attraction",
+      "lat": 13.7334842,
+      "lon": 100.5673238,
+      "stationCode": "E5",
+      "meters": 425
+    },
+    {
+      "id": "osm-way-341563860",
+      "name": "Pathumwan Institute of Technology",
+      "nameTh": "สถาบันเทคโนโลยีปทุมวัน",
+      "kind": "university",
+      "lat": 13.7482694,
+      "lon": 100.5258558,
+      "stationCode": "W1",
+      "meters": 426
+    },
+    {
+      "id": "osm-node-13718179680",
+      "name": "Komodo Dragons",
+      "kind": "attraction",
+      "lat": 13.7626193,
+      "lon": 100.5410424,
+      "stationCode": "N3",
+      "meters": 428
+    },
+    {
+      "id": "osm-way-1270934034",
+      "name": "Floating Market Khlong Bang Luang",
+      "nameTh": "ตลาดน้ำคลองบางหลวง",
+      "kind": "market",
+      "lat": 13.7304884,
+      "lon": 100.4637225,
+      "stationCode": "BL06",
+      "meters": 670
+    },
+    {
+      "id": "osm-way-31134625",
+      "name": "Vibhavadi Hospital",
+      "nameTh": "โรงพยาบาลวิภาวดี",
+      "kind": "hospital",
+      "lat": 13.8461353,
+      "lon": 100.5619709,
+      "stationCode": "RD07",
+      "meters": 364
+    },
+    {
+      "id": "osm-way-348428071",
+      "name": "Sukhothai Palace",
+      "nameTh": "วังศุโขทัย",
+      "kind": "attraction",
+      "lat": 13.7827232,
+      "lon": 100.5092018,
+      "stationCode": "BL34",
+      "meters": 1173
+    },
+    {
+      "id": "osm-way-338834271",
+      "name": "Ladprao Hospital",
+      "nameTh": "โรงพยาบาลลาดพร้าว",
+      "kind": "hospital",
+      "lat": 13.7781337,
+      "lon": 100.6242922,
+      "stationCode": "YL06",
+      "meters": 133
+    },
+    {
+      "id": "osm-way-178788075",
+      "name": "Queen Sirikit National Institute of Child Health",
+      "nameTh": "สถาบันสุขภาพเด็กแห่งชาติมหาราชินี",
+      "kind": "hospital",
+      "lat": 13.7655367,
+      "lon": 100.5350533,
+      "stationCode": "N3",
+      "meters": 376
+    },
+    {
+      "id": "osm-node-6743329188",
+      "name": "Sky",
+      "kind": "attraction",
+      "lat": 13.8020438,
+      "lon": 100.5804202,
+      "stationCode": "YL02",
+      "meters": 456
+    },
+    {
+      "id": "osm-way-175274042",
+      "name": "Future Park Rangsit",
+      "kind": "mall",
+      "lat": 13.9888127,
+      "lon": 100.6176675,
+      "stationCode": "RD13",
+      "meters": 1668
+    },
+    {
+      "id": "osm-node-9721084217",
+      "name": "Indy market Chokchai4",
+      "kind": "attraction",
+      "lat": 13.7984393,
+      "lon": 100.5959685,
+      "stationCode": "YL03",
+      "meters": 473
+    },
+    {
+      "id": "osm-way-31974134",
+      "name": "King Chulalongkorn Memorial Hospital",
+      "nameTh": "โรงพยาบาลจุฬาลงกรณ์",
+      "kind": "hospital",
+      "lat": 13.7327457,
+      "lon": 100.5360833,
+      "stationCode": "BL15",
+      "meters": 394
+    },
+    {
+      "id": "osm-way-544931901",
+      "name": "Samut Prakan Observation Tower",
+      "nameTh": "หอชมเมืองสมุทรปราการ",
+      "kind": "attraction",
+      "lat": 13.5982331,
+      "lon": 100.5989817,
+      "stationCode": "E19",
+      "meters": 474
+    },
+    {
+      "id": "osm-node-13613567717",
+      "name": "นาฬิกาแดด",
+      "kind": "attraction",
+      "lat": 13.7289126,
+      "lon": 100.5425961,
+      "stationCode": "BL16",
+      "meters": 479
+    },
+    {
+      "id": "osm-way-334736777",
+      "name": "Phranakhon Rajabhat University",
+      "nameTh": "มหาวิทยาลัยราชภัฏพระนคร",
+      "kind": "university",
+      "lat": 13.8764357,
+      "lon": 100.5919751,
+      "stationCode": "PK15",
+      "meters": 483
+    },
+    {
+      "id": "osm-way-1197051606",
+      "name": "BNH Hospital",
+      "nameTh": "โรงพยาบาลบีเอ็นเอช",
+      "kind": "hospital",
+      "lat": 13.7249135,
+      "lon": 100.5349843,
+      "stationCode": "S2",
+      "meters": 410
+    },
+    {
+      "id": "osm-node-4345431737",
+      "name": "Took Lae Dee",
+      "kind": "attraction",
+      "lat": 13.7325924,
+      "lon": 100.5607873,
+      "stationCode": "E4",
+      "meters": 492
+    },
+    {
+      "id": "osm-way-261079937",
+      "name": "Police General Hospital",
+      "nameTh": "โรงพยาบาลตำรวจ",
+      "kind": "hospital",
+      "lat": 13.7433947,
+      "lon": 100.5377612,
+      "stationCode": "CEN",
+      "meters": 414
+    },
+    {
+      "id": "osm-way-329745926",
+      "name": "Srinakharinwirot University Prasarnmit Campus",
+      "nameTh": "มหาวิทยาลัยศรีนครินทรวิโรฒ ประสานมิตร",
+      "kind": "university",
+      "lat": 13.744883,
+      "lon": 100.5649317,
+      "stationCode": "BL20",
+      "meters": 497
+    },
+    {
+      "id": "osm-way-202235947",
+      "name": "National Museum of Royal Barges",
+      "nameTh": "พิพิธภัณฑสถานแห่งชาติ เรือพระราชพิธี",
+      "kind": "attraction",
+      "lat": 13.7619746,
+      "lon": 100.4845676,
+      "stationCode": "BL37",
+      "meters": 1222
+    },
+    {
+      "id": "osm-way-560594892",
+      "name": "Maha Chetsadabodin Pavilion Court",
+      "nameTh": "ลานพลับพลามหาเจษฎาบดินทร์",
+      "kind": "park",
+      "lat": 13.75556,
+      "lon": 100.5047102,
+      "stationCode": "BL11",
+      "meters": 984
+    },
+    {
+      "id": "osm-node-2649275573",
+      "name": "Sundial",
+      "nameTh": "นาฬิกาแดด",
+      "kind": "attraction",
+      "lat": 13.730553,
+      "lon": 100.5416556,
+      "stationCode": "BL15",
+      "meters": 505
+    },
+    {
+      "id": "osm-node-4605868307",
+      "name": "Old building at Thanon Song Wat",
+      "nameTh": "ตึกเก่าบนถนนทรงวาด",
+      "kind": "attraction",
+      "lat": 13.7380887,
+      "lon": 100.507611,
+      "stationCode": "BL12",
+      "meters": 524
+    },
+    {
+      "id": "osm-way-229875823",
+      "name": "Central Pinklao",
+      "nameTh": "เซ็นทรัล ปิ่นเกล้า",
+      "kind": "mall",
+      "lat": 13.7775017,
+      "lon": 100.4759222,
+      "stationCode": "BL36",
+      "meters": 1010
+    },
+    {
+      "id": "osm-way-178329987",
+      "name": "Wat Maha That Yuwarat Rangsarit Ratchaworamahawihan",
+      "nameTh": "วัดมหาธาตุยุวราชรังสฤษฎิ์ราชวรมหาวิหาร",
+      "kind": "attraction",
+      "lat": 13.7547697,
+      "lon": 100.4907979,
+      "stationCode": "BL10",
+      "meters": 1250
+    },
+    {
+      "id": "osm-node-4594858490",
+      "name": "Flashlight Market",
+      "kind": "attraction",
+      "lat": 13.7468313,
+      "lon": 100.5110795,
+      "stationCode": "BL12",
+      "meters": 534
+    },
+    {
+      "id": "osm-way-1384673134",
+      "name": "โรงพยาบาลบางโพ",
+      "kind": "hospital",
+      "lat": 13.8068562,
+      "lon": 100.5229925,
+      "stationCode": "BL32",
+      "meters": 216
+    },
+    {
+      "id": "osm-way-491005386",
+      "name": "Soi Arun Ammarin 11",
+      "nameTh": "ซอยอรุณอมรินทร์ 11",
+      "kind": "attraction",
+      "lat": 13.7431962,
+      "lon": 100.4855517,
+      "stationCode": "BL09",
+      "meters": 537
+    },
+    {
+      "id": "osm-way-103022352",
+      "name": "Mahakan Fort",
+      "nameTh": "ป้อมมหากาฬ",
+      "kind": "attraction",
+      "lat": 13.7556215,
+      "lon": 100.5055217,
+      "stationCode": "BL11",
+      "meters": 1018
+    },
+    {
+      "id": "osm-way-1498869500",
+      "name": "Crocodiles pond",
+      "kind": "attraction",
+      "lat": 13.7423762,
+      "lon": 100.504019,
+      "stationCode": "BL11",
+      "meters": 552
+    },
+    {
+      "id": "osm-way-1497863792",
+      "name": "Lerdsin Hospital",
+      "nameTh": "โรงพยาบาลเลิดสิน",
+      "kind": "hospital",
+      "lat": 13.7215163,
+      "lon": 100.5177517,
+      "stationCode": "S5",
+      "meters": 483
+    },
+    {
+      "id": "osm-node-5342566021",
+      "name": "RMA Institute",
+      "kind": "attraction",
+      "lat": 13.7269068,
+      "lon": 100.5631528,
+      "stationCode": "BL18",
+      "meters": 566
+    },
+    {
+      "id": "osm-node-11482846254",
+      "name": "The Bangkok City Model",
+      "nameTh": "แบบจำลองเมืองกรุงเทพมหานคร",
+      "kind": "attraction",
+      "lat": 13.7271405,
+      "lon": 100.557031,
+      "stationCode": "BL18",
+      "meters": 569
+    },
+    {
+      "id": "osm-way-305102123",
+      "name": "Thian Fah Foundation Hospital",
+      "nameTh": "โรงพยาบาลเทียนฟ้ามูลนิธิ",
+      "kind": "hospital",
+      "lat": 13.7382455,
+      "lon": 100.5123052,
+      "stationCode": "BL12",
+      "meters": 491
+    },
+    {
+      "id": "osm-way-164008838",
+      "name": "Klang Hospital",
+      "nameTh": "โรงพยาบาลกลาง",
+      "kind": "hospital",
+      "lat": 13.7464426,
+      "lon": 100.5091776,
+      "stationCode": "BL12",
+      "meters": 492
+    },
+    {
+      "id": "osm-node-9321020617",
+      "name": "The So Heng Tai Mansion",
+      "nameTh": "บ้านโซวเฮงไถ่",
+      "kind": "attraction",
+      "lat": 13.7336206,
+      "lon": 100.5121101,
+      "stationCode": "G3",
+      "meters": 599
+    },
+    {
+      "id": "osm-node-6604775095",
+      "name": "Catfish Farm",
+      "kind": "attraction",
+      "lat": 13.7242195,
+      "lon": 100.7528653,
+      "stationCode": "A07",
+      "meters": 605
+    },
+    {
+      "id": "osm-node-6748802385",
+      "name": "Holy tree",
+      "kind": "attraction",
+      "lat": 13.7338481,
+      "lon": 100.5120083,
+      "stationCode": "G3",
+      "meters": 606
+    },
+    {
+      "id": "osm-node-6169968286",
+      "name": "Street Food & Shopping",
+      "kind": "attraction",
+      "lat": 13.7504262,
+      "lon": 100.5391442,
+      "stationCode": "A02",
+      "meters": 615
+    },
+    {
+      "id": "osm-node-9320435618",
+      "name": "Old Car",
+      "nameTh": "รถเก่า",
+      "kind": "attraction",
+      "lat": 13.7339503,
+      "lon": 100.512101,
+      "stationCode": "G3",
+      "meters": 621
+    },
+    {
+      "id": "osm-node-12428813819",
+      "name": "Nature information pathway",
+      "kind": "attraction",
+      "lat": 13.8072177,
+      "lon": 100.5494823,
+      "stationCode": "BL28",
+      "meters": 626
+    },
+    {
+      "id": "osm-node-12428813832",
+      "name": "Boule playground",
+      "kind": "attraction",
+      "lat": 13.8117861,
+      "lon": 100.5556527,
+      "stationCode": "BL27",
+      "meters": 632
+    },
+    {
+      "id": "osm-way-333227704",
+      "name": "Wat Rakhang Kositaram Woramahawihan",
+      "nameTh": "วัดระฆังโฆสิตารามวรมหาวิหาร",
+      "kind": "attraction",
+      "lat": 13.7525853,
+      "lon": 100.4855718,
+      "stationCode": "BL10",
+      "meters": 1357
+    },
+    {
+      "id": "osm-way-283724937",
+      "name": "Chaloem Phrakiat 80 Phansa Park",
+      "nameTh": "สวนเฉลิมพระเกียรติ 80 พรรษา",
+      "kind": "park",
+      "lat": 13.7185205,
+      "lon": 100.5425218,
+      "stationCode": "BL16",
+      "meters": 879
+    },
+    {
+      "id": "osm-node-9553459685",
+      "name": "Big C Plaza Rama 4",
+      "nameTh": "บิ๊กซี พลาซ่า พระราม 4",
+      "kind": "mall",
+      "lat": 13.7180796,
+      "lon": 100.5703019,
+      "stationCode": "E6",
+      "meters": 1120
+    },
+    {
+      "id": "osm-way-178354005",
+      "name": "Pi Kun Bridge",
+      "nameTh": "สะพานปีกุน",
+      "kind": "attraction",
+      "lat": 13.7497027,
+      "lon": 100.496346,
+      "stationCode": "BL10",
+      "meters": 640
+    },
+    {
+      "id": "osm-node-4725831894",
+      "name": "Seasons condo",
+      "kind": "attraction",
+      "lat": 13.6240898,
+      "lon": 100.6225069,
+      "stationCode": "YL21",
+      "meters": 648
+    },
+    {
+      "id": "osm-node-1645930798",
+      "name": "Panyananthaphikkhu Chonprathan Medical Center",
+      "nameTh": "ศูนย์การแพทย์ปัญญานันทภิกขุ ชลประทาน มหาวิทยาลัยศรีนครินทรวิโรฒ",
+      "kind": "hospital",
+      "lat": 13.8999118,
+      "lon": 100.5020172,
+      "stationCode": "PK05",
+      "meters": 571
+    },
+    {
+      "id": "osm-way-196107455",
+      "name": "Asiatique The Riverfront",
+      "kind": "mall",
+      "lat": 13.7041944,
+      "lon": 100.5027687,
+      "stationCode": "S7",
+      "meters": 1855
+    },
+    {
+      "id": "osm-way-1422673318",
+      "name": "Wat Suan Sawan",
+      "nameTh": "วัดสวนสวรรค์",
+      "kind": "attraction",
+      "lat": 13.7724906,
+      "lon": 100.4944944,
+      "stationCode": "BL36",
+      "meters": 1135
+    },
+    {
+      "id": "osm-node-12428814621",
+      "name": "Pedal boat rental",
+      "kind": "attraction",
+      "lat": 13.8159621,
+      "lon": 100.5561218,
+      "stationCode": "BL27",
+      "meters": 661
+    },
+    {
+      "id": "osm-way-176820836",
+      "name": "Manangasila House",
+      "nameTh": "บ้านมนังคศิลา",
+      "kind": "attraction",
+      "lat": 13.7559563,
+      "lon": 100.5192706,
+      "stationCode": "N1",
+      "meters": 1398
+    },
+    {
+      "id": "osm-node-6163747497",
+      "name": "Captain Bush Lane (House No. 1)",
+      "kind": "attraction",
+      "lat": 13.7287462,
+      "lon": 100.5149558,
+      "stationCode": "G2",
+      "meters": 686
+    },
+    {
+      "id": "osm-node-2447283108",
+      "name": "Siriraj Medical Museum",
+      "nameTh": "พิพิธภัณฑ์การแพทย์ศิริราช",
+      "kind": "attraction",
+      "lat": 13.7587143,
+      "lon": 100.4854995,
+      "stationCode": "BL37",
+      "meters": 1410
+    },
+    {
+      "id": "osm-way-198399091",
+      "name": "Santichaiprakan Park",
+      "nameTh": "สวนสันติชัยปราการ",
+      "kind": "park",
+      "lat": 13.7640964,
+      "lon": 100.4954852,
+      "stationCode": "BL36",
+      "meters": 1844
+    },
+    {
+      "id": "osm-way-863465253",
+      "name": "Phramongkutklao Hospital",
+      "nameTh": "โรงพยาบาลพระมงกุฎเกล้า",
+      "kind": "hospital",
+      "lat": 13.768069,
+      "lon": 100.5343175,
+      "stationCode": "N3",
+      "meters": 658
+    },
+    {
+      "id": "osm-node-12710231554",
+      "name": "Glass Pagoda",
+      "kind": "attraction",
+      "lat": 13.7208475,
+      "lon": 100.4707653,
+      "stationCode": "BL06",
+      "meters": 739
+    },
+    {
+      "id": "osm-way-1227050715",
+      "name": "Phra Buddha Dhammakāya Thepmongkhon",
+      "nameTh": "พระพุทธธรรมกายเทพมงคล",
+      "kind": "attraction",
+      "lat": 13.7212563,
+      "lon": 100.4711118,
+      "stationCode": "BL06",
+      "meters": 746
+    },
+    {
+      "id": "osm-way-157042377",
+      "name": "Lotus's Sukkhaphiban 1",
+      "nameTh": "โลตัส สุขาภิบาล 1",
+      "kind": "mall",
+      "lat": 13.8256028,
+      "lon": 100.6597666,
+      "stationCode": "PK24",
+      "meters": 1237
+    },
+    {
+      "id": "osm-node-3977868210",
+      "name": "Tha Pra Chan",
+      "nameTh": "ท่าพระจันทร์",
+      "kind": "attraction",
+      "lat": 13.7564288,
+      "lon": 100.4893272,
+      "stationCode": "BL10",
+      "meters": 1480
+    },
+    {
+      "id": "osm-way-338834358",
+      "name": "Vejthani International Hospital",
+      "nameTh": "โรงพยาบาลเวชธานี อินเตอร์เนชันแนล",
+      "kind": "hospital",
+      "lat": 13.7721804,
+      "lon": 100.6369087,
+      "stationCode": "YL08",
+      "meters": 446
+    },
+    {
+      "id": "osm-way-1210022607",
+      "name": "Chang Chui Market",
+      "nameTh": "ช่างชุ่ย",
+      "kind": "attraction",
+      "lat": 13.7891876,
+      "lon": 100.4706436,
+      "stationCode": "RD02",
+      "meters": 786
+    },
+    {
+      "id": "osm-node-5384897422",
+      "name": "Dry Fruits",
+      "kind": "attraction",
+      "lat": 13.7398067,
+      "lon": 100.6522256,
+      "stationCode": "A05",
+      "meters": 789
+    },
+    {
+      "id": "osm-way-1224439620",
+      "name": "Phi Suea Samut Fort",
+      "nameTh": "ป้อมผีเสื้อสมุทร",
+      "kind": "park",
+      "lat": 13.5953543,
+      "lon": 100.587555,
+      "stationCode": "E19",
+      "meters": 1271
+    },
+    {
+      "id": "osm-node-10693106205",
+      "name": "Dragon town",
+      "kind": "attraction",
+      "lat": 13.7412201,
+      "lon": 100.5243187,
+      "stationCode": "W1",
+      "meters": 799
+    },
+    {
+      "id": "osm-way-149979928",
+      "name": "Dhonburi Rajabhat University",
+      "nameTh": "มหาวิทยาลัยราชภัฏธนบุรี",
+      "kind": "university",
+      "lat": 13.7341079,
+      "lon": 100.4916714,
+      "stationCode": "BL09",
+      "meters": 803
+    },
+    {
+      "id": "osm-node-11378645811",
+      "name": "Big Buddha",
+      "kind": "attraction",
+      "lat": 13.7200692,
+      "lon": 100.4709127,
+      "stationCode": "BL06",
+      "meters": 804
+    },
+    {
+      "id": "osm-node-12710226400",
+      "name": "Reclining Buddha",
+      "kind": "attraction",
+      "lat": 13.7198267,
+      "lon": 100.4713308,
+      "stationCode": "S11",
+      "meters": 806
+    },
+    {
+      "id": "osm-way-1238480297",
+      "name": "The gate of Phraeng Sapphasat",
+      "nameTh": "ซุ้มประตูแพร่งสรรพศาสตร์",
+      "kind": "attraction",
+      "lat": 13.7533102,
+      "lon": 100.4983615,
+      "stationCode": "BL11",
+      "meters": 815
+    },
+    {
+      "id": "osm-node-4257127190",
+      "name": "Thai Bamboo Tattoo",
+      "kind": "attraction",
+      "lat": 13.7274865,
+      "lon": 100.4990793,
+      "stationCode": "S8",
+      "meters": 817
+    },
+    {
+      "id": "osm-node-4333980589",
+      "name": "Airplane Graveyard",
+      "kind": "attraction",
+      "lat": 13.7649576,
+      "lon": 100.6523946,
+      "stationCode": "YL09",
+      "meters": 821
+    },
+    {
+      "id": "osm-node-14089117102",
+      "name": "path to Hidden cafe",
+      "kind": "attraction",
+      "lat": 13.7214948,
+      "lon": 100.4720596,
+      "stationCode": "BL06",
+      "meters": 825
+    },
+    {
+      "id": "osm-way-1540797884",
+      "name": "North Bangkok University Saphan Mai Campus",
+      "nameTh": "มหาวิทยาลัยนอร์ทกรุงเทพ วิทยาเขตสะพานใหม่",
+      "kind": "university",
+      "lat": 13.8940724,
+      "lon": 100.6163289,
+      "stationCode": "N20",
+      "meters": 826
+    },
+    {
+      "id": "osm-way-123950254",
+      "name": "Tanao Road",
+      "nameTh": "ถนนตะนาว",
+      "kind": "attraction",
+      "lat": 13.7535086,
+      "lon": 100.4984573,
+      "stationCode": "BL11",
+      "meters": 829
+    },
+    {
+      "id": "osm-way-32017575",
+      "name": "Sukhothai Thammathirat Open University",
+      "nameTh": "มหาวิทยาลัยสุโขทัยธรรมาธิราช",
+      "kind": "university",
+      "lat": 13.9101784,
+      "lon": 100.5365821,
+      "stationCode": "MT01",
+      "meters": 832
+    },
+    {
+      "id": "osm-way-38001215",
+      "name": "Kasetsart University",
+      "nameTh": "มหาวิทยาลัยเกษตรศาสตร์",
+      "kind": "university",
+      "lat": 13.847942,
+      "lon": 100.5693598,
+      "stationCode": "RD07",
+      "meters": 841
+    },
+    {
+      "id": "osm-node-1886961362",
+      "name": "Memorial of Expeditionary Force",
+      "nameTh": "อนุสาวรีย์ทหารอาสา สงครามโลกครั้งที่ 1",
+      "kind": "attraction",
+      "lat": 13.758211,
+      "lon": 100.4932545,
+      "stationCode": "BL10",
+      "meters": 1568
+    },
+    {
+      "id": "osm-way-1511816539",
+      "name": "Bang Phai Hospital",
+      "nameTh": "โรงพยาบาลบางไผ่",
+      "kind": "hospital",
+      "lat": 13.7250714,
+      "lon": 100.4650645,
+      "stationCode": "BL06",
+      "meters": 51
+    },
+    {
+      "id": "osm-node-5102832927",
+      "name": "House of Lucie Center for Photography",
+      "kind": "attraction",
+      "lat": 13.7275655,
+      "lon": 100.5857531,
+      "stationCode": "E6",
+      "meters": 866
+    },
+    {
+      "id": "osm-node-304195460",
+      "name": "Holy Monkey Palace",
+      "kind": "attraction",
+      "lat": 13.5727787,
+      "lon": 100.5992262,
+      "stationCode": "E22",
+      "meters": 869
+    },
+    {
+      "id": "osm-node-2391364878",
+      "name": "Deja Hospital",
+      "nameTh": "โรงพยาบาลเดชา",
+      "kind": "hospital",
+      "lat": 13.7568871,
+      "lon": 100.5355632,
+      "stationCode": "A01",
+      "meters": 73
+    },
+    {
+      "id": "osm-way-92362832",
+      "name": "Wanadharm Park",
+      "nameTh": "สวนวนธรรม",
+      "kind": "park",
+      "lat": 13.6828833,
+      "lon": 100.6570016,
+      "stationCode": "YL16",
+      "meters": 1366
+    },
+    {
+      "id": "osm-way-210099832",
+      "name": "Kasemrad International Rattanatibeth Hospital",
+      "nameTh": "โณงพยาบาลเกษมราษฎร์ อินเตอร์เนชั่นแนล รัตนาธิเบศร์",
+      "kind": "hospital",
+      "lat": 13.881229,
+      "lon": 100.4101059,
+      "stationCode": "PP02",
+      "meters": 98
+    },
+    {
+      "id": "osm-way-1414558560",
+      "name": "พระตำหนักสวนรื่นฤดี",
+      "kind": "attraction",
+      "lat": 13.7796522,
+      "lon": 100.5121715,
+      "stationCode": "BL34",
+      "meters": 1622
+    },
+    {
+      "id": "osm-way-545388135",
+      "name": "สวนบางขุนนนท์",
+      "kind": "park",
+      "lat": 13.7728029,
+      "lon": 100.4691878,
+      "stationCode": "BL37",
+      "meters": 1144
+    },
+    {
+      "id": "osm-way-1410385849",
+      "name": "Saphan Khao Palace",
+      "nameTh": "วังสะพานขาว",
+      "kind": "attraction",
+      "lat": 13.7557629,
+      "lon": 100.5154991,
+      "stationCode": "BL12",
+      "meters": 1624
+    },
+    {
+      "id": "osm-way-1391841619",
+      "name": "S-Spine and Joint Hospital",
+      "nameTh": "โรงพยาบาลเฉพาะทางด้านกระดูกสันหลังและข้อ",
+      "kind": "hospital",
+      "lat": 13.7861028,
+      "lon": 100.6076322,
+      "stationCode": "YL04",
+      "meters": 119
+    },
+    {
+      "id": "osm-way-643246598",
+      "name": "Vibhavadi Rangsit Forest Park",
+      "nameTh": "สวนป่าวิภาวดีรังสิต",
+      "kind": "park",
+      "lat": 13.7714012,
+      "lon": 100.552895,
+      "stationCode": "N4",
+      "meters": 1174
+    },
+    {
+      "id": "osm-way-676058129",
+      "name": "College of Management, Mahidol University",
+      "nameTh": "วิทยาลัยการจัดการ มหาวิทยาลัยมหิดล",
+      "kind": "university",
+      "lat": 13.7688562,
+      "lon": 100.5498421,
+      "stationCode": "N4",
+      "meters": 936
+    },
+    {
+      "id": "osm-way-1215089566",
+      "name": "KMB Hospital",
+      "kind": "hospital",
+      "lat": 13.8708252,
+      "lon": 100.6040244,
+      "stationCode": "PK17",
+      "meters": 150
+    },
+    {
+      "id": "osm-way-203011799",
+      "name": "Suan Luang Rama VIII Park",
+      "nameTh": "สวนหลวงพระราม 8",
+      "kind": "park",
+      "lat": 13.7684419,
+      "lon": 100.4948375,
+      "stationCode": "BL36",
+      "meters": 1434
+    },
+    {
+      "id": "osm-node-1402895609",
+      "name": "Mongkutwattana General Hospital",
+      "nameTh": "โรงพยาบาลมงกุฎวัฒนะ",
+      "kind": "hospital",
+      "lat": 13.8939018,
+      "lon": 100.5616676,
+      "stationCode": "PK11",
+      "meters": 170
+    },
+    {
+      "id": "osm-node-12428810504",
+      "name": "Abandond building",
+      "kind": "attraction",
+      "lat": 13.7495975,
+      "lon": 100.5147997,
+      "stationCode": "BL12",
+      "meters": 973
+    },
+    {
+      "id": "osm-way-1376409284",
+      "name": "โรงพยาบาลพญาไท พหลโยธิน",
+      "kind": "hospital",
+      "lat": 13.7921997,
+      "lon": 100.5498808,
+      "stationCode": "N7",
+      "meters": 183
+    },
+    {
+      "id": "osm-way-1436320285",
+      "name": "โรงพยาบาลมงกุฎวัฒนะ",
+      "kind": "hospital",
+      "lat": 13.8940378,
+      "lon": 100.5618268,
+      "stationCode": "PK11",
+      "meters": 192
+    },
+    {
+      "id": "osm-node-5240778121",
+      "name": "Hospital central GENERAL",
+      "kind": "hospital",
+      "lat": 13.8889032,
+      "lon": 100.6060256,
+      "stationCode": "N19",
+      "meters": 194
+    },
+    {
+      "id": "osm-node-4412727689",
+      "name": "UBER wasutha",
+      "kind": "attraction",
+      "lat": 13.7424452,
+      "lon": 100.634495,
+      "stationCode": "YL11",
+      "meters": 997
+    },
+    {
+      "id": "osm-node-6475599885",
+      "name": "Wat Phummarin Ratchapaksi",
+      "nameTh": "วัดภุมรินทร์ราชปักษี",
+      "kind": "attraction",
+      "lat": 13.764246,
+      "lon": 100.487832,
+      "stationCode": "BL36",
+      "meters": 1487
+    },
+    {
+      "id": "osm-way-208058784",
+      "name": "Devavesm Palace",
+      "nameTh": "วังเทวะเวสม์",
+      "kind": "attraction",
+      "lat": 13.7698042,
+      "lon": 100.5002903,
+      "stationCode": "BL35",
+      "meters": 1733
+    },
+    {
+      "id": "osm-way-1422844699",
+      "name": "มหาวิทยาลัยเซนต์จอห์น",
+      "kind": "university",
+      "lat": 13.8102897,
+      "lon": 100.5610362,
+      "stationCode": "BL27",
+      "meters": 296
+    },
+    {
+      "id": "osm-way-331967740",
+      "name": "Asoke Skin Hospital",
+      "nameTh": "โรงพยาบาลผิวหนังอโศก",
+      "kind": "hospital",
+      "lat": 13.7508493,
+      "lon": 100.5643501,
+      "stationCode": "BL20",
+      "meters": 217
+    },
+    {
+      "id": "osm-way-946384818",
+      "name": "Bamrasnaradura Infectious Diseases Institute",
+      "nameTh": "สถาบันบำราศนราดูร",
+      "kind": "hospital",
+      "lat": 13.8532022,
+      "lon": 100.5219522,
+      "stationCode": "PP12",
+      "meters": 939
+    },
+    {
+      "id": "osm-way-626816282",
+      "name": "บอลลูนเหินฟ้า",
+      "kind": "attraction",
+      "lat": 13.8074285,
+      "lon": 100.6951168,
+      "stationCode": "PK27",
+      "meters": 1020
+    },
+    {
+      "id": "osm-way-560432226",
+      "name": "โรงพยาบาลสุขุมวิท",
+      "kind": "hospital",
+      "lat": 13.7189835,
+      "lon": 100.587386,
+      "stationCode": "E7",
+      "meters": 234
+    },
+    {
+      "id": "osm-node-2562622348",
+      "name": "โรงพยาบาล นวมินทร์ 9",
+      "kind": "hospital",
+      "lat": 13.8112938,
+      "lon": 100.7239005,
+      "stationCode": "PK29",
+      "meters": 238
+    },
+    {
+      "id": "osm-node-567014290",
+      "name": "Phanfa Leelard",
+      "nameTh": "ผ่านฟ้าลีลาศ",
+      "kind": "attraction",
+      "lat": 13.7555116,
+      "lon": 100.506445,
+      "stationCode": "BL11",
+      "meters": 1045
+    },
+    {
+      "id": "osm-way-232884487",
+      "name": "Hospital of the Faculty of Dentistry",
+      "nameTh": "โรงพยาบาลคณะทันตแพทยศาสตร์",
+      "kind": "hospital",
+      "lat": 13.7432919,
+      "lon": 100.5349465,
+      "stationCode": "CEN",
+      "meters": 250
+    },
+    {
+      "id": "osm-way-331962412",
+      "name": "Benchakitti Park Hospital",
+      "nameTh": "โรงพยาบาลสวนเบญจกิติเฉลิมพระเกียรติ 84 พรรษา",
+      "kind": "hospital",
+      "lat": 13.7246218,
+      "lon": 100.5539979,
+      "stationCode": "BL17",
+      "meters": 256
+    },
+    {
+      "id": "osm-way-338000401",
+      "name": "Somdech Phra Pinklao Hospital",
+      "nameTh": "โรงพยาบาลสมเด็จพระปิ่นเกล้า",
+      "kind": "hospital",
+      "lat": 13.7101671,
+      "lon": 100.4847344,
+      "stationCode": "S10",
+      "meters": 980
+    },
+    {
+      "id": "osm-way-380866196",
+      "name": "Rattana Bundit University",
+      "nameTh": "มหาวิทยาลัยรัตนบัณฑิต",
+      "kind": "university",
+      "lat": 13.779273,
+      "lon": 100.6385491,
+      "stationCode": "YL07",
+      "meters": 1076
+    },
+    {
+      "id": "osm-way-1186854016",
+      "name": "MedPark Hospital",
+      "nameTh": "โรงพยาบาลเมดพาร์ค",
+      "kind": "hospital",
+      "lat": 13.7217239,
+      "lon": 100.5566062,
+      "stationCode": "BL17",
+      "meters": 283
+    },
+    {
+      "id": "osm-way-1229757067",
+      "name": "Rajamangala University of Technology Krungthep Phra Nakhon Tai ​Campus",
+      "nameTh": "มหาวิทยาลัยเทคโนโลยีราชมงคลกรุงเทพ พื้นที่พระนครใต้",
+      "kind": "university",
+      "lat": 13.7155821,
+      "lon": 100.5146821,
+      "stationCode": "S6",
+      "meters": 364
+    },
+    {
+      "id": "osm-way-329745925",
+      "name": "Rutnin Eye Hospital",
+      "nameTh": "โรงพยาบาลจักษุ รัตนิน",
+      "kind": "hospital",
+      "lat": 13.7465043,
+      "lon": 100.5631219,
+      "stationCode": "BL20",
+      "meters": 292
+    },
+    {
+      "id": "osm-node-5384897421",
+      "name": "Chaophraya Princess Cruise",
+      "kind": "attraction",
+      "lat": 13.7110792,
+      "lon": 100.5035308,
+      "stationCode": "S7",
+      "meters": 1092
+    },
+    {
+      "id": "osm-node-13074433605",
+      "name": "Wat Noi Thongyu",
+      "nameTh": "วัดน้อยทองอยู่",
+      "kind": "attraction",
+      "lat": 13.7636866,
+      "lon": 100.4888863,
+      "stationCode": "BL36",
+      "meters": 1573
+    },
+    {
+      "id": "osm-way-178329974",
+      "name": "Silpakorn University Tha Phra Palace",
+      "nameTh": "มหาวิทยาลัยศิลปากร วังท่าพระ",
+      "kind": "university",
+      "lat": 13.7530631,
+      "lon": 100.4903499,
+      "stationCode": "BL10",
+      "meters": 1093
+    },
+    {
+      "id": "osm-way-775451751",
+      "name": "Rajamangala University of Technology Suvarnabhumi Nonthaburi North Campus",
+      "nameTh": "มหาวิทยาลัยเทคโนโลยีราชมงคลสุวรรณภูมิ ศูนย์นนทบุรี เขตเหนือ",
+      "kind": "university",
+      "lat": 13.8681413,
+      "lon": 100.4828929,
+      "stationCode": "PP08",
+      "meters": 377
+    },
+    {
+      "id": "osm-way-194521680",
+      "name": "Wat Poramai Yikawat",
+      "nameTh": "วัดปรมัยยิกาวาส",
+      "kind": "attraction",
+      "lat": 13.9127076,
+      "lon": 100.489987,
+      "stationCode": "PK06",
+      "meters": 1825
+    },
+    {
+      "id": "osm-way-176617334",
+      "name": "โรงพยาบาลมิตรประชา",
+      "kind": "hospital",
+      "lat": 13.711638,
+      "lon": 100.4318286,
+      "stationCode": "BL03",
+      "meters": 305
+    },
+    {
+      "id": "osm-way-207322366",
+      "name": "Bang Khun Prom Palace",
+      "nameTh": "วังบางขุนพรหม",
+      "kind": "attraction",
+      "lat": 13.7685798,
+      "lon": 100.4996208,
+      "stationCode": "BL35",
+      "meters": 1829
+    },
+    {
+      "id": "osm-node-3542061032",
+      "name": "Bank of Thailand Museum",
+      "nameTh": "พิพิธภัณฑ์ธนาคารแห่งประเทศไทย",
+      "kind": "attraction",
+      "lat": 13.7682842,
+      "lon": 100.4995365,
+      "stationCode": "BL36",
+      "meters": 1843
+    },
+    {
+      "id": "osm-way-1000481572",
+      "name": "Somdet Chao Phraya Hospital",
+      "nameTh": "โรงพยาบาลสมเด็จเจ้าพระยา",
+      "kind": "hospital",
+      "lat": 13.7304374,
+      "lon": 100.5046915,
+      "stationCode": "G3",
+      "meters": 324
+    },
+    {
+      "id": "osm-way-584950395",
+      "name": "Tesco Lotus st Lum Luk Ka Klong2",
+      "kind": "mall",
+      "lat": 13.9467141,
+      "lon": 100.6450812,
+      "stationCode": "N24",
+      "meters": 1607
+    },
+    {
+      "id": "osm-node-7688192009",
+      "name": "Ratchada-Tha Phra Hospital",
+      "nameTh": "โรงพยาบาลรัชดา-ท่าพระ",
+      "kind": "hospital",
+      "lat": 13.7171235,
+      "lon": 100.4774705,
+      "stationCode": "S10",
+      "meters": 335
+    },
+    {
+      "id": "osm-way-1577597065",
+      "name": "Praram 9 Hospital",
+      "nameTh": "โรงพยาบาลพระราม 9",
+      "kind": "hospital",
+      "lat": 13.7530636,
+      "lon": 100.5713936,
+      "stationCode": "BL21",
+      "meters": 816
+    },
+    {
+      "id": "osm-way-1131611366",
+      "name": "Synphaet Srinakarin Hospital",
+      "nameTh": "โรงพยาบาลสินแพทย์ ศรีนครินทร์",
+      "kind": "hospital",
+      "lat": 13.6787803,
+      "lon": 100.6483215,
+      "stationCode": "YL16",
+      "meters": 339
+    },
+    {
+      "id": "osm-way-1296288398",
+      "name": "Ban Chao Phraya",
+      "nameTh": "บ้านเจ้าพระยา",
+      "kind": "attraction",
+      "lat": 13.7634543,
+      "lon": 100.4948943,
+      "stationCode": "BL36",
+      "meters": 1866
+    },
+    {
+      "id": "osm-way-107936513",
+      "name": "Phra Sumen Fort",
+      "nameTh": "ป้อมพระสุเมรุ",
+      "kind": "attraction",
+      "lat": 13.7639992,
+      "lon": 100.4957529,
+      "stationCode": "BL36",
+      "meters": 1870
+    },
+    {
+      "id": "osm-way-156924966",
+      "name": "คณะทันตแพทยศาสตร์ มหาวิทยาลัยมหิดล",
+      "kind": "university",
+      "lat": 13.7641328,
+      "lon": 100.5332577,
+      "stationCode": "N3",
+      "meters": 439
+    },
+    {
+      "id": "osm-way-23630366",
+      "name": "Chitralada Royal Villa",
+      "nameTh": "พระตำหนักจิตรลดารโหฐาน",
+      "kind": "attraction",
+      "lat": 13.7683267,
+      "lon": 100.5206063,
+      "stationCode": "N3",
+      "meters": 1883
+    },
+    {
+      "id": "osm-way-863258748",
+      "name": "Bhumirajanagarindra Kidney Institute Hospital",
+      "nameTh": "โรงพยาบาลสถาบันโรคไตภูมิราชนครินทร์",
+      "kind": "hospital",
+      "lat": 13.760003,
+      "lon": 100.5345454,
+      "stationCode": "N2",
+      "meters": 363
+    },
+    {
+      "id": "osm-way-258727420",
+      "name": "Vibharam Hospital",
+      "nameTh": "โรงพยาบาล วิภาราม",
+      "kind": "hospital",
+      "lat": 13.7347423,
+      "lon": 100.6454946,
+      "stationCode": "A05",
+      "meters": 365
+    },
+    {
+      "id": "osm-way-210284648",
+      "name": "พระตำหนักจิตรลดารโหฐาน",
+      "kind": "attraction",
+      "lat": 13.7693269,
+      "lon": 100.5207236,
+      "stationCode": "N3",
+      "meters": 1911
+    },
+    {
+      "id": "osm-way-259496906",
+      "name": "สวน 60 ปี มหาวิทยาลัยเกษตรศาสตร์",
+      "kind": "university",
+      "lat": 13.8498175,
+      "lon": 100.5661669,
+      "stationCode": "RD07",
+      "meters": 483
+    },
+    {
+      "id": "osm-node-5603128339",
+      "name": "Maxx Hotel",
+      "kind": "attraction",
+      "lat": 13.754762,
+      "lon": 100.576113,
+      "stationCode": "BL21",
+      "meters": 1206
+    },
+    {
+      "id": "osm-way-589767172",
+      "name": "สมาคมนิสิตเก่ามหาวิทยาลัยเกษตรศาสตร์ ในพระบรมราชูปถัมภ์",
+      "kind": "university",
+      "lat": 13.8466719,
+      "lon": 100.5790083,
+      "stationCode": "N14",
+      "meters": 499
+    },
+    {
+      "id": "osm-way-863297144",
+      "name": "Priest Hospital",
+      "nameTh": "โรงพยาบาลสงฆ์",
+      "kind": "hospital",
+      "lat": 13.7618929,
+      "lon": 100.5271597,
+      "stationCode": "N2",
+      "meters": 911
+    },
+    {
+      "id": "osm-way-402132679",
+      "name": "Sikarin Hospital",
+      "nameTh": "โรงพยาบาลศิครินทร์",
+      "kind": "hospital",
+      "lat": 13.6542071,
+      "lon": 100.6461512,
+      "stationCode": "YL18",
+      "meters": 444
+    },
+    {
+      "id": "osm-node-6964258385",
+      "name": "โรงพยาบาลเกษมราษฏร์ รัตนาธิเบศร์",
+      "kind": "hospital",
+      "lat": 13.8755191,
+      "lon": 100.423557,
+      "stationCode": "PP03",
+      "meters": 448
+    },
+    {
+      "id": "osm-node-11355625919",
+      "name": "The Old Wall",
+      "nameTh": "กำแพงเก่า",
+      "kind": "attraction",
+      "lat": 13.5956527,
+      "lon": 100.5875849,
+      "stationCode": "E19",
+      "meters": 1249
+    },
+    {
+      "id": "osm-node-5269645822",
+      "name": "Saule pleureur",
+      "kind": "attraction",
+      "lat": 13.8173549,
+      "lon": 100.5793279,
+      "stationCode": "YL01",
+      "meters": 1256
+    },
+    {
+      "id": "osm-way-1385059036",
+      "name": "Rajamangala University of Technology Rattanakosin Bophit Phimuk Chakkrawat Campus",
+      "nameTh": "มหาวิทยาลัยเทคโนโลยีราชมงคลรัตนโกสินทร์ พื้นที่บพิตรพิมุข จักรวรรดิ",
+      "kind": "university",
+      "lat": 13.7421741,
+      "lon": 100.5021924,
+      "stationCode": "BL11",
+      "meters": 540
+    },
+    {
+      "id": "osm-way-1311534226",
+      "name": "Navamindradhiraj University",
+      "nameTh": "มหาวิทยาลัยนวมินทราธิราช",
+      "kind": "university",
+      "lat": 13.7810271,
+      "lon": 100.5051751,
+      "stationCode": "BL34",
+      "meters": 1267
+    },
+    {
+      "id": "osm-way-31972720",
+      "name": "Rajamangala University of Technology Uthenthawai",
+      "nameTh": "มหาวิทยาลัยเทคโนโลยีราชมงคล วิทยาเขตอุเทนถวาย",
+      "kind": "university",
+      "lat": 13.7418147,
+      "lon": 100.5311981,
+      "stationCode": "CEN",
+      "meters": 552
+    },
+    {
+      "id": "osm-way-1350722612",
+      "name": "Chandrakasem Rajabhat University",
+      "nameTh": "มหาวิทยาลัยราชภัฏจันทรเกษม",
+      "kind": "university",
+      "lat": 13.8201014,
+      "lon": 100.5774864,
+      "stationCode": "N10",
+      "meters": 1272
+    },
+    {
+      "id": "osm-node-340033055",
+      "name": "Thonburi Hospital",
+      "nameTh": "โรงพยาบาลธนบุรี",
+      "kind": "hospital",
+      "lat": 13.7529428,
+      "lon": 100.480116,
+      "stationCode": "BL38",
+      "meters": 1205
+    },
+    {
+      "id": "osm-way-1543169884",
+      "name": "National Institute of Development Administration",
+      "nameTh": "สถาบันบัณฑิตพัฒนบริหารศาสตร์",
+      "kind": "university",
+      "lat": 13.770217,
+      "lon": 100.6536692,
+      "stationCode": "YL09",
+      "meters": 1286
+    },
+    {
+      "id": "osm-node-6980108185",
+      "name": "Train cemetery",
+      "nameTh": "สุสานรถไฟ",
+      "kind": "attraction",
+      "lat": 13.8159041,
+      "lon": 100.5447123,
+      "stationCode": "RD05",
+      "meters": 1293
+    },
+    {
+      "id": "osm-node-7856667483",
+      "name": "Kluai Nam Thai Hospital",
+      "nameTh": "โรงพยาบาลกล้วยน้ำไท",
+      "kind": "hospital",
+      "lat": 13.7150697,
+      "lon": 100.5864751,
+      "stationCode": "E7",
+      "meters": 503
+    },
+    {
+      "id": "osm-way-448985840",
+      "name": "Samitivej Chinatown Hospital",
+      "nameTh": "โรงพยาบาลสมิติเวช",
+      "kind": "hospital",
+      "lat": 13.7377811,
+      "lon": 100.5125458,
+      "stationCode": "BL13",
+      "meters": 514
+    },
+    {
+      "id": "osm-way-1362542945",
+      "name": "Rajamangala University of Technology Tawan-ok Chakrabongse Bhuwanat",
+      "nameTh": "มหาวิทยาลัยเทคโนโลยีราชมงคลตะวันออก เขตพื้นที่จักรพงษภูวนารถ",
+      "kind": "university",
+      "lat": 13.7780567,
+      "lon": 100.5568015,
+      "stationCode": "N5",
+      "meters": 1321
+    },
+    {
+      "id": "osm-way-331962370",
+      "name": "Banphaeo Hospital",
+      "nameTh": "รพ.บ้านแพ้ว พร้อมมิตร",
+      "kind": "hospital",
+      "lat": 13.7331603,
+      "lon": 100.5736826,
+      "stationCode": "E5",
+      "meters": 527
+    },
+    {
+      "id": "osm-way-258733174",
+      "name": "Ramkhamhaeng Hospital",
+      "nameTh": "โรงพยาบาล รามคำแหง",
+      "kind": "hospital",
+      "lat": 13.7580245,
+      "lon": 100.6368222,
+      "stationCode": "YL09",
+      "meters": 1029
+    },
+    {
+      "id": "osm-node-4690189492",
+      "name": "Kwan Roam Floating Market (revised)",
+      "nameTh": "ตลาดน้ำขวัญ-เรียม",
+      "kind": "attraction",
+      "lat": 13.800811,
+      "lon": 100.710075,
+      "stationCode": "PK28",
+      "meters": 1351
+    },
+    {
+      "id": "osm-node-11054393005",
+      "name": "Precious Plastic Bangkok",
+      "kind": "attraction",
+      "lat": 13.7573935,
+      "lon": 100.5090495,
+      "stationCode": "BL11",
+      "meters": 1366
+    },
+    {
+      "id": "osm-way-164007675",
+      "name": "Hua Chiew Hospital",
+      "nameTh": "โรงพยาบาลหัวเฉียว",
+      "kind": "hospital",
+      "lat": 13.7500111,
+      "lon": 100.515513,
+      "stationCode": "BL12",
+      "meters": 1053
+    },
+    {
+      "id": "osm-way-1396729649",
+      "name": "Vimut Hospital",
+      "nameTh": "โรงพยาบาลวิมุต",
+      "kind": "hospital",
+      "lat": 13.7887662,
+      "lon": 100.548652,
+      "stationCode": "N7",
+      "meters": 575
+    },
+    {
+      "id": "osm-node-4866262621",
+      "name": "Petcharavej Hospital",
+      "kind": "hospital",
+      "lat": 13.7428473,
+      "lon": 100.5947191,
+      "stationCode": "A04",
+      "meters": 575
+    },
+    {
+      "id": "osm-way-1374672872",
+      "name": "โรงพยาบาลโรคปอดกรุงเทพ",
+      "kind": "hospital",
+      "lat": 13.7848733,
+      "lon": 100.5460209,
+      "stationCode": "N5",
+      "meters": 583
+    },
+    {
+      "id": "osm-way-191960057",
+      "name": "Chulabhorn Hospital",
+      "nameTh": "โรงพยาบาลจุฬาภรณ์",
+      "kind": "hospital",
+      "lat": 13.8809106,
+      "lon": 100.5781772,
+      "stationCode": "PK14",
+      "meters": 589
+    },
+    {
+      "id": "osm-way-1566371484",
+      "name": "Synphaet Seriruk Hospital",
+      "nameTh": "โรงพยาบาลสินแพทย์ เสรีรักษ์",
+      "kind": "hospital",
+      "lat": 13.8102175,
+      "lon": 100.7175559,
+      "stationCode": "PK28",
+      "meters": 610
+    },
+    {
+      "id": "osm-way-658997001",
+      "name": "Pranangklao Hospital",
+      "nameTh": "โรงพยาบาลพระนั่งเกล้า",
+      "kind": "hospital",
+      "lat": 13.8648237,
+      "lon": 100.4808758,
+      "stationCode": "PP08",
+      "meters": 616
+    },
+    {
+      "id": "osm-way-30715477",
+      "name": "Rajamangala University of Technology Krungthep",
+      "nameTh": "มหาวิทยาลัยเทคโนโลยีราชมงคลกรุงเทพ",
+      "kind": "university",
+      "lat": 13.7135041,
+      "lon": 100.5376935,
+      "stationCode": "S4",
+      "meters": 1429
+    },
+    {
+      "id": "osm-way-33042465",
+      "name": "Suan Luang Rama IX",
+      "nameTh": "สวนหลวง ร.๙",
+      "kind": "park",
+      "lat": 13.6850925,
+      "lon": 100.663784,
+      "stationCode": "YL15",
+      "meters": 1913
+    },
+    {
+      "id": "osm-way-1487097615",
+      "name": "Intrarat Hospital",
+      "nameTh": "โรงพยาบาลอินทรารัตน์",
+      "kind": "hospital",
+      "lat": 13.8309941,
+      "lon": 100.6725234,
+      "stationCode": "PK24",
+      "meters": 634
+    },
+    {
+      "id": "osm-node-7856667479",
+      "name": "Yuwaprasat Waithayopatham Hospital",
+      "nameTh": "โรงพยาบาลยุวประสาทไวทโยปถัมถ์",
+      "kind": "hospital",
+      "lat": 13.6144774,
+      "lon": 100.5938405,
+      "stationCode": "E18",
+      "meters": 667
+    },
+    {
+      "id": "osm-way-175314250",
+      "name": "Silpakorn University City Campus",
+      "nameTh": "มหาวิทยาลัยศิลปากร เมืองทองธานี",
+      "kind": "university",
+      "lat": 13.9146276,
+      "lon": 100.5515209,
+      "stationCode": "MT02",
+      "meters": 755
+    },
+    {
+      "id": "osm-node-7856667649",
+      "name": "Anan Phatthana 2 Hospital",
+      "nameTh": "โรงพยาบาลอนันต์พัฒนา 2",
+      "kind": "hospital",
+      "lat": 13.798235,
+      "lon": 100.4766494,
+      "stationCode": "RD02",
+      "meters": 680
+    },
+    {
+      "id": "osm-way-366712982",
+      "name": "Saint Carlos Hospital",
+      "kind": "hospital",
+      "lat": 13.7838555,
+      "lon": 100.57659,
+      "stationCode": "BL23",
+      "meters": 682
+    },
+    {
+      "id": "osm-way-195690619",
+      "name": "Kasem Bundit University",
+      "nameTh": "มหาวิทยาลัยเกษมบัณฑิต",
+      "kind": "university",
+      "lat": 13.7391787,
+      "lon": 100.6277027,
+      "stationCode": "YL11",
+      "meters": 1490
+    },
+    {
+      "id": "osm-way-296528238",
+      "name": "Samitivej Thonburi Hospital",
+      "nameTh": "โรงพยาบาลสมิติเวชธนบุรี",
+      "kind": "hospital",
+      "lat": 13.7142787,
+      "lon": 100.4898251,
+      "stationCode": "S9",
+      "meters": 691
+    },
+    {
+      "id": "osm-way-331966744",
+      "name": "โรงพยาบาล เพชรเวช",
+      "kind": "hospital",
+      "lat": 13.7433306,
+      "lon": 100.5936225,
+      "stationCode": "A04",
+      "meters": 694
+    },
+    {
+      "id": "osm-way-321780948",
+      "name": "Koh Lanta",
+      "kind": "attraction",
+      "lat": 13.7158739,
+      "lon": 100.7417663,
+      "stationCode": "A07",
+      "meters": 1505
+    },
+    {
+      "id": "osm-way-94919091",
+      "name": "Tesco Lotus",
+      "kind": "mall",
+      "lat": 13.8546024,
+      "lon": 100.5441187,
+      "stationCode": "RD07",
+      "meters": 1986
+    },
+    {
+      "id": "osm-way-197484456",
+      "name": "Kasem Bundit University Romklao Campus",
+      "nameTh": "มหาวิทยาลัยเกษมบัณฑิต วิทยาเขตร่มเกล้า",
+      "kind": "university",
+      "lat": 13.8026524,
+      "lon": 100.7369887,
+      "stationCode": "PK30",
+      "meters": 786
+    },
+    {
+      "id": "osm-way-258733173",
+      "name": "Samitivej Hospital Srinakarin",
+      "nameTh": "โรงพยาบาลสมิติเวชศรีนครินทร์",
+      "kind": "hospital",
+      "lat": 13.7486879,
+      "lon": 100.6384669,
+      "stationCode": "YL10",
+      "meters": 707
+    },
+    {
+      "id": "osm-way-37906413",
+      "name": "King Rama IX Memorial Park",
+      "nameTh": "อุทยานเฉลิมพระเกียรติ รัชกาลที่ ๙",
+      "kind": "park",
+      "lat": 13.7619238,
+      "lon": 100.5184259,
+      "stationCode": "N2",
+      "meters": 1753
+    },
+    {
+      "id": "osm-way-1213872967",
+      "name": "Mahaesak Hospital",
+      "nameTh": "โรงพยาบาลมเหสักข์",
+      "kind": "hospital",
+      "lat": 13.7253986,
+      "lon": 100.5194286,
+      "stationCode": "S5",
+      "meters": 716
+    },
+    {
+      "id": "osm-way-62226123",
+      "name": "Thai Nakarin Hospital",
+      "nameTh": "โรงพยาบาลไทยนครินทร์",
+      "kind": "hospital",
+      "lat": 13.6680442,
+      "lon": 100.6384211,
+      "stationCode": "YL17",
+      "meters": 723
+    },
+    {
+      "id": "osm-node-8811102698",
+      "name": "WIH International Hospital",
+      "nameTh": "โรงพยาบาลดับเบิลยูไอเอชอินเตอร์เนชั่นแนล",
+      "kind": "hospital",
+      "lat": 13.6638559,
+      "lon": 100.6505749,
+      "stationCode": "YL17",
+      "meters": 724
+    },
+    {
+      "id": "osm-way-1434038190",
+      "name": "SYH Hospital",
+      "nameTh": "โรงพยาบาลเอส วาย เอช",
+      "kind": "hospital",
+      "lat": 13.8821509,
+      "lon": 100.6076132,
+      "stationCode": "N18",
+      "meters": 740
+    },
+    {
+      "id": "osm-node-14097989201",
+      "name": "shortcut",
+      "kind": "attraction",
+      "lat": 13.759218,
+      "lon": 100.495027,
+      "stationCode": "BL11",
+      "meters": 1564
+    },
+    {
+      "id": "osm-way-300621956",
+      "name": "Vichaiyut Hospital (Old [North] Building)",
+      "nameTh": "โรงพยาบาลวิชัยยุทธ",
+      "kind": "hospital",
+      "lat": 13.7834092,
+      "lon": 100.5337807,
+      "stationCode": "N5",
+      "meters": 1246
+    },
+    {
+      "id": "osm-way-173039143",
+      "name": "Bangkok Adventist Hospital",
+      "nameTh": "โรงพยาบาลมิชชั่น",
+      "kind": "hospital",
+      "lat": 13.7577321,
+      "lon": 100.5191274,
+      "stationCode": "N1",
+      "meters": 1487
+    },
+    {
+      "id": "osm-way-1312215715",
+      "name": "โรงพยาบาลการไฟฟ้านครหลวง",
+      "kind": "hospital",
+      "lat": 13.7870006,
+      "lon": 100.5096209,
+      "stationCode": "BL34",
+      "meters": 789
+    }
+  ]
+}

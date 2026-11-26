@@ -10,6 +10,7 @@ import {
   type ReportContext,
   type ReportContextInput,
 } from "@/lib/report-context";
+import { reportDeliveryEnabled, sendReport } from "@/lib/report-delivery";
 
 const CATEGORIES = [
   { key: "route", labelKey: "reportCatRoute" as const },
@@ -46,6 +47,8 @@ function ReportSheet({ context, initialCategory, onClose }: SheetProps) {
   const [showContext, setShowContext] = useState(false);
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [sendState, setSendState] = useState<"idle" | "sending" | "sent" | "failed">("idle");
+  const canSend = reportDeliveryEnabled();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -185,6 +188,26 @@ function ReportSheet({ context, initialCategory, onClose }: SheetProps) {
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
         >
           <div className="flex flex-col gap-2">
+            {canSend && (
+              <button
+                type="button"
+                onClick={async () => {
+                  setSendState("sending");
+                  const ok = await sendReport(ctx);
+                  setSendState(ok ? "sent" : "failed");
+                }}
+                disabled={sendState === "sending"}
+                className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-green-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-800 disabled:opacity-60"
+              >
+                {sendState === "sent"
+                  ? t.reportSent
+                  : sendState === "failed"
+                    ? t.reportSendFailed
+                    : sendState === "sending"
+                      ? t.reportSending
+                      : t.reportSend}
+              </button>
+            )}
             <button
               type="button"
               onClick={handleCopy}

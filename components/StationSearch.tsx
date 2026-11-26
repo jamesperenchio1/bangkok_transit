@@ -9,6 +9,8 @@ import { useArrivals } from "@/lib/use-arrivals";
 import { minutesLabel, upcomingTrains } from "@/lib/format-eta";
 import { stationName, useT } from "@/lib/i18n";
 import { MIN_QUERY_LENGTH, searchPlaces, type Place } from "@/lib/google-places";
+import { googleMapsKey } from "@/lib/google-maps";
+import { searchLocalPlaces } from "@/lib/places-index";
 import { useSettingsStore } from "@/lib/settings-store";
 
 export interface StationSearchProps {
@@ -76,6 +78,28 @@ const searchIndex = stations.map((s) => ({
 }));
 
 const searchKeys = searchIndex.map(({ keys }) => keys);
+
+// Inlined at build time, so this is a constant check, not a runtime env read.
+const HAS_GOOGLE_KEY = googleMapsKey().length > 0;
+
+/** Bundled places carry a `local:` id; Google's are opaque. */
+function isLocalPlace(place: Place): boolean {
+  return place.id.startsWith("local:");
+}
+
+/**
+ * Whether two results name the same real place: same normalised name and
+ * within ~150 m. Google almost always returns the mall/shop the bundled list
+ * already had, sometimes with a different suffix ("ICONSIAM" vs "ICONSIAM
+ * Shopping Mall"), so this only suppresses near-identical rows.
+ */
+function samePlace(a: Place, b: Place): boolean {
+  if (normalize(a.name) !== normalize(b.name)) return false;
+  const metresPerDegree = 111_320;
+  const dLat = (a.lat - b.lat) * metresPerDegree;
+  const dLon = (a.lon - b.lon) * metresPerDegree * Math.cos(((a.lat + b.lat) / 2) * (Math.PI / 180));
+  return dLat * dLat + dLon * dLon <= 150 * 150;
+}
 
 function SearchResultEta({ station }: { station: Station }) {
   const { data, live, now } = useArrivals(station.hasLiveArrivals ? station.code : null);
@@ -146,7 +170,37 @@ export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchP
   }, [open]);
 
   const { onlinePlaces, placeResults } = useSettingsStore((s) => s.settings);
-  const { places, error: placesError, loading: placesLoading } = usePlaces(query, onlinePlaces, lang, placeResults);
+
+  // Bundled places are a plain array in the app, so they are searched
+  // synchronously on every keystroke: no chunk to await, no request, no
+  // Google billing, and they still work offline.
+  const localResults = useMemo(
+    () => searchLocalPlaces(query.trim(), placeResults, lang),
+    [query, placeResults, lang],
+  );
+
+  // Google is the fallback only: switched on, a key is configured, the query
+  // is long enough for its text search, and the bundled list did not already
+  // fill the result slots.
+  const googleEnabled =
+    onlinePlaces && HAS_GOOGLE_KEY && query.trim().length >= MIN_QUERY_LENGTH && localResults.length < placeResults;
+  // Always ask for the full limit: the answer is cached per query, so a
+  // stable request key avoids re-billing as bundled matches fill the slots.
+  const {
+    places: googlePlaces,
+    error: placesError,
+    loading: placesLoading,
+  } = usePlaces(query, googleEnabled, lang, placeResults);
+
+  // Fill whatever slots the bundled list left, dropping Google rows that are
+  // the same real place.
+  const places = useMemo(() => {
+    const room = Math.max(0, placeResults - localResults.length);
+    const extra = googlePlaces
+      .filter((p) => !localResults.some((local) => samePlace(local, p)))
+      .slice(0, room);
+    return [...localResults, ...extra].slice(0, placeResults);
+  }, [localResults, googlePlaces, placeResults]);
 
   // The typo-tolerant matcher is a separate chunk, fetched the first time the
   // panel opens (the main bundle never carries it). Until it arrives - a
@@ -181,6 +235,8 @@ export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchP
 
   // The highlighted row, kept in range as results arrive or shrink.
   const current = Math.min(active, results.length - 1);
+  const hasLocalPlaces = places.some(isLocalPlace);
+  const hasGooglePlaces = places.some((p) => !isLocalPlace(p));
 
   const close = (returnFocus = false) => {
     setOpen(false);
@@ -273,13 +329,26 @@ export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchP
               const rowClass = `flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left text-sm ${
                 i === current ? "bg-neutral-100 dark:bg-neutral-800" : ""
               }`;
-              // A heading row where the places begin, so it is clear which results are stations and which are places.
-              const placesStart = item.kind === "place" && results[i - 1]?.kind !== "place";
+              // A heading row where each group begins, so stations, bundled
+              // places and Google results are never mixed without a label.
+              const placeGroup = item.kind === "place" ? (isLocalPlace(item.place) ? "local" : "google") : null;
+              const previous = results[i - 1];
+              const previousGroup =
+                previous?.kind === "place" ? (isLocalPlace(previous.place) ? "local" : "google") : null;
+              const groupStart = placeGroup !== null && placeGroup !== previousGroup;
+              const groupHeading =
+                placeGroup === "local"
+                  ? hasGooglePlaces
+                    ? t.localPlacesHeading
+                    : t.placesHeading
+                  : hasLocalPlaces
+                    ? t.morePlaces
+                    : t.placesHeading;
               return (
                 <Fragment key={item.key}>
-                  {placesStart && (
+                  {groupStart && (
                     <li role="presentation" className="px-2 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
-                      {t.placesHeading}
+                      {groupHeading}
                     </li>
                   )}
                   {item.kind === "station" ? (
@@ -323,7 +392,7 @@ export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchP
             })}
           </ul>
 
-          {query.trim() && onlinePlaces && placesLoading && (
+          {query.trim() && googleEnabled && localResults.length === 0 && placesLoading && (
             <p className="px-2 py-2 text-xs text-neutral-600 dark:text-neutral-400">{t.searchingPlaces}</p>
           )}
           {query.trim() && placesError && (
@@ -336,7 +405,7 @@ export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchP
            {!query.trim() && recents.length > 0 && (
              <div className="mt-1">
                <p className="px-2 pt-1 text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
-                 Recent
+                 {t.recent}
                </p>
                <ul>
                  {recents.map((item) => {

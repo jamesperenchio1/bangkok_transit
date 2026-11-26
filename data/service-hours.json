@@ -1,0 +1,78 @@
+{
+  "source": "OTP Namtang GTFS (CC-BY 4.0), https://namtang-api.otp.go.th/download/namtang-gtfs.zip",
+  "feedVersion": "20261125",
+  "generatedAt": "2026-11-26",
+  "note": "Times are Bangkok wall-clock. `peak`, `offPeak` and `late` are minutes between trains, measured at each line's busiest terminal. BTS Sukhumvit/Silom first and last trains use the operator's published bounds (05:15 and 00:05); the feed's own frequency windows begin at 06:00.",
+  "lines": {
+    "sukhumvit": {
+      "first": "05:15",
+      "last": "00:05",
+      "peak": 5,
+      "offPeak": 6,
+      "late": 7
+    },
+    "silom": {
+      "first": "05:15",
+      "last": "00:05",
+      "peak": 3,
+      "offPeak": 6,
+      "late": 8
+    },
+    "blue": {
+      "first": "05:30",
+      "last": "23:47",
+      "peak": 7,
+      "offPeak": 6,
+      "late": 7
+    },
+    "purple": {
+      "first": "05:30",
+      "last": "23:42",
+      "peak": 5,
+      "offPeak": 8,
+      "late": 9
+    },
+    "arl": {
+      "first": "05:30",
+      "last": "23:45",
+      "peak": 10,
+      "offPeak": 12,
+      "late": 15
+    },
+    "gold": {
+      "first": "06:00",
+      "last": "00:00",
+      "peak": 6,
+      "offPeak": 8,
+      "late": 12
+    },
+    "srtDarkRed": {
+      "first": "05:00",
+      "last": "23:45",
+      "peak": 10,
+      "offPeak": 15,
+      "late": 15
+    },
+    "srtLightRed": {
+      "first": "05:30",
+      "last": "23:30",
+      "peak": 20,
+      "offPeak": 30,
+      "late": 30
+    },
+    "yellow": {
+      "first": "06:00",
+      "last": "23:50",
+      "peak": 5,
+      "offPeak": 10,
+      "late": 10
+    },
+    "pink": {
+      "first": "06:00",
+      "last": "23:50",
+      "peak": 5,
+      "offPeak": 10,
+      "late": 10
+    }
+  }
+}

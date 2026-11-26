@@ -1,4 +1,5 @@
 import stations from "@/data/stations.json";
+import { isDarkTheme, mapStyleUrl } from "@/lib/map-style";
 import { useSettingsStore } from "@/lib/settings-store";
 
 /**
@@ -19,11 +20,13 @@ import { useSettingsStore } from "@/lib/settings-store";
  * Whatever the rider views is cached as they go either way (app/sw.ts).
  */
 
-const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 // v2: the warm-up now also covers zoom 9, the zoom the map opens at. Without it
 // the opening view's tiles were cached only if the service worker already
 // controlled the page during the first visit, so offline could open on stations
 // over an empty basemap. Bumping re-runs it for installs that did the v1 pass.
+// The theme's style is warmed along with the tiles (see warm()): the light and
+// dark styles share one tile source and sprite, so the key still stands for
+// both - an install that warmed v2 only lacks the dark style JSON, a few KB.
 export const OFFLINE_DONE_KEY = "bts:map-warm:v2";
 /** The lighter pass done on mobile data; the full one (above) later replaces it. */
 export const OFFLINE_OVERVIEW_KEY = "bts:map-warm:overview:v1";
@@ -34,6 +37,12 @@ const OVERVIEW_ZOOMS = [9, 10, 11, 12, 13];
 const DETAIL_ZOOM = 14;
 /** Glyph ranges for Latin (0-255) and Thai (3584-3839) labels. */
 const GLYPH_RANGES = ["0-255", "3584-3839"];
+/**
+ * Fontstacks our own layers name (station names, train labels). The basemap
+ * style may not list them - the dark style only names Noto Sans Regular - and
+ * without them the station names have no glyphs offline.
+ */
+const OWN_FONTSTACKS = ["Noto Sans Bold"];
 
 interface StyleLike {
   sprite?: string;
@@ -130,14 +139,25 @@ async function warm(mode: "full" | "overview"): Promise<boolean> {
     return res;
   };
 
-  const style = (await (await get(STYLE_URL)).json()) as StyleLike;
+  // The style of the theme in use (dark at night). Both styles share one vector
+  // tile source and one sprite, so the tiles below are the same either way.
+  const dark = isDarkTheme();
+  const style = (await (await get(mapStyleUrl(dark))).json()) as StyleLike;
+  // The other theme's style JSON is a few KB and comes from the same host; with
+  // it cached too, switching theme while offline still gets a real basemap
+  // instead of the plain fallback ground. An extra, so a failure is ignored.
+  try {
+    await get(mapStyleUrl(!dark));
+  } catch {
+    // not required for the active theme
+  }
   const urls: string[] = [];
 
   if (style.sprite) {
     for (const suffix of ["", "@2x"]) urls.push(`${style.sprite}${suffix}.json`, `${style.sprite}${suffix}.png`);
   }
   if (style.glyphs) {
-    const fonts = new Set<string>();
+    const fonts = new Set<string>(OWN_FONTSTACKS);
     for (const layer of style.layers ?? []) {
       const stack = layer.layout?.["text-font"];
       if (Array.isArray(stack)) fonts.add(stack.join(","));

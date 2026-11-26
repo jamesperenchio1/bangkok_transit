@@ -12,7 +12,13 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.932341,
-    "lon": 100.646626
+    "lon": 100.646626,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ]
   },
   {
     "code": "N23",
@@ -27,7 +33,13 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.924983,
-    "lon": 100.625876
+    "lon": 100.625876,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ]
   },
   {
     "code": "N22",
@@ -42,7 +54,14 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.917945,
-    "lon": 100.621715
+    "lon": 100.621715,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ],
+    "landmark": "Royal Thai Air Force Museum"
   },
   {
     "code": "N21",
@@ -57,7 +76,14 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.910722,
-    "lon": 100.617423
+    "lon": 100.617423,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ],
+    "landmark": "Bhumibol Adulyadej Hospital"
   },
   {
     "code": "N20",
@@ -72,7 +98,13 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.896595,
-    "lon": 100.609132
+    "lon": 100.609132,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ]
   },
   {
     "code": "N19",
@@ -87,7 +119,8 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.888442,
-    "lon": 100.604292
+    "lon": 100.604292,
+    "landmark": "Hospital central GENERAL"
   },
   {
     "code": "N18",
@@ -117,7 +150,10 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.875286,
-    "lon": 100.596811
+    "lon": 100.596811,
+    "exits": [
+      "Entrance A"
+    ]
   },
   {
     "code": "N16",
@@ -147,7 +183,8 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.855994,
-    "lon": 100.585171
+    "lon": 100.585171,
+    "landmark": "Sripatum University"
   },
   {
     "code": "N14",
@@ -162,7 +199,8 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.850255,
-    "lon": 100.581794
+    "lon": 100.581794,
+    "landmark": "สมาคมนิสิตเก่ามหาวิทยาลัยเกษตรศาสตร์ ในพระบรมราชูปถัมภ์"
   },
   {
     "code": "N13",
@@ -192,7 +230,8 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.836608,
-    "lon": 100.573802
+    "lon": 100.573802,
+    "landmark": "Mayo Hospital"
   },
   {
     "code": "N11",
@@ -222,7 +261,8 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.823852,
-    "lon": 100.566356
+    "lon": 100.566356,
+    "landmark": "ปราสาทเทพนิยายแดนเนรมิต"
   },
   {
     "code": "N9",
@@ -237,7 +277,15 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.817229,
-    "lon": 100.5623432
+    "lon": 100.5623432,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Entrance A"
+    ],
+    "landmark": "Central Ladprao"
   },
   {
     "code": "N8",
@@ -252,7 +300,14 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.802649,
-    "lon": 100.553763
+    "lon": 100.553763,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ],
+    "landmark": "Channel 7 Boxing Stadium"
   },
   {
     "code": "N7",
@@ -267,7 +322,15 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.793834,
-    "lon": 100.549696
+    "lon": 100.549696,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Saphan Khwai Elevator"
+    ],
+    "landmark": "โรงพยาบาลพญาไท พหลโยธิน"
   },
   {
     "code": "N5",
@@ -282,7 +345,15 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.779788,
-    "lon": 100.544704
+    "lon": 100.544704,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Ari Elevator"
+    ],
+    "landmark": "Street Food"
   },
   {
     "code": "N4",
@@ -297,7 +368,15 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.772642,
-    "lon": 100.542103
+    "lon": 100.542103,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Sanam Pao Elevator"
+    ],
+    "landmark": "Phyathai 2 Hospital"
   },
   {
     "code": "N3",
@@ -312,7 +391,15 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.762793,
-    "lon": 100.537085
+    "lon": 100.537085,
+    "exits": [
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Entrance A",
+      "Victory Monument Elevator"
+    ],
+    "landmark": "Victory Monument"
   },
   {
     "code": "N2",
@@ -327,7 +414,15 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.756822,
-    "lon": 100.533782
+    "lon": 100.533782,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 5",
+      "Phaya Thai Elevator"
+    ],
+    "landmark": "Bhumirajanagarindra Kidney Institute Hospital"
   },
   {
     "code": "N1",
@@ -342,7 +437,15 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.751931,
-    "lon": 100.531535
+    "lon": 100.531535,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Ratchathewi Elevator"
+    ],
+    "landmark": "Chaloem La 56 Bridge"
   },
   {
     "code": "CEN",
@@ -362,7 +465,18 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.745515,
-    "lon": 100.534605
+    "lon": 100.534605,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Exit 6",
+      "Entrance A",
+      "Entrance B",
+      "Entrance C"
+    ],
+    "landmark": "Siam Paragon"
   },
   {
     "code": "E1",
@@ -377,7 +491,16 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.74409,
-    "lon": 100.543028
+    "lon": 100.543028,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Exit 5",
+      "Chit Lom Elevator"
+    ],
+    "landmark": "Gaysorn Amarin"
   },
   {
     "code": "E2",
@@ -392,7 +515,15 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.74306,
-    "lon": 100.548849
+    "lon": 100.548849,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 5",
+      "Phloen Chit Elevator"
+    ],
+    "landmark": "Central Embassy"
   },
   {
     "code": "E3",
@@ -407,7 +538,14 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.740508,
-    "lon": 100.555412
+    "lon": 100.555412,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ],
+    "landmark": "Nana Plaza"
   },
   {
     "code": "E4",
@@ -422,7 +560,18 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.736996,
-    "lon": 100.560387
+    "lon": 100.560387,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Exit 5",
+      "Exit 6",
+      "Entrance A",
+      "Entrance B"
+    ],
+    "landmark": "Terminal 21"
   },
   {
     "code": "E5",
@@ -437,7 +586,17 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.730434,
-    "lon": 100.569688
+    "lon": 100.569688,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Exit 5",
+      "Exit 6",
+      "Prom Phong Elevator"
+    ],
+    "landmark": "Emporium"
   },
   {
     "code": "E6",
@@ -452,7 +611,17 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.724243,
-    "lon": 100.578502
+    "lon": 100.578502,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Entrance A",
+      "Entrance B",
+      "Entrance C",
+      "Entrance D"
+    ]
   },
   {
     "code": "E7",
@@ -467,7 +636,15 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.719439,
-    "lon": 100.585274
+    "lon": 100.585274,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Ekkamai Elevator"
+    ],
+    "landmark": "Gateway Ekkamai"
   },
   {
     "code": "E8",
@@ -482,7 +659,14 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.715178,
-    "lon": 100.591332
+    "lon": 100.591332,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Entrance A"
+    ],
+    "landmark": "TARS Gallery"
   },
   {
     "code": "E9",
@@ -497,7 +681,17 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.705545,
-    "lon": 100.601064
+    "lon": 100.601064,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Entrance A",
+      "Entrance B",
+      "Entrance C"
+    ],
+    "landmark": "New On Nut Night Market"
   },
   {
     "code": "E10",
@@ -512,7 +706,16 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.696551,
-    "lon": 100.605486
+    "lon": 100.605486,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Exit 5",
+      "Bang Chak",
+      "Bang Chak Elevator"
+    ]
   },
   {
     "code": "E11",
@@ -527,7 +730,15 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.689303,
-    "lon": 100.609041
+    "lon": 100.609041,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Exit 5",
+      "Exit 6"
+    ]
   },
   {
     "code": "E12",
@@ -542,7 +753,15 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.67993,
-    "lon": 100.609554
+    "lon": 100.609554,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Exit 5",
+      "Udom Suk Elevator"
+    ]
   },
   {
     "code": "E13",
@@ -557,7 +776,15 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.668122,
-    "lon": 100.604649
+    "lon": 100.604649,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Exit 5"
+    ],
+    "landmark": "BITEC Bang Na"
   },
   {
     "code": "E14",
@@ -572,7 +799,15 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.66117,
-    "lon": 100.601862
+    "lon": 100.601862,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Exit 5",
+      "Bearing Elevator"
+    ]
   },
   {
     "code": "E15",
@@ -602,7 +837,8 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.637247,
-    "lon": 100.591993
+    "lon": 100.591993,
+    "landmark": "Big C Samrong 2"
   },
   {
     "code": "E17",
@@ -632,7 +868,8 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.608552,
-    "lon": 100.594827
+    "lon": 100.594827,
+    "landmark": "Royal Thai Naval Academy"
   },
   {
     "code": "E19",
@@ -647,7 +884,8 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.60207,
-    "lon": 100.597072
+    "lon": 100.597072,
+    "landmark": "Samut Prakan Observation Tower"
   },
   {
     "code": "E20",
@@ -677,7 +915,8 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.584324,
-    "lon": 100.608027
+    "lon": 100.608027,
+    "landmark": "Robinson Lifestyle Samut Prakarn"
   },
   {
     "code": "E22",
@@ -722,7 +961,15 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.746491,
-    "lon": 100.529351
+    "lon": 100.529351,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "National Stadium Elevator"
+    ],
+    "landmark": "MBK Center"
   },
   {
     "code": "S1",
@@ -737,7 +984,13 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.739471,
-    "lon": 100.539453
+    "lon": 100.539453,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Ratchadamri Elevator"
+    ]
   },
   {
     "code": "S2",
@@ -752,7 +1005,15 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.72855,
-    "lon": 100.534347
+    "lon": 100.534347,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Exit 5"
+    ],
+    "landmark": "Patpong Night Market"
   },
   {
     "code": "S3",
@@ -767,7 +1028,18 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.723727,
-    "lon": 100.52943
+    "lon": 100.52943,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Chong Nonsi Elevator",
+      "Entrance A",
+      "Entrance B",
+      "Entrance C"
+    ],
+    "landmark": "Chong Nonsi Canal Park"
   },
   {
     "code": "S4",
@@ -782,7 +1054,12 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.7210655982596,
-    "lon": 100.526995996725
+    "lon": 100.526995996725,
+    "exits": [
+      "Exit 1",
+      "Exit 5"
+    ],
+    "landmark": "Saint Louis Hospital"
   },
   {
     "code": "S5",
@@ -797,7 +1074,14 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.719314,
-    "lon": 100.521602
+    "lon": 100.521602,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ],
+    "landmark": "Thai-Chinese Hall of Commerce"
   },
   {
     "code": "S6",
@@ -812,7 +1096,12 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.718801,
-    "lon": 100.514086
+    "lon": 100.514086,
+    "exits": [
+      "Exit 2",
+      "Exit 4"
+    ],
+    "landmark": "Sathorn Unique Tower"
   },
   {
     "code": "S7",
@@ -827,7 +1116,13 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.720877,
-    "lon": 100.502841
+    "lon": 100.502841,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Krung Thonburi Elevator 1",
+      "Krung Thonburi Elevator 2"
+    ]
   },
   {
     "code": "S8",
@@ -842,7 +1137,17 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.721149,
-    "lon": 100.495259
+    "lon": 100.495259,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Entrance A",
+      "Entrance B",
+      "Wongwian Yai Elevator 2"
+    ],
+    "landmark": "King Taksin Monument"
   },
   {
     "code": "S9",
@@ -857,7 +1162,12 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.719221,
-    "lon": 100.485945
+    "lon": 100.485945,
+    "exits": [
+      "Exit 1",
+      "Exit 2"
+    ],
+    "landmark": "Samitivej Thonburi Hospital"
   },
   {
     "code": "S10",
@@ -872,7 +1182,12 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.714215,
-    "lon": 100.476677
+    "lon": 100.476677,
+    "exits": [
+      "Talat Phlu Elevator 1",
+      "Talat Phlu Elevator 2"
+    ],
+    "landmark": "The Mall Lifestore Tha Phra"
   },
   {
     "code": "S11",
@@ -902,7 +1217,13 @@
     ],
     "hasLiveArrivals": true,
     "lat": 13.720699,
-    "lon": 100.457795
+    "lon": 100.457795,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ]
   },
   {
     "code": "G1",
@@ -917,7 +1238,12 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.721120976769702,
-    "lon": 100.50348262893421
+    "lon": 100.50348262893421,
+    "exits": [
+      "Exit 3",
+      "Exit 4",
+      "Entrance A"
+    ]
   },
   {
     "code": "G2",
@@ -932,7 +1258,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.726475809173255,
-    "lon": 100.50904765519574
+    "lon": 100.50904765519574,
+    "landmark": "ICONSIAM"
   },
   {
     "code": "G3",
@@ -947,7 +1274,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.730365922332348,
-    "lon": 100.50769011336835
+    "lon": 100.50769011336835,
+    "landmark": "Patchamit Fort"
   },
   {
     "code": "YL01",
@@ -962,7 +1290,15 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.806938243394248,
-    "lon": 100.57483752955888
+    "lon": 100.57483752955888,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Exit 5",
+      "Entrance A"
+    ]
   },
   {
     "code": "YL02",
@@ -977,7 +1313,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.800158072266358,
-    "lon": 100.58417049215485
+    "lon": 100.58417049215485,
+    "landmark": "Sky"
   },
   {
     "code": "YL03",
@@ -992,7 +1329,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.794490181768998,
-    "lon": 100.59433532439711
+    "lon": 100.59433532439711,
+    "landmark": "Indy market Chokchai4"
   },
   {
     "code": "YL04",
@@ -1007,7 +1345,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.78715804585712,
-    "lon": 100.60744382452751
+    "lon": 100.60744382452751,
+    "landmark": "S-Spine and Joint Hospital"
   },
   {
     "code": "YL05",
@@ -1037,7 +1376,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.77841048478401,
-    "lon": 100.62308944823036
+    "lon": 100.62308944823036,
+    "landmark": "Ladprao Hospital"
   },
   {
     "code": "YL07",
@@ -1067,7 +1407,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.769162148886515,
-    "lon": 100.63962454433391
+    "lon": 100.63962454433391,
+    "landmark": "The Mall Lifestore Bangkapi"
   },
   {
     "code": "YL09",
@@ -1172,7 +1513,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.690772450196254,
-    "lon": 100.64707054479462
+    "lon": 100.64707054479462,
+    "landmark": "Paradise Park"
   },
   {
     "code": "YL16",
@@ -1187,7 +1529,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.676570831551238,
-    "lon": 100.64615829758921
+    "lon": 100.64615829758921,
+    "landmark": "Synphaet Srinakarin Hospital"
   },
   {
     "code": "YL17",
@@ -1217,7 +1560,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.654993574615872,
-    "lon": 100.6421189447451
+    "lon": 100.6421189447451,
+    "landmark": "Sikarin Hospital"
   },
   {
     "code": "YL19",
@@ -1262,7 +1606,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.629908935040962,
-    "lon": 100.62274380870456
+    "lon": 100.62274380870456,
+    "landmark": "Seasons condo"
   },
   {
     "code": "YL22",
@@ -1322,7 +1667,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.862613602654726,
-    "lon": 100.52066139426064
+    "lon": 100.52066139426064,
+    "landmark": "Central Chest Institute of Thailand"
   },
   {
     "code": "PK03",
@@ -1367,7 +1713,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.898511809335375,
-    "lon": 100.50710387479907
+    "lon": 100.50710387479907,
+    "landmark": "Panyananthaphikkhu Chonprathan Medical Center"
   },
   {
     "code": "PK06",
@@ -1412,7 +1759,14 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.9041111278627,
-    "lon": 100.52916530993664
+    "lon": 100.52916530993664,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ],
+    "landmark": "Central Chaengwattana"
   },
   {
     "code": "PK09",
@@ -1457,7 +1811,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.893281878609109,
-    "lon": 100.56022520165442
+    "lon": 100.56022520165442,
+    "landmark": "Mongkutwattana General Hospital"
   },
   {
     "code": "PK12",
@@ -1502,7 +1857,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.88407388403004,
-    "lon": 100.58255389098898
+    "lon": 100.58255389098898,
+    "landmark": "Chulabhorn Graduate Institute"
   },
   {
     "code": "PK15",
@@ -1517,7 +1873,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.879890773322023,
-    "lon": 100.589265783349
+    "lon": 100.589265783349,
+    "landmark": "Phranakhon Rajabhat University"
   },
   {
     "code": "PK16",
@@ -1532,7 +1889,11 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.874523160382704,
-    "lon": 100.59701580151327
+    "lon": 100.59701580151327,
+    "exits": [
+      "Entrance A"
+    ],
+    "landmark": "Krirk University"
   },
   {
     "code": "PK17",
@@ -1547,7 +1908,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.87091562575583,
-    "lon": 100.60263667344815
+    "lon": 100.60263667344815,
+    "landmark": "Central Ramindra"
   },
   {
     "code": "PK18",
@@ -1577,7 +1939,13 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.858264244357535,
-    "lon": 100.62614382346457
+    "lon": 100.62614382346457,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ]
   },
   {
     "code": "PK20",
@@ -1652,7 +2020,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.833857983464055,
-    "lon": 100.66744917468962
+    "lon": 100.66744917468962,
+    "landmark": "Intrarat Hospital"
   },
   {
     "code": "PK25",
@@ -1667,7 +2036,13 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.82453311208507,
-    "lon": 100.67706431770895
+    "lon": 100.67706431770895,
+    "exits": [
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Entrance A"
+    ]
   },
   {
     "code": "PK26",
@@ -1682,7 +2057,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.816576999197538,
-    "lon": 100.6855484179385
+    "lon": 100.6855484179385,
+    "landmark": "Nopparat Rajathanee Hospital"
   },
   {
     "code": "PK27",
@@ -1712,7 +2088,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.812726213672313,
-    "lon": 100.7125293975531
+    "lon": 100.7125293975531,
+    "landmark": "Synphaet Seriruk Hospital"
   },
   {
     "code": "PK29",
@@ -1727,7 +2104,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.812537398310244,
-    "lon": 100.72568922418971
+    "lon": 100.72568922418971,
+    "landmark": "Chatuchak 2 Minburi market"
   },
   {
     "code": "PK30",
@@ -1757,7 +2135,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.910393970589748,
-    "lon": 100.54428909486488
+    "lon": 100.54428909486488,
+    "landmark": "IMPACT Muang Thong Thani"
   },
   {
     "code": "MT02",
@@ -1788,7 +2167,14 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.710863794909384,
-    "lon": 100.40945617573898
+    "lon": 100.40945617573898,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ],
+    "landmark": "The Mall Bangkae"
   },
   {
     "code": "BL02",
@@ -1804,7 +2190,13 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.711911275691747,
-    "lon": 100.42235972702922
+    "lon": 100.42235972702922,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ]
   },
   {
     "code": "BL03",
@@ -1820,7 +2212,14 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.712885760258139,
-    "lon": 100.43434209945593
+    "lon": 100.43434209945593,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ],
+    "landmark": "Seacon Bangkae"
   },
   {
     "code": "BL04",
@@ -1836,7 +2235,13 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.715516780263513,
-    "lon": 100.44546478340723
+    "lon": 100.44546478340723,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ]
   },
   {
     "code": "BL05",
@@ -1852,7 +2257,12 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.720218612642231,
-    "lon": 100.45699613419411
+    "lon": 100.45699613419411,
+    "exits": [
+      "Exit 1",
+      "Exit 2"
+    ],
+    "landmark": "Siam University"
   },
   {
     "code": "BL06",
@@ -1868,7 +2278,14 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.724617114419665,
-    "lon": 100.46513000988998
+    "lon": 100.46513000988998,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ],
+    "landmark": "Phyathai 3 Hospital"
   },
   {
     "code": "BL07",
@@ -1884,7 +2301,14 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.729656942975506,
-    "lon": 100.47406086597772
+    "lon": 100.47406086597772,
+    "exits": [
+      "Exit 1",
+      "Exit 2A",
+      "Exit 2B",
+      "Exit 3",
+      "Exit 4"
+    ]
   },
   {
     "code": "BL08",
@@ -1916,7 +2340,14 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.738370838410598,
-    "lon": 100.48567431807568
+    "lon": 100.48567431807568,
+    "exits": [
+      "Entrance A",
+      "Entrance B",
+      "Entrance C",
+      "Entrance D"
+    ],
+    "landmark": "Soi Arun Ammarin 11"
   },
   {
     "code": "BL10",
@@ -1932,7 +2363,15 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.744176365122792,
-    "lon": 100.49468099259173
+    "lon": 100.49468099259173,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Exit 5"
+    ],
+    "landmark": "Wat Pho"
   },
   {
     "code": "BL11",
@@ -1948,7 +2387,13 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.747033474632707,
-    "lon": 100.50226020331674
+    "lon": 100.50226020331674,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3"
+    ],
+    "landmark": "India Emporium"
   },
   {
     "code": "BL12",
@@ -1964,7 +2409,12 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.742119299285713,
-    "lon": 100.51012536494106
+    "lon": 100.51012536494106,
+    "exits": [
+      "Exit 1",
+      "Exit 2"
+    ],
+    "landmark": "Yaowarat Road"
   },
   {
     "code": "BL13",
@@ -1980,7 +2430,14 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.737446241115105,
-    "lon": 100.5172916713306
+    "lon": 100.5172916713306,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ],
+    "landmark": "Samitivej Chinatown Hospital"
   },
   {
     "code": "BL14",
@@ -1996,7 +2453,13 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.732533267159184,
-    "lon": 100.52948813062424
+    "lon": 100.52948813062424,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 2/1"
+    ],
+    "landmark": "Samyan Mitrtown"
   },
   {
     "code": "BL15",
@@ -2012,7 +2475,12 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.729356490595986,
-    "lon": 100.5371440989799
+    "lon": 100.5371440989799,
+    "exits": [
+      "Exit 1",
+      "Exit 2"
+    ],
+    "landmark": "Lumphini Park"
   },
   {
     "code": "BL16",
@@ -2028,7 +2496,14 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.72580841374866,
-    "lon": 100.54566789185247
+    "lon": 100.54566789185247,
+    "exits": [
+      "Exit 1A",
+      "Exit 1B",
+      "Exit 2",
+      "Exit 3"
+    ],
+    "landmark": "The Wireless House"
   },
   {
     "code": "BL17",
@@ -2044,7 +2519,12 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.722321208961196,
-    "lon": 100.55405666636102
+    "lon": 100.55405666636102,
+    "exits": [
+      "Exit 1",
+      "Exit 2"
+    ],
+    "landmark": "Plai Nern Palace"
   },
   {
     "code": "BL18",
@@ -2060,7 +2540,14 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.722881168902376,
-    "lon": 100.55995004366616
+    "lon": 100.55995004366616,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ],
+    "landmark": "Queen Sirikit National Convention Center"
   },
   {
     "code": "BL19",
@@ -2076,7 +2563,12 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.737571123131113,
-    "lon": 100.56148943519563
+    "lon": 100.56148943519563,
+    "exits": [
+      "Exit 1",
+      "Exit 2"
+    ],
+    "landmark": "Kamthieng House Museum"
   },
   {
     "code": "BL20",
@@ -2092,7 +2584,14 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.749111258297111,
-    "lon": 100.56344121796725
+    "lon": 100.56344121796725,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Entrance A"
+    ],
+    "landmark": "Srinakharinwirot University Prasarnmit Campus"
   },
   {
     "code": "BL21",
@@ -2108,7 +2607,13 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.757365452330987,
-    "lon": 100.56527207934501
+    "lon": 100.56527207934501,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3"
+    ],
+    "landmark": "Fortune Town"
   },
   {
     "code": "BL22",
@@ -2124,7 +2629,14 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.766104804115782,
-    "lon": 100.57018975885745
+    "lon": 100.57018975885745,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ],
+    "landmark": "Train Night Market Ratchada"
   },
   {
     "code": "BL23",
@@ -2140,7 +2652,14 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.778437386449964,
-    "lon": 100.57362126376566
+    "lon": 100.57362126376566,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ],
+    "landmark": "Huai Kwang night market"
   },
   {
     "code": "BL24",
@@ -2156,7 +2675,13 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.789841707858296,
-    "lon": 100.57413977230637
+    "lon": 100.57413977230637,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ]
   },
   {
     "code": "BL25",
@@ -2172,7 +2697,13 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.798973765276267,
-    "lon": 100.57462025613631
+    "lon": 100.57462025613631,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ]
   },
   {
     "code": "BL26",
@@ -2188,7 +2719,13 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.806511301075735,
-    "lon": 100.57288593461601
+    "lon": 100.57288593461601,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3"
+    ],
+    "landmark": "Suan Lum Night Bazaar"
   },
   {
     "code": "BL27",
@@ -2204,7 +2741,15 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.812925738278558,
-    "lon": 100.56138654614438
+    "lon": 100.56138654614438,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4",
+      "Exit 5"
+    ],
+    "landmark": "Union Mall"
   },
   {
     "code": "BL28",
@@ -2220,7 +2765,12 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.803169882307078,
-    "lon": 100.5535141531621
+    "lon": 100.5535141531621,
+    "exits": [
+      "Exit 2",
+      "Exit 3"
+    ],
+    "landmark": "Chatuchak Park"
   },
   {
     "code": "BL29",
@@ -2236,7 +2786,13 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.798410902256249,
-    "lon": 100.54776165719015
+    "lon": 100.54776165719015,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3"
+    ],
+    "landmark": "Chatuchak Market"
   },
   {
     "code": "BL30",
@@ -2252,7 +2808,12 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.802255249845489,
-    "lon": 100.54103359208698
+    "lon": 100.54103359208698,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "MRTA Blue Line"
+    ]
   },
   {
     "code": "BL31",
@@ -2273,7 +2834,13 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.806171848564684,
-    "lon": 100.53074200337414
+    "lon": 100.53074200337414,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ]
   },
   {
     "code": "BL32",
@@ -2289,7 +2856,17 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.806416040218044,
-    "lon": 100.52104729387648
+    "lon": 100.52104729387648,
+    "exits": [
+      "Exit 1A",
+      "Exit 1B",
+      "Exit 1C",
+      "Exit 2A",
+      "Exit 2B",
+      "Exit 3A",
+      "Exit 3B"
+    ],
+    "landmark": "Gateway Bangsue"
   },
   {
     "code": "BL33",
@@ -2305,7 +2882,11 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.798989693914582,
-    "lon": 100.50981142060049
+    "lon": 100.50981142060049,
+    "exits": [
+      "Exit 4"
+    ],
+    "landmark": "Yanhee International Hospital"
   },
   {
     "code": "BL34",
@@ -2369,7 +2950,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.763337273310345,
-    "lon": 100.47333909924184
+    "lon": 100.47333909924184,
+    "landmark": "Bangkok Noi Floating Market"
   },
   {
     "code": "BL38",
@@ -2415,7 +2997,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.88098041017384,
-    "lon": 100.40923763502467
+    "lon": 100.40923763502467,
+    "landmark": "Central Westgate"
   },
   {
     "code": "PP03",
@@ -2430,7 +3013,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.874724230158076,
-    "lon": 100.41949151486551
+    "lon": 100.41949151486551,
+    "landmark": "โรงพยาบาลเกษมราษฏร์ รัตนาธิเบศร์"
   },
   {
     "code": "PP04",
@@ -2505,7 +3089,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.870326042600114,
-    "lon": 100.48022695988223
+    "lon": 100.48022695988223,
+    "landmark": "Rajamangala University of Technology Suvarnabhumi Nonthaburi North Campus"
   },
   {
     "code": "PP09",
@@ -2520,7 +3105,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.865929377063926,
-    "lon": 100.49425875074799
+    "lon": 100.49425875074799,
+    "landmark": "Central Northville"
   },
   {
     "code": "PP10",
@@ -2535,7 +3121,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.861617445549356,
-    "lon": 100.50493196038968
+    "lon": 100.50493196038968,
+    "landmark": "Big C Rattanathibeth 2"
   },
   {
     "code": "PP11",
@@ -2565,7 +3152,13 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.848563437611348,
-    "lon": 100.51468347035699
+    "lon": 100.51468347035699,
+    "exits": [
+      "Exit 1",
+      "Exit 2",
+      "Exit 3",
+      "Exit 4"
+    ]
   },
   {
     "code": "PP13",
@@ -2595,7 +3188,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.829958323616792,
-    "lon": 100.52652095780105
+    "lon": 100.52652095780105,
+    "landmark": "Big C"
   },
   {
     "code": "PP15",
@@ -2626,7 +3220,14 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.756731995054242,
-    "lon": 100.53490407515967
+    "lon": 100.53490407515967,
+    "exits": [
+      "Exit 4",
+      "Entrance A",
+      "Entrance B",
+      "Entrance C"
+    ],
+    "landmark": "Suan Pakkad Palace"
   },
   {
     "code": "A02",
@@ -2642,7 +3243,13 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.755108258847038,
-    "lon": 100.54216737813728
+    "lon": 100.54216737813728,
+    "exits": [
+      "Entrance A",
+      "Entrance B",
+      "Entrance C"
+    ],
+    "landmark": "Platinum Fashion Mall"
   },
   {
     "code": "A03",
@@ -2658,7 +3265,10 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.75087241588897,
-    "lon": 100.56120676949311
+    "lon": 100.56120676949311,
+    "exits": [
+      "Entrance A"
+    ]
   },
   {
     "code": "A04",
@@ -2674,7 +3284,13 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.742996674942665,
-    "lon": 100.60003833832549
+    "lon": 100.60003833832549,
+    "exits": [
+      "Entrance A",
+      "Entrance B",
+      "Entrance C"
+    ],
+    "landmark": "Petcharavej Hospital"
   },
   {
     "code": "A05",
@@ -2690,7 +3306,12 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.738006106483512,
-    "lon": 100.64515826157051
+    "lon": 100.64515826157051,
+    "exits": [
+      "Entrance A",
+      "Entrance B"
+    ],
+    "landmark": "Vibharam Hospital"
   },
   {
     "code": "A06",
@@ -2706,7 +3327,11 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.732879136208222,
-    "lon": 100.69081534779214
+    "lon": 100.69081534779214,
+    "exits": [
+      "Entrance A",
+      "Entrance B"
+    ]
   },
   {
     "code": "A07",
@@ -2722,7 +3347,13 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.72769160401732,
-    "lon": 100.74855301688604
+    "lon": 100.74855301688604,
+    "exits": [
+      "Entrance A",
+      "Entrance B",
+      "Entrance C"
+    ],
+    "landmark": "Catfish Farm"
   },
   {
     "code": "A08",
@@ -2738,7 +3369,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.69422050027411,
-    "lon": 100.7511932209504
+    "lon": 100.7511932209504,
+    "landmark": "Suvarnabhumi Airport"
   },
   {
     "code": "RD01",
@@ -2770,7 +3402,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.792145798025908,
-    "lon": 100.4772492880274
+    "lon": 100.4772492880274,
+    "landmark": "Anan Phatthana 2 Hospital"
   },
   {
     "code": "RD03",
@@ -2855,7 +3488,8 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.849401673704001,
-    "lon": 100.56171228965236
+    "lon": 100.56171228965236,
+    "landmark": "Museum of Contemporary Art"
   },
   {
     "code": "RD08",
@@ -2887,7 +3521,16 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.886243005651332,
-    "lon": 100.5818912651377
+    "lon": 100.5818912651377,
+    "exits": [
+      "Entrance A",
+      "Entrance B",
+      "Entrance C",
+      "Entrance D",
+      "Entrance E",
+      "Entrance F"
+    ],
+    "landmark": "IT Square"
   },
   {
     "code": "RD10",
@@ -2919,7 +3562,12 @@
     ],
     "hasLiveArrivals": false,
     "lat": 13.91464916751675,
-    "lon": 100.59799337244206
+    "lon": 100.59799337244206,
+    "exits": [
+      "Entrance A",
+      "Entrance B"
+    ],
+    "landmark": "Don Mueang Airport"
   },
   {
     "code": "RD12",
