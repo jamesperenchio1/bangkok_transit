@@ -54,7 +54,7 @@ import { x402Client, wrapFetchWithPayment } from "@x402/fetch";
 import { ExactEvmScheme } from "@x402/evm/exact/client";
 import { privateKeyToAccount } from "viem/accounts";
 const client = new x402Client().register("eip155:*", new ExactEvmScheme(privateKeyToAccount(process.env.TEST_KEY as `0x${string}`)));
-const res = await wrapFetchWithPayment(fetch, client)("https://bangkok-transit.com/api/v1/route?from=N8&to=A08");
+const res = await wrapFetchWithPayment(fetch, client)("https://bangkok-transit.com/api/v1/route?from=N8&to=A1");
 console.log(res.status, await res.json(), res.headers.get("payment-response"));
 ```
 

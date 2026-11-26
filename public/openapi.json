@@ -101,7 +101,7 @@
             "name": "station",
             "in": "query",
             "required": true,
-            "description": "Station code, for example N8 or CEN.",
+            "description": "Official station code as shown on the platform (N8, CEN, A8, BL01) or the page slug (siam-cen). Responses return the same `code` and `slug`, so either can be sent back.",
             "schema": {
               "type": "string",
               "example": "N8"
@@ -170,7 +170,7 @@
             "name": "from",
             "in": "query",
             "required": true,
-            "description": "Start station code or slug.",
+            "description": "Start station: official code as shown on the platform (N8, A8, BL01) or page slug.",
             "schema": {
               "type": "string",
               "example": "N8"
@@ -180,10 +180,10 @@
             "name": "to",
             "in": "query",
             "required": true,
-            "description": "Destination station code or slug.",
+            "description": "Destination station: official code as shown on the platform (CEN, A8, BL01) or page slug.",
             "schema": {
               "type": "string",
-              "example": "A08"
+              "example": "A1"
             }
           }
         ],
@@ -249,7 +249,7 @@
             "name": "slug",
             "in": "path",
             "required": true,
-            "description": "Page slug (siam-cen) or station code (CEN).",
+            "description": "Page slug (siam-cen) or official station code (CEN, A8, BL01).",
             "schema": {
               "type": "string",
               "example": "siam-cen"

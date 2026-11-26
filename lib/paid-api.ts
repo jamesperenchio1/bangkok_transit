@@ -5,14 +5,14 @@
 //
 // Everything on the website stays free and static; only these endpoints cost
 // money, and only to the callers who ask for them.
-import { shownCode, stationsByCode, type Station } from "@/data/stations";
+import { codeAliases, shownCode, stations, stationsByCode, type Station } from "@/data/stations";
 import interchanges from "@/data/interchanges.json";
 import { isFresh, isShowable, ageMs, type Arrivals } from "@/lib/bts";
 import type { ArrivalsDocument } from "@/lib/arrivals-document";
 import { findPath } from "@/lib/transit-graph";
 import {
   LINES, SITE_URL, absoluteUrl, describeRoute, lineBranches, lineStations, lineTermini, linesBySlug, markdownPath,
-  neighbours, stationLines, stationPath, stationsBySlug, linePath,
+  neighbours, stationLines, stationPath, stationSlug, stationsBySlug, linePath,
   type LineInfo,
 } from "@/lib/seo";
 
@@ -43,7 +43,7 @@ export const PAID_ENDPOINTS: PaidEndpoint[] = [
     price: "$0.002",
     summary: "Live arrivals at one BTS station",
     description:
-      "Live train arrivals for one BTS Sukhumvit or Silom station (query: station=<code>, e.g. N8 or CEN). Each reading carries its timestamp and age, and says whether it is last-known; readings older than 30 minutes are not served. Not charged when there is no current reading.",
+      "Live train arrivals for one BTS Sukhumvit or Silom station (query: station=<official code or slug>, e.g. N8 or CEN). Each reading carries its timestamp and age, and says whether it is last-known; readings older than 30 minutes are not served. Not charged when there is no current reading.",
     example: `${API_BASE}/arrivals?station=N8`,
   },
   {
@@ -53,8 +53,8 @@ export const PAID_ENDPOINTS: PaidEndpoint[] = [
     price: "$0.005",
     summary: "Route between two stations",
     description:
-      "Best route between two stations on any Bangkok rail line (query: from=<code>, to=<code>): lines, where to change, direction to board, walking transfers, stops and estimated minutes. Estimates, not a timetable.",
-    example: `${API_BASE}/route?from=N8&to=A08`,
+      "Best route between two stations on any Bangkok rail line (query: from=<official code or slug>, to=<official code or slug>): lines, where to change, direction to board, walking transfers, stops and estimated minutes. Estimates, not a timetable.",
+    example: `${API_BASE}/route?from=N8&to=A1`,
   },
   {
     id: "station",
@@ -63,7 +63,7 @@ export const PAID_ENDPOINTS: PaidEndpoint[] = [
     price: "$0.001",
     summary: "Facts about one station",
     description:
-      "Names (English and Thai), official code, lines, neighbouring stations, walking interchanges and coordinates for one station. The slug is the page slug (siam-cen) or the station code (CEN).",
+      "Names (English and Thai), official code, lines, neighbouring stations, walking interchanges and coordinates for one station. The slug is the page slug (siam-cen) or the official station code (CEN, A1, BL01).",
     example: `${API_BASE}/stations/siam-cen`,
   },
   {
@@ -82,17 +82,32 @@ export const priceUsd = (e: PaidEndpoint) => Number(e.price.replace("$", ""));
 
 const NOTE_ESTIMATE = "Times are estimates from track distance and typical train speed, not a timetable.";
 
-const stationRef = (s: Station) => ({ code: s.code, shownCode: shownCode(s), nameEn: s.nameEn, nameTh: s.nameTh });
+/**
+ * How a station is named in every response. `code` is the OFFICIAL code (what
+ * a rider sees on the platform: BL01 is Tha Phra, A8 is Makkasan); `slug` is
+ * the page slug; `id` is the app's internal id, which for MRT Blue, ARL and SRT
+ * Red is NOT the official code (internal BL01 is Lak Song). `code` and `slug`
+ * can both be sent back as ?station= / ?from= / ?to= and mean the same station.
+ */
+const stationRef = (s: Station) => ({ slug: stationSlug(s), code: shownCode(s), id: s.code, nameEn: s.nameEn, nameTh: s.nameTh });
 
-/** Resolves a page slug ("siam-cen") or a station code ("CEN", any case). */
-export function findStation(idOrSlug: string): Station | undefined {
-  const key = idOrSlug.trim();
+/** Official code (any of a station's, any case) -> station. Official codes are unique across the network. */
+const stationsByOfficialCode = new Map(stations.flatMap((s) => codeAliases(s).map((c) => [c.toUpperCase(), s] as const)));
+
+/**
+ * Resolves what a caller typed. Order matters because the two code systems
+ * collide (38 official codes are also another station's internal id): a page
+ * slug first (unambiguous), then the OFFICIAL code, and only then the internal
+ * id, which is a fallback for ids that are not anyone's official code.
+ */
+export function findStation(input: string): Station | undefined {
+  const key = input.trim();
   if (!key || key.length > 80) return undefined;
-  return stationsBySlug.get(key.toLowerCase()) ?? stationsByCode.get(key) ?? stationsByCode.get(key.toUpperCase());
+  return stationsBySlug.get(key.toLowerCase()) ?? stationsByOfficialCode.get(key.toUpperCase()) ?? stationsByCode.get(key) ?? stationsByCode.get(key.toUpperCase());
 }
 
-export function stationFacts(idOrSlug: string) {
-  const s = findStation(idOrSlug);
+export function stationFacts(input: string) {
+  const s = findStation(input);
   if (!s) return null;
   const walking = (interchanges as { a: string; b: string }[])
     .filter((i) => i.a === s.code || i.b === s.code)
@@ -132,7 +147,7 @@ export type RouteResult =
   | { ok: false; status: 400 | 404; error: string };
 
 export function routeFacts(from: string | undefined, to: string | undefined): RouteResult {
-  if (!from || !to) return { ok: false, status: 400, error: "Both ?from= and ?to= are required (station code or slug)." };
+  if (!from || !to) return { ok: false, status: 400, error: "Both ?from= and ?to= are required (official station code as shown on the platform, or page slug)." };
   const a = findStation(from);
   const b = findStation(to);
   if (!a || !b) return { ok: false, status: 404, error: `Unknown station: ${!a ? from : to}` };
@@ -167,7 +182,7 @@ export type ArrivalsResult =
 
 /** One station's reading from the shared document, with its age made explicit (the app's "honest live data" rule). */
 export function arrivalsFacts(doc: ArrivalsDocument, station: string | undefined, now = Date.now()): ArrivalsResult {
-  if (!station) return { ok: false, status: 400, error: "?station= is required (station code, e.g. N8)." };
+  if (!station) return { ok: false, status: 400, error: "?station= is required (official station code as shown on the platform, e.g. N8, or the page slug)." };
   const s = findStation(station);
   if (!s) return { ok: false, status: 404, error: `Unknown station: ${station}` };
   if (!s.hasLiveArrivals) {

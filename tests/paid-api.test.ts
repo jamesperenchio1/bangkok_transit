@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { ARRIVALS_URL } from "@/lib/arrivals-url";
 import type { ArrivalsDocument } from "@/lib/arrivals-document";
 import type { Arrivals } from "@/lib/bts";
+import { stations } from "@/data/stations";
+import { stationSlug } from "@/lib/seo";
 import {
   LIVE_ARRIVALS_URL, PAID_ENDPOINTS, apiIndex, arrivalsFacts, findStation, lineFacts, priceUsd, routeFacts, stationFacts,
 } from "@/lib/paid-api";
@@ -95,6 +97,51 @@ describe("route, station and line facts", () => {
     expect(findStation("cen")?.code).toBe("CEN");
     expect(findStation("x".repeat(500))).toBeUndefined();
     expect(findStation("")).toBeUndefined();
+  });
+
+  it("reads a code the way a rider does: the official code wins over the internal id", () => {
+    // Internal BL01 is Lak Song; the platform sign BL01 is Tha Phra.
+    expect(findStation("BL01")?.nameEn).toBe("Tha Phra");
+    expect(findStation("bl01")?.nameEn).toBe("Tha Phra");
+    expect(findStation("BL38")?.nameEn).toBe("Lak Song");
+    // ARL: official A1 is Suvarnabhumi (internal A08, which still resolves).
+    expect(findStation("A1")?.nameEn).toBe("Suvarnabhumi");
+    expect(findStation("A08")?.nameEn).toBe("Suvarnabhumi");
+    // Either of a shared station's official codes.
+    expect(findStation("RN01")?.code).toBe(findStation("RW01")?.code);
+  });
+
+  it("every station answers to its own `code` and `slug` as returned, so a response can be sent back", () => {
+    const refs = (b: unknown): { code: string; slug: string; nameEn: string }[] => {
+      const out: { code: string; slug: string; nameEn: string }[] = [];
+      const walk = (v: unknown) => {
+        if (Array.isArray(v)) v.forEach(walk);
+        else if (v && typeof v === "object") {
+          const o = v as Record<string, unknown>;
+          if (typeof o.slug === "string" && typeof o.code === "string" && typeof o.nameEn === "string") out.push(o as never);
+          Object.values(o).forEach(walk);
+        }
+      };
+      walk(b);
+      return out;
+    };
+    for (const s of stations) {
+      const facts = stationFacts(stationSlug(s))!;
+      for (const r of refs(facts)) {
+        // `code` may list two official codes ("RN01 / RW01"); each must find the same station as the slug.
+        const bySlug = findStation(r.slug);
+        for (const c of r.code.split("/").map((x) => x.trim())) expect(findStation(c)?.code, `${r.nameEn} ${c}`).toBe(bySlug?.code);
+      }
+    }
+  });
+
+  it("plans a route between official codes, not internal ids", () => {
+    const r = routeFacts("BL01", "A1");
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect((r.body.from as { nameEn: string }).nameEn).toBe("Tha Phra");
+      expect((r.body.to as { nameEn: string }).nameEn).toBe("Suvarnabhumi");
+    }
   });
 
   it("describes a station and a line", () => {
