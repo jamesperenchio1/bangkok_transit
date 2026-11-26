@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { Settings as SettingsIcon, X } from "lucide-react";
 import { ReportIssue } from "@/components/ReportIssue";
 import { useT } from "@/lib/i18n";
+import { useBackLayer } from "@/lib/use-back-layer";
 
 // Only this shell (a button and a dialog frame) is in the main bundle. The
 // panel - search, sections, every option's text - is downloaded when the
@@ -30,6 +31,10 @@ export function SettingsMenu() {
   // reopening is instant and keeps its scroll position and open section.
   const [everOpened, setEverOpened] = useState(false);
   const { t } = useT();
+
+  // Back closes the dialog too, before it leaves the page. The native dialog
+  // keeps its own Escape and focus trapping; this only adds the history entry.
+  useBackLayer(open, () => setOpen(false));
 
   useEffect(() => {
     const dialog = ref.current;

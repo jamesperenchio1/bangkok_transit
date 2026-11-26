@@ -1,7 +1,8 @@
 # Every push and pull request: lint, typecheck, unit tests, the poller's
-# Workers-runtime tests, and the end-to-end suite against the production
-# build. Deployment itself is Cloudflare Workers Builds (on push to main),
-# so no Cloudflare credentials live in GitHub.
+# Workers-runtime tests, the end-to-end suite against the production build,
+# and a throttled first-load performance budget. Deployment itself is
+# Cloudflare Workers Builds (on push to main), so no Cloudflare credentials
+# live in GitHub.
 name: CI
 
 on:
@@ -45,6 +46,34 @@ jobs:
         if: failure()
         with:
           name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+
+  perf:
+    name: Performance budget
+    runs-on: ubuntu-latest
+    # Slow 4G with a 4x CPU throttle makes the first load several times slower;
+    # the spec's own 180 s timeout is the real limit, this is the job ceiling.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright Chromium
+        # The budget is measured through the DevTools protocol, so Chromium is
+        # the only engine needed (the spec skips the other projects).
+        run: npx playwright install --with-deps chromium
+      - name: Performance budget (Slow 4G, 4x CPU)
+        # This step builds the site and serves it with wrangler, exactly like
+        # the e2e step above (see playwright.config.ts webServer).
+        run: npm run test:perf
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: perf-report
           path: playwright-report/
           retention-days: 14
 

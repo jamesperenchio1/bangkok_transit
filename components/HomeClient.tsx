@@ -27,6 +27,9 @@ import { restoreLang, stationName, useLangStore, useT } from "@/lib/i18n";
 import { restoreSettings, useSettingsStore } from "@/lib/settings-store";
 import { googleMapsKey } from "@/lib/google-maps";
 import { chooseMap } from "@/lib/map-provider";
+import { firstRideLeg, tripTiming } from "@/lib/trip-time";
+import { useArrivals } from "@/lib/use-arrivals";
+import { tapFeedback } from "@/lib/haptics";
 
 // Line geometry starts downloading with hydration. The map chunk itself is
 // requested when its component first renders: MapLibre by default, Google
@@ -41,6 +44,11 @@ const GoogleTransitMap = dynamic(
   () => import("@/components/GoogleTransitMap").then((m) => m.GoogleTransitMap),
   { ssr: false },
 );
+
+// Only /v2 renders it, so the classic page never downloads the sheet's code.
+const StationSheet = dynamic(() => import("@/components/v2/StationSheet").then((m) => m.StationSheet), {
+  ssr: false,
+});
 
 /**
  * One button that shows the language you'd switch *to*. Two 44px segments
@@ -92,15 +100,27 @@ function OfflineBanner() {
 export function HomeClient({
   children,
   networkSvg,
+  variant = "classic",
 }: {
   children?: React.ReactNode;
   /** Build-time SVG of the network, painted before the map's JS arrives. */
   networkSvg?: string;
+  /**
+   * "classic" is the shipped app (station cards on the map). "v2" is the
+   * native-feeling preview: a station tap opens its own sheet instead of the
+   * map card, and everything else is unchanged.
+   */
+  variant?: "classic" | "v2";
 }) {
+  const v2 = variant === "v2";
   const [start, setStart] = useState<Station | null>(null);
   const [destination, setDestination] = useState<Station | null>(null);
   const [recentTrips, setRecentTrips] = useState<{ from: string; to: string }[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
+  // /v2's station sheet, and the browser-back layer that closes it.
+  const [stationSheet, setStationSheet] = useState<Station | null>(null);
+  // Bumped to make the search palette close itself: it owns its open state.
+  const [closeSearch, setCloseSearch] = useState(0);
   const [focusStation, setFocusStation] = useState<Station | null>(null);
   const [focusPlace, setFocusPlace] = useState<Place | null>(null);
   // The place a route ends (or starts) at. Kept beside the station so the last
@@ -121,6 +141,13 @@ export function HomeClient({
   // grey tile; the fallback holds for the rest of the visit.
   const [googleFailed, setGoogleFailed] = useState(false);
   const [startedOffline] = useState(() => typeof navigator !== "undefined" && !navigator.onLine);
+  // PWA shortcut / shared link asked for "route from where I am"; resolved
+  // once geolocation settles, never from a guessed position.
+  const [nearRequested, setNearRequested] = useState(false);
+
+  // /v2's station sheet pushes and releases its own back-layer entry (see
+  // components/v2/StationSheet.tsx) - registering one here as well would make
+  // a single back press walk two history entries.
 
   // Recent trips (localStorage)
   useEffect(() => {
@@ -205,10 +232,48 @@ export function HomeClient({
     // initializer: the page is prerendered, where there's no URL to read,
     // and the header would then mismatch on hydration.
     /* eslint-disable react-hooks/set-state-in-effect */
+    const sharedLang = params.get("lang");
+    if (sharedLang === "en" || sharedLang === "th") useLangStore.getState().setLang(sharedLang);
     if (from) setStart(from);
-    if (to && to.code !== from?.code) setDestination(to);
+    if (to && to.code !== from?.code) {
+      setDestination(to);
+      // A shared link can end at a place, not a station: restore the last
+      // walk too instead of silently dropping it and rerouting to the station.
+      const name = params.get("toName");
+      const latRaw = params.get("toLat");
+      const lonRaw = params.get("toLon");
+      const lat = latRaw === null ? NaN : Number(latRaw);
+      const lon = lonRaw === null ? NaN : Number(lonRaw);
+      if (name && Number.isFinite(lat) && Number.isFinite(lon)) {
+        setDestinationPlace({ id: "shared", name, detail: "", kind: "place", lat, lon });
+      }
+    }
+    if (params.get("near") === "1") setNearRequested(true);
+    // Web Share Target: a maps link or coordinates shared into the installed
+    // app becomes a route. The station is the nearest one to the pin; the pin
+    // itself is kept as the destination place so the final walk is shown.
+    if (!to) {
+      const shared = `${params.get("title") ?? ""} ${params.get("text") ?? ""} ${params.get("url") ?? ""}`;
+      const match =
+        /@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/.exec(shared) ??
+        /[?&](?:q|query|destination|ll)=(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/.exec(shared);
+      if (match) {
+        const lat = Number(match[1]);
+        const lon = Number(match[2]);
+        if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+          const near = nearestStation(lat, lon);
+          setDestination(near.station);
+          const name = (params.get("title") || params.get("text") || t.sharedPlace).trim().slice(0, 80);
+          setDestinationPlace({ id: "shared", name, detail: "", kind: "place", lat, lon });
+        }
+      }
+    }
     setUrlRead(true);
     /* eslint-enable react-hooks/set-state-in-effect */
+    // Mount-only: deep links are read once, before the URL mirror starts.
+    // `t.sharedPlace` is only the fallback name; the language itself is set
+    // from the same URL above, so re-running on a language switch is wrong.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     if (!urlRead) return;
@@ -217,9 +282,23 @@ export function HomeClient({
     else params.delete("from");
     if (destination) params.set("to", destination.code);
     else params.delete("to");
+    // `toName`/`toLat`/`toLon` belong to the current destination place; a
+    // plain station selection must clear them or a reload would resurrect it.
+    if (destinationPlace) {
+      params.set("toName", destinationPlace.name);
+      params.set("toLat", String(destinationPlace.lat));
+      params.set("toLon", String(destinationPlace.lon));
+    } else {
+      params.delete("toName");
+      params.delete("toLat");
+      params.delete("toLon");
+    }
+    params.delete("near");
     const query = params.toString();
-    window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
-  }, [urlRead, start, destination]);
+    // `history.state` carries the back-layer tags pushed by open sheets;
+    // replaceState must keep them, or back would stop closing the top layer.
+    window.history.replaceState(window.history.state, "", query ? `?${query}` : window.location.pathname);
+  }, [urlRead, start, destination, destinationPlace]);
 
   // The dot follows every fix; anything that decides something for the rider
   // (nearest station, stop alerts) waits for `settled`, so a jittery fix can't
@@ -228,6 +307,16 @@ export function HomeClient({
     () => (settled ? nearestStation(settled.lat, settled.lon) : null),
     [settled],
   );
+
+  // Resolve a "route from here" shortcut once, after the position is trusted.
+  useEffect(() => {
+    if (!nearRequested || !nearest) return;
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setStart(nearest.station);
+    setStartPlace(null);
+    setNearRequested(false);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [nearRequested, nearest]);
 
   // The route is derived, not staged: as soon as both ends exist the path is
   // highlighted. There is no separate confirm step to get stuck on.
@@ -267,7 +356,14 @@ export function HomeClient({
       name: stationName(start, lang),
     };
   }, [start, position, startPlace, walkSpeed, lang]);
-  const totalMinutes = (path?.minutes ?? 0) + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0);
+  // Door-to-door time now includes the wait for the first train (live when
+  // BTS data is fresh, otherwise half the line's headway). Same helper as
+  // the route sheet, so the header and the sheet cannot disagree.
+  const firstLeg = path ? firstRideLeg(path) : null;
+  const firstArrivals = useArrivals(firstLeg?.station.code ?? null);
+  const timing = path ? tripTiming(path, firstArrivals.data, firstArrivals.now) : null;
+  // Walk estimates are fractional; riders read whole minutes.
+  const totalMinutes = Math.round((timing?.minutes ?? path?.minutes ?? 0) + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0));
 
   // No route, but only because of lines turned off for routes: say which.
   const blockedBy = useMemo(
@@ -278,6 +374,7 @@ export function HomeClient({
   const fareLine = showFare ? fareText(t, computeFare(path, fares)) : "";
 
   const handleSetStart = (station: Station, place?: Place) => {
+    tapFeedback();
     setStart(station);
     setStartPlace(place ?? null);
     if (destination?.code === station.code) {
@@ -288,6 +385,7 @@ export function HomeClient({
 
   const handleSetDestination = (station: Station, place?: Place) => {
     if (start?.code === station.code) return;
+    tapFeedback();
     setDestination(station);
     setDestinationPlace(place ?? null);
     setSheetOpen(true);
@@ -298,6 +396,17 @@ export function HomeClient({
   // header chips. Dismissing the sheet keeps the card visible.
   const handleSelectStation = () => {
     setSheetOpen(false);
+  };
+
+  // /v2: a station tap opens the native sheet instead of a map card, and takes
+  // over the screen from the search palette (which owns its own open state).
+  // The sheet stays open after Start/Destination is set, so the rider sees
+  // their choice land on it. The route sheet is left alone on purpose: closing
+  // it here would race its history entry against the sheet's new one, and the
+  // station sheet is simply drawn above it.
+  const handleStationOpen = (station: Station) => {
+    setCloseSearch((n) => n + 1);
+    setStationSheet(station);
   };
 
   const clearRoute = () => {
@@ -418,11 +527,15 @@ export function HomeClient({
               startCode: start?.code ?? null,
               destinationCode: destination?.code ?? null,
               focusStationCode: focusStation?.code ?? null,
-              routeMinutes: path ? path.minutes + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0) : null,
+              routeMinutes: path ? totalMinutes : null,
               routeChanges: path?.changes ?? null,
             }}
           />
-          <StationSearch onSelectStation={handleSearchSelect} onSelectPlace={handlePlaceSelect} />
+          <StationSearch
+            onSelectStation={handleSearchSelect}
+            onSelectPlace={handlePlaceSelect}
+            closeSignal={closeSearch}
+          />
           <SettingsMenu />
         </div>
       </header>
@@ -459,7 +572,7 @@ export function HomeClient({
               return (
                 <button
                   key={`${tr.from}-${tr.to}`}
-                  onClick={() => { setStart(fromS); setDestination(toS); setSheetOpen(true); }}
+                  onClick={() => { tapFeedback(); setStart(fromS); setDestination(toS); setSheetOpen(true); }}
                   className="shrink-0 rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-sm hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
                 >
                   {stationName(fromS, lang)} → {stationName(toS, lang)}
@@ -495,6 +608,7 @@ export function HomeClient({
         {!settingsReady ? null : useGoogle ? (
           <GoogleTransitMap
             onSelectStation={handleSelectStation}
+            onStationOpen={v2 ? handleStationOpen : undefined}
             onSetStart={handleSetStart}
             onSetDestination={handleSetDestination}
             startCode={startCode}
@@ -513,6 +627,7 @@ export function HomeClient({
         ) : (
           <TransitMap
             onSelectStation={handleSelectStation}
+            onStationOpen={v2 ? handleStationOpen : undefined}
             onSetStart={handleSetStart}
             onSetDestination={handleSetDestination}
             startCode={startCode}
@@ -532,8 +647,12 @@ export function HomeClient({
         {nearest && !hasRoute && (
           <button
             onClick={() => {
+              tapFeedback();
               setStart(nearest.station);
               setStartPlace(null);
+              // Open the station card too, so the rider can confirm the
+              // platform and see the live trains before choosing a destination.
+              setFocusStation({ ...nearest.station });
               // remember the walk from the rider to the station
               if (settled) {
                 // stored via state below; we reuse userPosition via a temp? We'll compute in HomeClient as firstWalk
@@ -543,7 +662,7 @@ export function HomeClient({
           >
             <Navigation size={14} className="shrink-0 text-blue-700 dark:text-blue-400" aria-hidden="true" />
             <span className="truncate">
-              {t.nearest}: {stationName(nearest.station, lang)} — start route
+              {t.nearest}: {stationName(nearest.station, lang)} — {t.startRoute}
             </span>
             <span className="shrink-0 text-xs text-neutral-600 dark:text-neutral-400">
               {distanceLabel(nearest.meters)}
@@ -571,6 +690,16 @@ export function HomeClient({
           useSettingsStore.getState().update({ unusedLines: unusedLines.filter((l) => !lines.includes(l)) })
         }
       />
+      {v2 && (
+        <StationSheet
+          station={stationSheet}
+          onClose={() => setStationSheet(null)}
+          startCode={startCode}
+          destinationCode={destinationCode}
+          onSetStart={handleSetStart}
+          onSetDestination={handleSetDestination}
+        />
+      )}
       {children}
     </div>
   );

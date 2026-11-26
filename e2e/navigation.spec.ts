@@ -80,7 +80,7 @@ test.describe("navigation and search", () => {
     await page.getByRole("combobox").fill("chit lom");
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");
-    await expect(page.locator(".maplibregl-popup").getByText("Chit Lom")).toBeVisible();
+    await expect(page.locator(".maplibregl-popup").getByText("Chit Lom", { exact: true })).toBeVisible();
   });
 
   test("the search panel lists every station by line until you type, and closes on Escape", async ({ page }) => {
@@ -117,6 +117,6 @@ test.describe("location denied", () => {
     await page.getByRole("button", { name: "Search stations" }).click();
     await page.getByRole("combobox").fill("siam");
     await page.getByRole("option").first().click();
-    await expect(page.locator(".maplibregl-popup").getByText("Siam")).toBeVisible();
+    await expect(page.locator(".maplibregl-popup").getByText("Siam", { exact: true })).toBeVisible();
   });
 });

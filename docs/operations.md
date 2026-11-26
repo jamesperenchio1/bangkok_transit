@@ -26,6 +26,9 @@ None of this is in code, so `scripts/check-live.mjs` checks the effects of each 
 6. **Early Hints** (on, free) — Speed → Settings → Content Optimization → Early Hints. The home page carries `Link` headers in `public/_headers` (preconnect to the tile host, preload of the map style and `line-geometry.json`). With the toggle on, Cloudflare caches those headers and sends them as a `103 Early Hints` response while it is still producing the page, so the browser starts those downloads before the HTML arrives; the headers also work as plain headers with it off, just later. It needs HTTP/2 or HTTP/3 and Chrome 94+ (others ignore the 103). Cloudflare only generates a 103 for pages with no file extension or `.html`, status 200/301/302, with `Link` headers of `preload`/`preconnect` — the home page `/` qualifies. It costs nothing and adds no Worker requests. To confirm it is on, after one warm-up request: `curl -sv --http2 https://bangkok-transit.com/ -o /dev/null 2>&1 | grep -iE "< HTTP/2 103|< link"` should show a `103` line before the `200`. A 103 is not guaranteed on every request (Cloudflare skips it when the page is served before the lookup finishes), so a few tries may be needed. `check-live` verifies the headers, not the toggle.
 7. **Google Maps Platform (opt-in only)** — enable Maps JavaScript API (the optional Google map), Places API (New) (search) and Static Maps API (the place card); create a browser key restricted to `https://bangkok-transit.com/*`, `https://www.bangkok-transit.com/*`, `http://localhost:*/*` and to those APIs; set daily quotas and a budget alert. Add `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` to Workers Builds and `.env.local`; without it the Google option is simply not offered in Settings. No Map ID is used (the map is a styled raster map, so Settings can switch Google's own names and the dark theme live); a leftover `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` build variable is unused and can be deleted. The Google map is billed per map load, so it is only ever loaded after a rider chooses it. The key is baked into the static export and is visible in the browser's Network tab and source (a browser key always is), so it must be treated as public. Checked 2026-11-12: the referrer restriction does stop *other websites* (Places and Static Maps both return 403 for a foreign origin), but it is not authentication - a script that sends `Referer: https://bangkok-transit.com/` is accepted, and Static Maps also accepts a request with no referrer at all. The real protection is therefore the **quota and the budget**: restrict the key to exactly Maps JavaScript API, Places API (New) and Maps Static API; set a low daily quota on each (Static Maps especially); keep a budget alert. Rotate the key in Google Cloud + Cloudflare if it is ever abused.
 
+8. **Cloudflare Web Analytics** (optional, free) — enable it for `bangkok-transit.com` in the dashboard. The beacon is injected at the edge and `public/_headers` already allows `static.cloudflareinsights.com` / `cloudflareinsights.com`, so no build change is needed. Cookieless: it reports page views, referrers, Core Web Vitals and installs, not identities. Use it to see which stations/routes people open and where searches fail; do not add a client-side analytics bundle.
+9. **Report intake** (optional) — deploy `cloudflare/report` (bucket `bangkok-transit-reports`, custom domain `reports.bangkok-transit.com`), add a Cloudflare Rate Limiting rule (5/min per IP on `POST /report`), then set `NEXT_PUBLIC_REPORT_URL=https://reports.bangkok-transit.com` in Workers Builds. Without the variable the report sheet only copies/emails/saves, exactly as before. See `cloudflare/report/README.md`.
+
 ## Paid API (x402)
 
 `https://bangkok-transit.com/api/v1` sells data to AI agents per call (design and rules: `docs/architecture.md#paid-api-x402`). Only `/api/*` runs a Worker; keep `assets.run_worker_first` in `wrangler.jsonc` exactly `["/api/*"]`.
@@ -102,6 +105,39 @@ Poller logs (`console.warn("upstream failures")`, state transitions) are in the 
 | No live times at all, console shows a CORS error | `check-live` (ACAO header count, exposed headers) | Remove any CORS policy from the R2 bucket; check the Transform Rule. |
 | `check-live`: not edge-cached | `cf-cache-status` on `live.` | Restore the Cache Rule. |
 | A deploy broke the site | Workers → `bangkok-transit` → Deployments | Roll back to the previous version there, then fix forward. |
+
+## Preview, updates and performance
+
+### The "new version" toast
+
+The service worker no longer takes over mid-session. After a deploy, an open tab keeps the build it loaded and the app shows **"A new version is available"** with *Reload* once the new worker is waiting. This is normal, not an error.
+
+- **Rider taps Reload**: the waiting worker activates and the page reloads into the new build.
+- **Rider ignores it**: the old build keeps working; closing every tab of the app (or the next cold start) picks up the new worker. Nothing is lost and nothing is forced.
+- **If a deploy seems stale**: check Workers → `bangkok-transit` → Deployments that the push actually built and deployed. A device can legitimately keep the old shell until the toast is accepted; a hard reload (Cmd/Ctrl-Shift-R) bypasses the worker for that load, but the next normal load is controlled again until the waiting worker activates.
+- **If the toast never appears after a deploy**: hard reload once, then check DevTools → Application → Service Workers for a *waiting* worker. Private windows and "clear site data" remove the worker entirely; the next visit installs it afresh.
+
+### Verifying `/v2`
+
+`/v2` is the station-bottom-sheet preview, reachable by URL only and `noindex`; the classic `/` is unchanged. Once it is merged and deployed:
+
+1. Open `https://bangkok-transit.com/v2` (and `/?from=N8&to=CEN` on `/v2` to carry a route).
+2. Tap a station: the sheet should rise from the bottom with the same name, live times, Start and Destination actions.
+3. Press browser back (Android) or swipe from the edge (iOS): the sheet closes, the route stays, and a second back leaves the page as expected.
+4. Confirm `https://bangkok-transit.com/` still opens the classic popup card, and that `/v2` is not linked from `/` or the sitemap.
+5. View source / DevTools: `/v2` must carry `noindex`; it must make no new origin request and add no server work.
+
+It is a preview to **delete once the decision is made** (see `docs/architecture.md` → *Preview UI*): remove `app/v2/`, `components/v2/` and its copy, and leave the shared helpers alone. Do not link it from the app or add it to the sitemap while it exists.
+
+### Triaging a performance-budget failure
+
+The budget (`npm run test:perf`, also the CI `perf` job) runs `/` on Slow 4G with a 4x CPU throttle: LCP ≤ 6000 ms, CLS ≤ 0.1, JS transfer ≤ 600 KB. LCP lands on MapLibre's attribution because the map canvas is not LCP-eligible, so it effectively measures the map bundle arriving; measured runs are 4.4-5.0 s, and 6 s leaves room for CDP variance while still catching a real regression. The run prints `[perf] LCP … · CLS … · JS …` and attaches `performance-budget.json` with the list of `.js` files to the Playwright report.
+
+1. Reproduce locally with `npm run test:perf` (it builds and serves `out/` through `wrangler dev`, like production). Compare the numbers with the failing CI run - if only CI fails and both attempts are close to budget, suspect runner noise before a regression.
+2. **JS over budget**: use the attached list to find what grew. Common causes are a new client component imported into the home page instead of lazy-loaded, a second copy of a library (check for duplicate `maplibre`/`react` chunks), or a dependency added to the critical path. Fix by splitting or deferring - never by adding an API route, a server, or a paid plan (the cost rule).
+3. **LCP over budget**: look for work now starting before the map paints (a new fetch at hydration, a blocking script, an extra font/sprite request). Anything that isn't needed for the first frame belongs behind `whenMapPainted()` or in a lazy chunk.
+4. **CLS over budget**: a late-arriving element above the fold (banner, toast, install hint) that pushes the map or header. Reserve its space, or render it in a fixed overlay.
+5. If the budget genuinely needs to change, change the constant in `e2e/performance.spec.ts` and the table in `docs/architecture.md` together, with the reason in the PR - never silently loosen one.
 
 ## Fare audit
 

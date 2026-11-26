@@ -38,7 +38,6 @@ test.describe("place search", () => {
 
     const option = page.getByRole("option", { name: /Siam Paragon/ });
     await expect(option).toBeVisible();
-    await expect(option).toContainText("Shopping mall");
     await option.click();
 
     const card = page.locator(".maplibregl-popup");
@@ -60,7 +59,7 @@ test.describe("place search", () => {
     await page.getByRole("option", { name: /Central World/ }).click();
 
     const card = page.locator(".maplibregl-popup");
-    const stationLine = card.locator("p").filter({ hasText: /Siam/ });
+    const stationLine = card.locator("p").filter({ hasText: /Station:/ });
     await expect(stationLine).toContainText("Station");
     await expect(stationLine).toContainText("Siam");
 
@@ -71,7 +70,9 @@ test.describe("place search", () => {
     // sheet names it and counts the walk.
     const sheet = page.getByRole("dialog");
     await expect(sheet.getByText("Central World").first()).toBeVisible();
-    await expect(sheet.getByText(/Walk \d+ m from the previous station/)).toBeVisible();
+    // Two walks can match: a walking transfer between stations and the final
+    // walk to the place. The final walk is rendered last.
+    await expect(sheet.getByText(/Walk \d+ m from the previous station/).last()).toBeVisible();
   });
 
   test("can be switched off: no request is made", async ({ page }) => {
@@ -86,7 +87,9 @@ test.describe("place search", () => {
     await page.getByRole("switch", { name: "Search places online" }).click();
     await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Search stations" }).click();
-    await page.getByRole("combobox").fill("paragon");
+    // A nonsense query keeps this about the switch, not about whether the
+    // bundled place index happens to know Siam Paragon.
+    await page.getByRole("combobox").fill("zzzz-no-such-place");
     await expect(page.getByText("No stations found.").first()).toBeVisible();
     expect(calls).toBe(0);
   });

@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:alert": "playwright test --grep \"station alert on phones\"",
+    "test:perf": "PERF=1 playwright test e2e/performance.spec.ts",
     "check:live": "node scripts/check-live.mjs",
     "sim": "node scripts/sim/run.mjs",
     "sim:acceptance": "node scripts/sim/acceptance.mjs",

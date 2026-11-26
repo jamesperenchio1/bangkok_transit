@@ -62,3 +62,26 @@ export const LINE_NAMES: Record<LineKey, string> = (() => {
 
 /** Display order for grouping stations by line. */
 export const LINE_ORDER: LineKey[] = ["sukhumvit", "silom", "gold", "yellow", "pink", "blue", "purple", "arl", "srtDarkRed", "srtLightRed"];
+
+/**
+ * Thai line names. The station data only carries the English name, so a Thai
+ * UI used to show "BTS Sukhumvit Line" in the middle of Thai text. Kept here
+ * next to the English names so the two can never drift apart.
+ */
+export const LINE_NAMES_TH: Record<LineKey, string> = {
+  sukhumvit: "รถไฟฟ้าบีทีเอส สายสุขุมวิท",
+  silom: "รถไฟฟ้าบีทีเอส สายสีลม",
+  gold: "รถไฟฟ้าบีทีเอส สายสีทอง",
+  yellow: "รถไฟฟ้ามหานคร สายสีเหลือง",
+  pink: "รถไฟฟ้ามหานคร สายสีชมพู",
+  blue: "รถไฟฟ้ามหานคร สายสีน้ำเงิน",
+  purple: "รถไฟฟ้ามหานคร สายสีม่วง",
+  arl: "รถไฟฟ้าแอร์พอร์ต เรล ลิงก์",
+  srtDarkRed: "รถไฟชานเมือง สายสีแดงเข้ม",
+  srtLightRed: "รถไฟชานเมือง สายสีแดงอ่อน",
+};
+
+/** The line's name in the UI language. */
+export function lineName(line: LineKey, lang: "en" | "th"): string {
+  return lang === "th" ? LINE_NAMES_TH[line] : LINE_NAMES[line];
+}

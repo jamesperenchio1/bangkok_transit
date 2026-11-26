@@ -34,7 +34,7 @@ test.describe("map", () => {
     }, [siam.lon, siam.lat]);
     await page.mouse.click(point.x, point.y);
     const card = page.locator(".maplibregl-popup");
-    await expect(card.getByText("Siam")).toBeVisible();
+    await expect(card.getByText("Siam", { exact: true })).toBeVisible();
     await expect(card.getByText("→ Kheha")).toBeVisible();
     // Kheha's first train, specifically (fixture: 2 min), not just any "2 min".
     await expect(card.locator("ul").first().getByRole("listitem").first()).toContainText("2 min");
@@ -47,7 +47,7 @@ test.describe("map", () => {
     const pill = page.getByRole("button", { name: /Nearest: Siam/ });
     await expect(pill).toBeVisible();
     await pill.click();
-    await expect(page.locator(".maplibregl-popup").getByText("Siam")).toBeVisible();
+    await expect(page.locator(".maplibregl-popup").getByText("Siam", { exact: true })).toBeVisible();
   });
 
   test("search is forgiving about spacing and finds the right station by code", async ({ page }) => {
@@ -82,7 +82,7 @@ test.describe("routes", () => {
 
     await expect.poll(() => Object.fromEntries(new URL(page.url()).searchParams)).toEqual({ from: "W1", to: "E1" });
     const sheet = page.getByRole("dialog", { name: /Route from National Stadium to Chit Lom/ });
-    await expect(sheet.getByText(/2 stops · 1 change · ~\d+ min/)).toBeVisible();
+    await expect(sheet.getByText(/2 stops · 1 change ·.*~\d+ min/)).toBeVisible();
     // National Stadium -> Chit Lom runs east, toward Kheha.
     await expect(sheet.getByText("Board toward Kheha")).toBeVisible();
   });

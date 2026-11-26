@@ -1,0 +1,11 @@
+{
+  "name": "bangkok-transit-reports",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "r2_buckets": [
+    {
+      "binding": "REPORTS",
+      "bucket_name": "bangkok-transit-reports"
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 import * as maplibregl from "maplibre-gl";
-import { useEffect, useMemo, useRef, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { LocateButton } from "@/components/LocateButton";
 import { stations, type LineKey, type Station } from "@/data/stations";
@@ -39,6 +39,7 @@ import { routeHops } from "@/lib/live-trains";
 import { LINE_COLORS } from "@/lib/line-colors";
 import { useLangStore, useT, type Lang } from "@/lib/i18n";
 import { motionDuration, useSettingsStore } from "@/lib/settings-store";
+import { isDarkTheme, mapPalette, mapStyleUrl, resolveDarkTheme, systemPrefersDark } from "@/lib/map-style";
 
 // MapLibre uses [lon, lat] everywhere, the opposite of Leaflet's [lat, lon] -
 // every coordinate pair in this file is in that order.
@@ -47,21 +48,31 @@ const STATION_BOUNDS: [[number, number], [number, number]] = [
   [Math.max(...stations.map((s) => s.lon)), Math.max(...stations.map((s) => s.lat))],
 ];
 
-// Also preloaded from app/layout.tsx (MAP_STYLE_URL) so the style JSON
-// downloads while the page hydrates - keep the two URLs identical.
-const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
+// Which basemap (light, or dark at night) is in lib/map-style.ts, together
+// with what we paint on top of it. app/layout.tsx preloads the light style
+// from its own copy of the URL so it downloads while the page hydrates - if
+// that URL ever changes, change it there too.
 
 /**
  * What the map shows when the basemap style cannot be loaded: a plain ground
- * colour. Glyphs still point at the basemap's font server, so station names
- * appear whenever it is reachable (or its fonts are cached).
+ * colour, matched to the theme. Glyphs still point at the basemap's font
+ * server, so station names appear whenever it is reachable (or its fonts are
+ * cached).
  */
-const FALLBACK_STYLE: maplibregl.StyleSpecification = {
-  version: 8,
-  glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
-  sources: {},
-  layers: [{ id: "fallback-background", type: "background", paint: { "background-color": "#f2efe9" } }],
-};
+function fallbackStyle(dark: boolean): maplibregl.StyleSpecification {
+  return {
+    version: 8,
+    glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+    sources: {},
+    layers: [
+      {
+        id: "fallback-background",
+        type: "background",
+        paint: { "background-color": mapPalette(dark).background },
+      },
+    ],
+  };
+}
 
 /** Camera animations collapse to instant jumps for people who ask for less motion. */
 const motionMs = motionDuration;
@@ -141,6 +152,11 @@ maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
 export interface TransitMapProps {
   onSelectStation: (station: Station) => void;
+  /**
+   * /v2: a station tap opens the page's own sheet. When set, it replaces the
+   * map card entirely (no popup is opened for that station).
+   */
+  onStationOpen?: (station: Station) => void;
   /** A place card passes its place, so the route can end with the walk to it. */
   onSetStart: (station: Station, place?: Place) => void;
   onSetDestination: (station: Station, place?: Place) => void;
@@ -239,6 +255,9 @@ function stationsGeoJSON(
         fillColor: v.fillColor,
         fillOpacity: v.fillOpacity,
         isDestination: v.isDestination,
+        // Off the highlighted route: the dark theme paints these in its own
+        // grey instead of the light basemap's pale one (see lib/map-style.ts).
+        dimmed: v.dimmed,
       },
       geometry: { type: "Point", coordinates: [v.station.lon, v.station.lat] },
     })),
@@ -285,8 +304,21 @@ function gpsAccuracyGeoJSON(position: GeoPosition | null): GeoJSON.FeatureCollec
   };
 }
 
+/**
+ * Runs `fn` now when our own layers are on the current style, otherwise after
+ * the next `style.load` (which is where they are added). A theme switch calls
+ * setStyle, which removes every source and layer for a moment; a settings or
+ * data change that lands inside that window must wait rather than address
+ * layers that are not there.
+ */
+function withTransitLayers(map: maplibregl.Map, loaded: boolean, fn: () => void): void {
+  if (loaded && map.getLayer(LINES_LAYER)) fn();
+  else map.once("style.load", fn);
+}
+
 export function TransitMap({
   onSelectStation,
+  onStationOpen,
   onSetStart,
   onSetDestination,
   startCode,
@@ -331,11 +363,36 @@ export function TransitMap({
   const settings = useSettingsStore((s) => s.settings);
   const { hiddenLines } = settings;
 
+  // The basemap follows the app's theme, so the map is not a bright daytime
+  // map at night. "system" follows the OS live, so it can change while the
+  // map is open (same rule the Google map uses). Read at first render, not in
+  // an effect: the map's own creation effect reads the same value, and the two
+  // must agree or they would swap the style straight back.
+  const [systemDark, setSystemDark] = useState(systemPrefersDark);
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-color-scheme: dark)");
+    const update = () => setSystemDark(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  const dark = resolveDarkTheme(settings.theme, systemDark);
+  // Read by the map's listeners, which are registered once and must see the
+  // theme of the style that is actually loaded.
+  const darkRef = useRef(dark);
+  /** Bumped after a style switch, so the data/paint effects below re-apply themselves. */
+  const [styleEpoch, setStyleEpoch] = useState(0);
+  /** The theme the style on the map was loaded for (null until the map exists). */
+  const appliedDarkRef = useRef<boolean | null>(null);
+  /** Set by the map-creation effect; re-loads the basemap in the other theme. */
+  const switchStyleRef = useRef<((nextDark: boolean) => void) | null>(null);
+
   // Keep the latest callbacks/state in refs so the map's own click handler
   // (registered once, at style-load time) always sees current values without
   // needing to be re-registered on every render.
   const latest = useRef({
     onSelectStation,
+    onStationOpen,
     onSetStart,
     onSetDestination,
     startCode,
@@ -343,7 +400,7 @@ export function TransitMap({
     pathOptions,
   });
   useEffect(() => {
-    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions };
+    latest.current = { onSelectStation, onStationOpen, onSetStart, onSetDestination, startCode, destinationCode, pathOptions };
   });
 
   // Create the map once per mount. Like the Leaflet canvas renderer this
@@ -354,6 +411,14 @@ export function TransitMap({
   useEffect(() => {
     if (!containerRef.current) return;
     const popups = popupsRef.current;
+    // The style the map starts on. Read from the store here (not from render
+    // state): the map is created once, and saved settings arrive around the
+    // same moment. If the saved theme lands after this, the effect below
+    // re-issues setStyle with the right one - before the first style has
+    // loaded there is nothing on screen to switch.
+    const startDark = isDarkTheme();
+    darkRef.current = startDark;
+    appliedDarkRef.current = startDark;
     const map = new maplibregl.Map({
       container: containerRef.current,
       // Start on the station bounds directly rather than a fixed
@@ -364,37 +429,42 @@ export function TransitMap({
       clickTolerance: 15,
       attributionControl: { compact: true },
     });
-    // transformStyle is only accepted by setStyle, not the constructor - the
-    // style is fetched once, here.
-    map.setStyle(STYLE_URL, { transformStyle });
     mapRef.current = map;
+
+    // The basemap style currently requested (null once it has arrived, or when
+    // the inline fallback is what is showing), so a failed fetch is recognised
+    // as "the basemap itself", not a tile or a font.
+    let requestedStyle: string | null = null;
+    // transformStyle is only accepted by setStyle, not the constructor. It runs
+    // for every style, including the dark one, which has the same sprite
+    // deferral and its own bilingual labels to swap.
+    const applyStyle = (url: string) => {
+      requestedStyle = url;
+      map.setStyle(url, { diff: false, transformStyle });
+    };
+    // A theme switch, from the effect below. Nothing is animated: setStyle has
+    // no transition, which is what reduced-motion users want anyway.
+    switchStyleRef.current = (nextDark: boolean) => {
+      deferredSprite = undefined;
+      applyStyle(mapStyleUrl(nextDark));
+    };
+    applyStyle(mapStyleUrl(startDark));
+
     // If the basemap style itself can't be fetched (offline, never cached, or
     // the host is down), draw the network on a plain background rather than
     // showing nothing: the lines and stations are ours and need none of it.
-    let styleReady = false;
-    let fellBack = false;
+    // This applies to a theme switch too - a dark fallback stays dark.
     map.on("error", (e) => {
       const failed = (e.error as { url?: string } | undefined)?.url;
-      if (styleReady || fellBack || !failed?.startsWith(STYLE_URL)) return;
-      fellBack = true;
-      map.setStyle(FALLBACK_STYLE);
+      if (!requestedStyle || !failed?.startsWith(requestedStyle)) return;
+      requestedStyle = null;
+      deferredSprite = undefined;
+      map.setStyle(fallbackStyle(darkRef.current));
     });
     // Exposed for debugging and the e2e suite, which asserts on rendered
     // features rather than pixels.
     (window as { __map?: maplibregl.Map }).__map = map;
 
-    // Attach the basemap's sprite once the stations have been drawn: wait for
-    // their source to finish loading, then for the next frame to render.
-    const deferSprite = (e: maplibregl.MapSourceDataEvent) => {
-      if (e.sourceId !== STATIONS_SOURCE || !e.isSourceLoaded) return;
-      map.off("sourcedata", deferSprite);
-      map.once("render", () => {
-        if (mapRef.current !== map || !deferredSprite) return;
-        if (typeof deferredSprite === "string") map.setSprite(deferredSprite);
-        else for (const { id, url } of deferredSprite) map.addSprite(id, url);
-      });
-    };
-    map.on("sourcedata", deferSprite);
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
     map.on("dragstart", (e: { originalEvent?: unknown }) => {
       if (e.originalEvent && useSettingsStore.getState().settings.followMe) {
@@ -402,19 +472,31 @@ export function TransitMap({
       }
     });
 
-    // Our own layers go on at `style.load`, not `load`. `load` waits for the
-    // basemap's first tiles and fonts - on a slow connection the transit
-    // network would stay invisible for as long as the third-party basemap
-    // takes, though nothing here depends on it. The basemap fills in beneath.
-    map.once("style.load", () => {
-      styleReady = true;
+    /**
+     * The app's own sources and layers, added to whatever style is loaded.
+     *
+     * They go on at `style.load`, not `load`: `load` waits for the basemap's
+     * first tiles and fonts, and on a slow connection the transit network would
+     * stay invisible for as long as the third-party basemap takes, though
+     * nothing here depends on it. The basemap fills in beneath.
+     *
+     * A theme switch calls setStyle, which replaces the style wholesale - every
+     * source and layer of ours goes with it - so this runs again on each
+     * `style.load`. The guard keeps a repeated event from adding them twice.
+     */
+    const addTransitLayers = () => {
+      if (map.getSource(LINES_SOURCE)) return;
+      // What we draw on top depends on what is underneath: a label halo and a
+      // "dimmed" grey made for white paper disappear on a night basemap.
+      const palette = mapPalette(darkRef.current);
+
       // The lines are drawn from the first frame. If the curved track has
       // already arrived (it is requested while the map's own code downloads)
       // it is used straight away; if not, the network is drawn as straight
       // station-to-station track from data already in the bundle and the
       // curves swap in when they land. Either way no line is ever missing or
       // left unconnected while waiting on a second download.
-      const known = loadedLineGeometry();
+      const known = geometryRef.current ?? loadedLineGeometry();
       if (known) geometryRef.current = known;
       map.addSource(LINES_SOURCE, {
         type: "geojson",
@@ -431,7 +513,10 @@ export function TransitMap({
           "line-opacity": 0.9,
         },
       });
-      if (!known) {
+      // Started once per mount, not once per style: the request keeps going
+      // across a style switch and its callback updates whichever source is
+      // current (geometryRef is set before the source data is needed again).
+      if (!known && !stopGeometryRef.current) {
         stopGeometryRef.current = loadLineGeometryInBackground((segmentsByLine) => {
           // The component may have unmounted (and torn down `map`) before
           // this resolved - `mapRef` is nulled out in that cleanup.
@@ -463,13 +548,29 @@ export function TransitMap({
         source: ROUTE_SOURCE,
         filter: ["==", ["get", "walk"], true],
         layout: { "line-cap": "round" },
-        paint: { "line-color": "#525252", "line-width": 3, "line-dasharray": [0.5, 1.5] },
+        paint: { "line-color": palette.routeWalk, "line-width": 3, "line-dasharray": [0.5, 1.5] },
       });
 
       map.addSource(STATIONS_SOURCE, {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       });
+      // Attach the basemap's sprite once the stations have been drawn: wait for
+      // their source to finish loading, then for the next frame to render. A
+      // style switch holds the sprite back again (see transformStyle), so this
+      // is registered for every style, not just the first.
+      if (deferredSprite) {
+        const deferSprite = (e: maplibregl.MapSourceDataEvent) => {
+          if (e.sourceId !== STATIONS_SOURCE || !e.isSourceLoaded) return;
+          map.off("sourcedata", deferSprite);
+          map.once("render", () => {
+            if (mapRef.current !== map || !deferredSprite) return;
+            if (typeof deferredSprite === "string") map.setSprite(deferredSprite);
+            else for (const { id, url } of deferredSprite) map.addSprite(id, url);
+          });
+        };
+        map.on("sourcedata", deferSprite);
+      }
       // Invisible, larger-radius layer used only for hit-testing - a real
       // fingertip is much wider than the smallest (4px) marker, and this
       // pads the tappable area without padding the drawn shape. Structural
@@ -489,9 +590,11 @@ export function TransitMap({
         source: STATIONS_SOURCE,
         paint: {
           "circle-radius": ["get", "radius"],
-          "circle-color": ["get", "fillColor"],
+          // Official line colours stay; only the stations that are off the
+          // highlighted route take the theme's muted grey.
+          "circle-color": ["case", ["get", "dimmed"], palette.dimmedStationFill, ["get", "fillColor"]],
           "circle-opacity": ["get", "fillOpacity"],
-          "circle-stroke-color": ["get", "strokeColor"],
+          "circle-stroke-color": ["case", ["get", "dimmed"], palette.dimmedStationStroke, ["get", "strokeColor"]],
           "circle-stroke-width": ["get", "strokeWidth"],
         },
       });
@@ -547,22 +650,13 @@ export function TransitMap({
           "symbol-sort-key": ["get", "sortKey"],
         },
         paint: {
-          "text-color": "#1f2937",
-          "text-halo-color": "#ffffff",
+          // Light text with a dark halo on the night basemap, dark text with a
+          // white halo on the day one (lib/map-style.ts).
+          "text-color": palette.labelText,
+          "text-halo-color": palette.labelHalo,
           "text-halo-width": 1.6,
           "text-opacity": ["get", "labelOpacity"],
         },
-      });
-
-      // Estimated live train positions (BTS only), drawn under the station
-      // names so labels stay readable. Fed from the arrivals the app already
-      // holds, so it adds no requests (see lib/live-trains.ts).
-      // Added after the map is idle, not here: the map comes first.
-      stopTrainsRef.current = startLiveTrainsWhenIdle(map, STATIONS_LABEL_LAYER, {
-        getSegments: () => geometryRef.current,
-        stationHitLayer: STATIONS_HIT_LAYER,
-        isDimmed: () => dimmedRef.current,
-        getRouteHops: () => routeHopsRef.current,
       });
 
       map.addSource(GPS_SOURCE, {
@@ -604,11 +698,51 @@ export function TransitMap({
           "circle-stroke-width": 2,
         },
       });
+    };
+
+    // Estimated live train positions (BTS only), drawn under the station
+    // names so labels stay readable. Fed from the arrivals the app already
+    // holds, so it adds no requests (see lib/live-trains.ts). Added after the
+    // map is idle, not at style.load: the map comes first. A style switch
+    // starts it again, since its layers went with the old style.
+    const startTrains = () => {
+      stopTrainsRef.current?.();
+      stopTrainsRef.current = startLiveTrainsWhenIdle(map, STATIONS_LABEL_LAYER, {
+        getSegments: () => geometryRef.current,
+        stationHitLayer: STATIONS_HIT_LAYER,
+        isDimmed: () => dimmedRef.current,
+        getRouteHops: () => routeHopsRef.current,
+      });
+    };
+
+    // Stays for the life of the map: every style.load - the first one and each
+    // theme switch - puts our layers back. The camera, the route and any open
+    // card are untouched by a switch; only the basemap underneath changes.
+    map.on("style.load", () => {
+      // A late event from a map that has been torn down (the cleanup nulls the
+      // ref before removing it) must not touch it.
+      if (mapRef.current !== map) return;
+      requestedStyle = null;
+      addTransitLayers();
+      if (loadedRef.current) {
+        // A theme switch: the train layers are gone with the old style, and
+        // the data/paint effects below re-apply themselves off `styleEpoch`.
+        startTrains();
+        setStyleEpoch((n) => n + 1);
+        return;
+      }
+      loadedRef.current = true;
 
       map.on("click", STATIONS_HIT_LAYER, (e: maplibregl.MapLayerMouseEvent) => {
         const code = e.features?.[0]?.properties?.code as string | undefined;
         const station = code ? stations.find((s) => s.code === code) : undefined;
         if (!station) return;
+        // A page that draws its own station sheet (the /v2 preview) takes the
+        // tap instead of the map card. Everything else stays exactly as it was.
+        if (latest.current.onStationOpen) {
+          latest.current.onStationOpen(station);
+          return;
+        }
         latest.current.onSelectStation(station);
         openPopup(map, popupsRef, station, latest);
       });
@@ -619,7 +753,7 @@ export function TransitMap({
       );
       map.on("mouseleave", STATIONS_HIT_LAYER, () => (map.getCanvas().style.cursor = ""));
 
-      loadedRef.current = true;
+      startTrains();
       // Fit to station bounds once the style (and therefore layout) is
       // ready. Mirrors the old FitStationBounds retry: a container that
       // reads zero-size at mount (flex-layout race, backgrounded tab) can
@@ -652,6 +786,7 @@ export function TransitMap({
     });
 
     return () => {
+      switchStyleRef.current = null;
       stopTrainsRef.current?.();
       stopTrainsRef.current = null;
       stopGeometryRef.current?.();
@@ -669,6 +804,22 @@ export function TransitMap({
     };
   }, []);
 
+  // A theme change swaps the basemap (dark at night) without re-creating the
+  // map: a remount would lose the camera, any route on screen and any open
+  // card. setStyle replaces the style wholesale, which is why our own layers
+  // are added again on the next `style.load` and the data/paint effects below
+  // re-apply themselves off `styleEpoch`. Nothing is animated (a style swap has
+  // no transition), so reduced motion needs no special case here.
+  useEffect(() => {
+    darkRef.current = dark;
+    const map = mapRef.current;
+    if (!map || appliedDarkRef.current === dark) return;
+    appliedDarkRef.current = dark;
+    // Before the first style has loaded there is nothing on screen to switch:
+    // hand the map the right one now, which restarts the pending load.
+    switchStyleRef.current?.(dark);
+  }, [dark]);
+
   // Lines: grey while a route is highlighted (unless "dim" is off), width
   // from settings, and only the route's own lines when asked.
   const routeLineKeys = useMemo(() => (path ? [...new Set(path.legs.map((l) => l.line).filter(Boolean))] : []), [path]);
@@ -677,10 +828,13 @@ export function TransitMap({
     // Remembered for the trains layer, which is added later (once the map is idle).
     dimmedRef.current = isRouting;
     const map = mapRef.current;
-    if (!map) return;
+    // While a theme switch is still loading, the style on screen is the old
+    // one: painting the new theme's grey on it would look wrong until the
+    // new style arrives. `styleEpoch` runs this again once it has.
+    if (!map || appliedDarkRef.current !== dark) return;
     const apply = () => {
       const grey = isRouting && dimLines;
-      map.setPaintProperty(LINES_LAYER, "line-color", grey ? "#ccc" : LINE_COLOR_MATCH);
+      map.setPaintProperty(LINES_LAYER, "line-color", grey ? mapPalette(dark).dimmedLine : LINE_COLOR_MATCH);
       map.setPaintProperty(LINES_LAYER, "line-width", grey ? Math.max(2, lineWidth - 1) : lineWidth);
       map.setPaintProperty(LINES_LAYER, "line-opacity", grey ? 0.6 : 0.9);
       // Hidden lines, and (while routing, if asked) every line the route doesn't use.
@@ -690,9 +844,40 @@ export function TransitMap({
       map.setFilter(LINES_LAYER, filters.length ? (["all", ...filters] as maplibregl.FilterSpecification) : null);
       applyTrainStyle(map, isRouting);
     };
-    if (loadedRef.current) apply();
-    else map.once("style.load", apply);
-  }, [isRouting, dimLines, onlyRouteLines, lineWidth, hidden, routeLineKeys]);
+    withTransitLayers(map, loadedRef.current, apply);
+  }, [isRouting, dimLines, onlyRouteLines, lineWidth, hidden, routeLineKeys, dark, styleEpoch]);
+
+  // What sits on the basemap follows the basemap: station names (and the halo
+  // that separates them from the basemap's own labels), the muted grey of the
+  // stations and track that are off the highlighted route, and the walking
+  // dashes. Official line and station colours are the same in both themes.
+  // `styleEpoch` re-applies this after a theme switch re-created the layers;
+  // the layer creation above already used the right palette.
+  useEffect(() => {
+    const map = mapRef.current;
+    // Same rule as the lines effect: not while the other theme's style is
+    // still on its way in.
+    if (!map || appliedDarkRef.current !== dark) return;
+    const apply = () => {
+      const palette = mapPalette(dark);
+      map.setPaintProperty(STATIONS_LABEL_LAYER, "text-color", palette.labelText);
+      map.setPaintProperty(STATIONS_LABEL_LAYER, "text-halo-color", palette.labelHalo);
+      map.setPaintProperty(STATIONS_LAYER, "circle-color", [
+        "case",
+        ["get", "dimmed"],
+        palette.dimmedStationFill,
+        ["get", "fillColor"],
+      ]);
+      map.setPaintProperty(STATIONS_LAYER, "circle-stroke-color", [
+        "case",
+        ["get", "dimmed"],
+        palette.dimmedStationStroke,
+        ["get", "strokeColor"],
+      ]);
+      map.setPaintProperty(ROUTE_WALK_LAYER, "line-color", palette.routeWalk);
+    };
+    withTransitLayers(map, loadedRef.current, apply);
+  }, [dark, styleEpoch]);
 
   // Highlighted route geometry. Needs the fetched line-geometry data (see
   // lib/line-geometry.ts) only when there's an actual path to draw; an
@@ -707,8 +892,7 @@ export function TransitMap({
           path ? routeGeoJSON(path, segmentsByLine, finalWalk, firstWalk) : { type: "FeatureCollection", features: [] },
         );
       };
-      if (loadedRef.current) apply();
-      else map.once("style.load", apply);
+      withTransitLayers(map, loadedRef.current, apply);
     };
     if (!path) {
       applyWith({});
@@ -720,7 +904,7 @@ export function TransitMap({
         applyWith(segmentsByLine);
       });
     }
-  }, [path, finalWalk, firstWalk]);
+  }, [path, finalWalk, firstWalk, styleEpoch]);
 
   // Keep a planned route in view: fitted to whatever part of the map the
   // route sheet (fixed to the bottom of the screen, up to 70vh) leaves
@@ -748,9 +932,8 @@ export function TransitMap({
       const source = map.getSource<maplibregl.GeoJSONSource>(STATIONS_SOURCE);
       source?.setData(stationsGeoJSON(pathCodes, startCode, destinationCode, isRouting, hiddenLines));
     };
-    if (loadedRef.current) apply();
-    else map.once("style.load", apply);
-  }, [pathCodes, startCode, destinationCode, isRouting, hiddenLines]);
+    withTransitLayers(map, loadedRef.current, apply);
+  }, [pathCodes, startCode, destinationCode, isRouting, hiddenLines, styleEpoch]);
 
   // Settings: station labels, markers, route width, basemap names, the GPS
   // marker, trains, gestures and the map's buttons. The route highlight is
@@ -784,9 +967,8 @@ export function TransitMap({
         if (map.getBearing() !== 0 || map.getPitch() !== 0) map.easeTo({ bearing: 0, pitch: 0, duration: motionMs(300) });
       }
     };
-    if (loadedRef.current) apply();
-    else map.once("style.load", apply);
-  }, [showLabels, labelMinZoom, markerSize, routeWidth, basemapLabels, showLocation, rotateGestures, settings.showTrains, settings.otherTrains, settings.trainSize, settings.trainLabels, isRouting]);
+    withTransitLayers(map, loadedRef.current, apply);
+  }, [showLabels, labelMinZoom, markerSize, routeWidth, basemapLabels, showLocation, rotateGestures, settings.showTrains, settings.otherTrains, settings.trainSize, settings.trainLabels, isRouting, styleEpoch]);
 
   // Keep any open popup's Start/Destination checkmarks in sync if route
   // state changes from elsewhere (e.g. search) while it's still open.
@@ -802,9 +984,8 @@ export function TransitMap({
       map.getSource<maplibregl.GeoJSONSource>(GPS_SOURCE)?.setData(gpsGeoJSON(userPosition));
       map.getSource<maplibregl.GeoJSONSource>(GPS_ACCURACY_SOURCE)?.setData(gpsAccuracyGeoJSON(userPosition));
     };
-    if (loadedRef.current) apply();
-    else map.once("style.load", apply);
-  }, [userPosition]);
+    withTransitLayers(map, loadedRef.current, apply);
+  }, [userPosition, styleEpoch]);
 
   // Station and basemap labels follow the EN/TH toggle. (The initial
   // language is applied at style load, in transformStyle/addLayer.)
@@ -828,14 +1009,13 @@ export function TransitMap({
         timer = window.setTimeout(apply, 0);
       });
     };
-    if (loadedRef.current) later();
-    else map.once("style.load", later);
+    withTransitLayers(map, loadedRef.current, later);
     return () => {
       cancelAnimationFrame(frame);
       clearTimeout(timer);
       map.off("style.load", later);
     };
-  }, [lang, labelLanguage, labelCodes]);
+  }, [lang, labelLanguage, labelCodes, styleEpoch]);
 
   // "Follow me": keep the map centred on the rider as they move, at the zoom
   // they chose. Dragging the map turns it off (they moved it on purpose), as
@@ -867,7 +1047,11 @@ export function TransitMap({
       // off screen); the rider's zoom level is never changed.
       const move = focusCamera(map, focusStation, other, padding, useSettingsStore.getState().settings.autoZoom);
       if (move) map.stop().easeTo({ ...move, duration: motionMs(600) });
-      openPopup(map, popupsRef, focusStation, latest);
+      // /v2 replaces the map card with the page's own sheet everywhere,
+      // including a station picked from search - otherwise the preview would
+      // show two different station UIs depending on how it was opened.
+      if (latest.current.onStationOpen) latest.current.onStationOpen(focusStation);
+      else openPopup(map, popupsRef, focusStation, latest);
     };
     if (loadedRef.current) apply();
     else map.once("style.load", apply);

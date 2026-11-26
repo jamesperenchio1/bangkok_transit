@@ -16,13 +16,16 @@ import {
 import { shownCode, type LineKey, type Station } from "@/data/stations";
 import { terminusInDirection, type PathResult } from "@/lib/transit-graph";
 import type { GeoPosition } from "@/lib/use-geolocation";
-import { LINE_COLORS, LINE_NAMES } from "@/lib/line-colors";
+import { LINE_COLORS, lineName } from "@/lib/line-colors";
 import { stationName, useT } from "@/lib/i18n";
 import { distanceLabel } from "@/lib/nearest-station";
+import { firstRideLeg, tripTiming } from "@/lib/trip-time";
+import { clockLabel, headwayMinutes } from "@/lib/service-hours";
 import { StopAlertControl } from "@/components/StopAlertControl";
 import { ReportIssue } from "@/components/ReportIssue";
 import type { FinalWalk } from "@/lib/place-station";
 import type { StopAlert } from "@/lib/use-stop-alert";
+import { useBackLayer } from "@/lib/use-back-layer";
 
 function directionsUrl(
   origin: { lat: number; lon: number },
@@ -67,6 +70,20 @@ function effectiveChanges(path: PathResult) {
 // wants them expanded on the next trip too.
 let showAllStops = false;
 
+// The sheet's three resting places, as a percentage of the viewport height.
+// "Closed" is the sheet translated fully off the bottom edge (translate-y-full).
+const HALF_SNAP = 70;
+const TALL_SNAP = 92;
+// Drag distances that change a snap on release. A pull this far down is a
+// deliberate dismissal, not a wobble while scrolling.
+const CLOSE_DRAG_PX = 96;
+const HALF_FROM_TALL_PX = 48;
+const TALL_DRAG_PX = 24;
+// px/ms: a short, fast pull counts even when it never travels far.
+const FLICK_PX_PER_MS = 0.5;
+// A pointer that moved less than this was a tap on the grabber, not a drag.
+const DRAG_SLOP_PX = 6;
+
 export type RoutePanelState = {
   mode: "route";
   start: Station;
@@ -97,12 +114,38 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
   const headingRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const [expanded, setExpanded] = useState(showAllStops);
+  const [shareState, setShareState] = useState<"idle" | "shared" | "failed">("idle");
+  const [tall, setTall] = useState(false);
+  // Live drag state. `dragY` is how far the sheet is pushed below its snap,
+  // `dragMax` how tall it is (px) while a drag pulls it up. Both rest at 0 /
+  // null when the sheet is sitting on a snap.
+  const [dragY, setDragY] = useState(0);
+  const [dragMax, setDragMax] = useState<number | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{
+    id: number;
+    startY: number;
+    lastY: number;
+    lastT: number;
+    velocity: number;
+    moved: number;
+    base: number;
+    /** Whether the drag began on the grabber, whose click must be suppressed after it. */
+    fromGrabber: boolean;
+  } | null>(null);
+  // A drag that ended over the grabber also fires its click; that click must
+  // not then toggle the sheet as if it had been tapped.
+  const suppressClickRef = useRef(false);
   const listId = useId();
   // Latest onClose without re-running the focus effect on every parent render.
   const onCloseRef = useRef(onClose);
   useEffect(() => {
     onCloseRef.current = onClose;
   });
+
+  // Hardware/gesture back closes the sheet before it leaves the page.
+  useBackLayer(open, onClose);
 
   // A non-modal dialog: on open, move focus to its heading so keyboard and
   // screen-reader users land on the route; on close, hand focus back to
@@ -122,13 +165,115 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
     };
   }, [open]);
 
+  // Closing (however it happened) always drops a drag in progress, so a sheet
+  // reopened later never comes back half-pulled.
+  useEffect(() => {
+    if (open) return;
+    dragRef.current = null;
+    /* eslint-disable-next-line react-hooks/set-state-in-effect */
+    setDragging(false);
+    setDragY(0);
+    setDragMax(null);
+  }, [open]);
+
+  /**
+   * Drag from the grabber (or anywhere on the header that is not a control).
+   * The sheet follows the finger, grows towards the tall snap when pulled up
+   * (rubber-banding past it), and settles on a snap when released.
+   */
+  const onDragStart = (e: React.PointerEvent<HTMLElement>) => {
+    if (!open) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    // Share/close live in the header: a press on a control is that control's,
+    // not the sheet's. The grabber is a button too, and is the one exception.
+    const control = (e.target as HTMLElement).closest("button, a, input, select, textarea");
+    if (control && !control.hasAttribute("data-sheet-grabber")) return;
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+    const now = performance.now();
+    dragRef.current = {
+      id: e.pointerId,
+      startY: e.clientY,
+      lastY: e.clientY,
+      lastT: now,
+      velocity: 0,
+      moved: 0,
+      // What is actually on screen, which for a short route is less than the
+      // snap's maximum: pulling up then grows from there, not from the cap.
+      base: sheet.getBoundingClientRect().height,
+      fromGrabber: Boolean((e.target as HTMLElement).closest("[data-sheet-grabber]")),
+    };
+    // Keep receiving moves even when the finger leaves the handle, and let the
+    // browser keep the gesture instead of turning it into a scroll.
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDragging(true);
+    setDragY(0);
+    setDragMax(null);
+  };
+
+  const onDragMove = (e: React.PointerEvent<HTMLElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.id !== e.pointerId) return;
+    const dy = e.clientY - drag.startY;
+    const now = performance.now();
+    const dt = now - drag.lastT;
+    if (dt > 0) {
+      // Smoothed, so one jittery sample cannot turn a slow drag into a flick.
+      drag.velocity = drag.velocity * 0.6 + ((e.clientY - drag.lastY) / dt) * 0.4;
+      drag.lastY = e.clientY;
+      drag.lastT = now;
+    }
+    drag.moved = Math.max(drag.moved, Math.abs(dy));
+    if (dy > 0) {
+      // Downwards the sheet slides; its height stays at the snap's.
+      setDragY(dy);
+      setDragMax(null);
+      return;
+    }
+    // Upwards it grows towards the tall snap. Past that it gives way by a
+    // third, so the pull feels elastic rather than blocked.
+    const tallPx = Math.round(window.innerHeight * (TALL_SNAP / 100));
+    const wanted = drag.base - dy;
+    setDragY(0);
+    setDragMax(wanted <= tallPx ? wanted : tallPx + (wanted - tallPx) / 3);
+  };
+
+  const endDrag = (e: React.PointerEvent<HTMLElement>, cancelled: boolean) => {
+    const drag = dragRef.current;
+    if (!drag || drag.id !== e.pointerId) return;
+    dragRef.current = null;
+    const dy = e.clientY - drag.startY;
+    const flickDown = drag.velocity > FLICK_PX_PER_MS;
+    const flickUp = drag.velocity < -FLICK_PX_PER_MS;
+    if (drag.fromGrabber && drag.moved > DRAG_SLOP_PX) suppressClickRef.current = true;
+    setDragging(false);
+    setDragY(0);
+    setDragMax(null);
+    if (cancelled) return;
+    if (dy > CLOSE_DRAG_PX || (flickDown && dy > HALF_FROM_TALL_PX)) {
+      onCloseRef.current();
+    } else if (tall && (dy > HALF_FROM_TALL_PX || (flickDown && dy > 0))) {
+      // From the tall snap even a short pull down drops back to half: the sheet
+      // is already covering most of the screen, so that is the way out.
+      setTall(false);
+    } else if (dy < -TALL_DRAG_PX || (flickUp && dy < 0)) {
+      setTall(true);
+    }
+  };
+
   const from = state ? stationName(state.start, lang) : "";
   const to = state ? (state.finalWalk?.name ?? stationName(state.destination, lang)) : "";
   const changes = state?.path ? effectiveChanges(state.path) : 0;
   const finalWalk = state?.finalWalk ?? null;
   const firstWalk = state?.firstWalk ?? null;
+  // The wait for the first train is part of door-to-door time. Exactly one
+  // place adds it (lib/trip-time.ts) so the header, the sheet and the live
+  // next-train line below can never disagree.
+  const firstLeg = state?.path ? firstRideLeg(state.path) : null;
+  const firstArrivals = useArrivals(firstLeg?.station.code ?? null);
+  const timing = state?.path ? tripTiming(state.path, firstArrivals.data, firstArrivals.now) : null;
   // The walks to/from stations are part of the trip, so they count in the total.
-  const totalMinutes = state?.path ? state.path.minutes + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0) : 0;
+  const totalMinutes = Math.round((timing?.minutes ?? state?.path?.minutes ?? 0) + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0));
   const totalWalkMeters = (state?.path?.walkMeters ?? 0) + (finalWalk?.meters ?? 0) + (firstWalk?.meters ?? 0);
   const summary = state?.path
     ? [
@@ -136,11 +281,12 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
         t.changes(changes),
         totalWalkMeters > 0 ? t.walk(distanceLabel(totalWalkMeters, lang)) : "",
         t.aboutMinutes(totalMinutes),
+        timing?.waitMinutes != null ? t.expectedWait(timing.waitMinutes) : t.waitUnknown,
         fareText(t, computeFare(state.path, fares)),
       ].filter(Boolean).join(", ")
     : state
       ? state.blockedBy?.length
-        ? t.noRouteLinesOff(state.blockedBy.map((l) => LINE_NAMES[l]).join(", "))
+        ? t.noRouteLinesOff(state.blockedBy.map((l) => lineName(l, lang)).join(", "))
         : t.noRoute
       : "";
 
@@ -159,6 +305,10 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
     }
   }
 
+  // The height it is resting at, or the live height a drag is pulling it to.
+  const sheetMaxHeight: string | number =
+    dragMax !== null ? dragMax : tall ? `${TALL_SNAP}dvh` : `${HALF_SNAP}dvh`;
+
   return (
     <>
       {/* Always mounted so assistive tech reliably announces the change. */}
@@ -166,18 +316,62 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
         {state ? t.routeFound(from, to, summary) : ""}
       </p>
       <div
+        ref={sheetRef}
         role="dialog"
         aria-modal="false"
         aria-label={open ? t.routeDialog(from, to) : undefined}
-        className={`fixed inset-x-0 bottom-0 z-50 rounded-t-2xl pb-[env(safe-area-inset-bottom)] border-t border-neutral-200 bg-white shadow-2xl transition-transform duration-200 dark:border-neutral-800 dark:bg-neutral-900 ${
+        className={`fixed inset-x-0 bottom-0 z-50 rounded-t-2xl pb-[env(safe-area-inset-bottom)] border-t border-neutral-200 bg-white shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 ${
           open ? "translate-y-0" : "translate-y-full"
         }`}
-        style={{ maxHeight: "70dvh" }}
+        style={{
+          maxHeight: sheetMaxHeight,
+          // A drag must track the finger exactly; resting snaps animate.
+          transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
+          transition: dragging
+            ? "none"
+            : "transform 200ms var(--ease-out), translate 200ms var(--ease-out), max-height 200ms var(--ease-out)",
+        }}
         aria-hidden={!open}
+        // Closed it is off-screen but still in the DOM: keep its buttons out of
+        // the tab order and away from assistive tech entirely.
+        inert={!open}
       >
         {state?.mode === "route" && (
-          <div className="flex max-h-[70dvh] flex-col overflow-y-auto">
-            <div className="sticky top-0 z-10 border-b border-neutral-200 bg-white/95 px-4 pt-3 pb-2.5 backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95">
+          <div
+            className="flex max-h-full flex-col overflow-y-auto overscroll-contain"
+            style={{ maxHeight: sheetMaxHeight }}
+          >
+            {/* A visible grabber that is also a real button: tapping gives
+                keyboard and switch users the same taller sheet as a drag.
+                Dragging it (or the header) moves the sheet; `touch-action:
+                none` here only, so the body below still scrolls by touch. */}
+            <button
+              type="button"
+              data-sheet-grabber
+              onClick={() => {
+                if (suppressClickRef.current) {
+                  suppressClickRef.current = false;
+                  return;
+                }
+                setTall((v) => !v);
+              }}
+              aria-expanded={tall}
+              aria-label={tall ? t.collapseSheet : t.expandSheet}
+              className="flex h-7 w-full shrink-0 touch-none items-center justify-center"
+              onPointerDown={onDragStart}
+              onPointerMove={onDragMove}
+              onPointerUp={(e) => endDrag(e, false)}
+              onPointerCancel={(e) => endDrag(e, true)}
+            >
+              <span aria-hidden="true" className="h-1 w-10 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+            </button>
+            <div
+              className="sticky top-0 z-10 border-b border-neutral-200 bg-white/95 px-4 pt-3 pb-2.5 backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/95"
+              onPointerDown={onDragStart}
+              onPointerMove={onDragMove}
+              onPointerUp={(e) => endDrag(e, false)}
+              onPointerCancel={(e) => endDrag(e, true)}
+            >
               <div className="flex items-start justify-between gap-2">
                 <div ref={headingRef} tabIndex={-1} className="min-w-0 outline-none">
                   <p
@@ -198,28 +392,62 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
                       {t.aboutMinutes(totalMinutes)}
                     </p>
                   )}
+                  {state.path && timing && (
+                    <p className="text-[11px] leading-snug text-neutral-600 dark:text-neutral-400">
+                      {timing.waitMinutes != null ? t.expectedWait(timing.waitMinutes) : t.waitUnknown}
+                    </p>
+                  )}
+                  {state.path && timing?.service && timing.service !== "running" && timing.firstTrain && (
+                    <p
+                      role="status"
+                      className="mt-1 rounded-md bg-amber-50 px-2 py-1 text-[11px] leading-snug text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                    >
+                      {timing.service === "ended"
+                        ? t.serviceEnded(clockLabel(timing.firstTrain, lang))
+                        : t.serviceNotStarted(clockLabel(timing.firstTrain, lang))}
+                    </p>
+                  )}
                 </div>
                 {state && (
                   <button
                     onClick={async () => {
-                      const url = `${window.location.origin}${window.location.pathname}?from=${state.start.code}&to=${state.destination.code}`;
-                      const title = `${stationName(state.start, lang)} → ${stationName(state.destination, lang)}`;
-                      try {
-                        if (navigator.share) await navigator.share({ title, url });
-                        else {
-                          await navigator.clipboard.writeText(url);
-                        }
-                      } catch {
-                        /* user cancelled or clipboard blocked */
+                      // Keep what the link is for: the language, and the place
+                      // a route actually ends at. Sending only two station
+                      // codes dropped the final walk and reopened in English.
+                      const params = new URLSearchParams({
+                        from: state.start.code,
+                        to: state.destination.code,
+                        lang,
+                      });
+                      if (state.finalWalk) {
+                        params.set("toName", state.finalWalk.name);
+                        params.set("toLat", String(state.finalWalk.to.lat));
+                        params.set("toLon", String(state.finalWalk.to.lon));
                       }
+                      const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+                      const title = `${stationName(state.start, lang)} → ${stationName(state.destination, lang)}`;
+                      const text = `${title} · ${t.aboutMinutes(totalMinutes)}${fareText(t, computeFare(state.path, fares)) ? ` · ${fareText(t, computeFare(state.path, fares))}` : ""}`;
+                      try {
+                        if (navigator.share) await navigator.share({ title, text, url });
+                        else await navigator.clipboard.writeText(url);
+                        setShareState("shared");
+                      } catch {
+                        // Cancelling the share sheet is not a failure; only
+                        // report a real copy failure.
+                        setShareState("failed");
+                      }
+                      window.setTimeout(() => setShareState("idle"), 2500);
                     }}
                     className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-                    aria-label="Share route"
-                    title="Share route"
+                    aria-label={t.shareRoute}
+                    title={t.shareRoute}
                   >
                     <Share2 size={18} aria-hidden="true" />
                   </button>
                 )}
+                <span className="sr-only" role="status">
+                  {shareState === "shared" ? t.routeShared : shareState === "failed" ? t.shareFailed : ""}
+                </span>
                 <button
                   onClick={onClose}
                   className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
@@ -236,14 +464,14 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
                   onClick={() => updateSettings({ fewerChanges: !settings.fewerChanges })}
                   className={`min-h-9 rounded-full border px-3 py-1 text-xs font-medium ${settings.fewerChanges ? "border-green-700 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300" : "border-neutral-300 text-neutral-700 dark:border-neutral-700 dark:text-neutral-300"}`}
                 >
-                  Fewer changes {settings.fewerChanges ? "✓" : ""}
+                  {t.fewerChanges} {settings.fewerChanges ? "✓" : ""}
                 </button>
                 <button
                   type="button"
                   onClick={() => updateSettings({ avoidWalking: !settings.avoidWalking })}
                   className={`min-h-9 rounded-full border px-3 py-1 text-xs font-medium ${settings.avoidWalking ? "border-green-700 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-300" : "border-neutral-300 text-neutral-700 dark:border-neutral-700 dark:text-neutral-300"}`}
                 >
-                  Less walking {settings.avoidWalking ? "✓" : ""}
+                  {t.lessWalking} {settings.avoidWalking ? "✓" : ""}
                 </button>
               </div>
             )}
@@ -258,7 +486,7 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
             {!state.path && state.blockedBy && state.blockedBy.length > 0 ? (
               <div className="flex flex-col items-center gap-3 px-4 py-6 text-center">
                 <p className="text-sm text-neutral-700 dark:text-neutral-300">
-                  {t.noRouteLinesOff(state.blockedBy.map((l) => LINE_NAMES[l]).join(", "))}
+                  {t.noRouteLinesOff(state.blockedBy.map((l) => lineName(l, lang)).join(", "))}
                 </p>
                 {onUseLines && (
                   <button
@@ -266,7 +494,7 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
                     onClick={() => onUseLines(state.blockedBy!)}
                     className="min-h-11 rounded-full bg-green-700 px-5 text-sm font-semibold text-white hover:bg-green-800"
                   >
-                    {t.useLinesForRoutes(state.blockedBy.map((l) => LINE_NAMES[l]).join(", "))}
+                    {t.useLinesForRoutes(state.blockedBy.map((l) => lineName(l, lang)).join(", "))}
                   </button>
                 )}
               </div>
@@ -287,7 +515,7 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
                   </span>
                 </div>
                 <div className="flex-1 py-1.5">
-                  <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Walk to {stationName(state.start, lang)}</p>
+                  <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{t.walkTo(stationName(state.start, lang))}</p>
                   <p className="text-xs text-neutral-600 dark:text-neutral-400">
                     {t.walked(distanceLabel(firstWalk.meters, lang))} · {t.aboutMinutes(firstWalk.minutes)}
                   </p>
@@ -392,7 +620,7 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
                           {leg.isChange && (
                             <span className="inline-flex items-center gap-1" title={t.changeLine}>
                               <span className="sr-only">
-                                {nextRide?.line ? t.changeLineTo(LINE_NAMES[nextRide.line]) : t.changeLine}
+                                {nextRide?.line ? t.changeLineTo(lineName(nextRide.line, lang)) : t.changeLine}
                               </span>
                               <span
                                 className="h-2.5 w-2.5 rounded-full ring-1 ring-white dark:ring-neutral-900"
@@ -413,7 +641,7 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
                           <p className="text-xs text-neutral-600 dark:text-neutral-300">
                             {nextLeg?.line && (
                               // The line by name, so it never depends on colour alone.
-                              <span lang="en" className="font-medium">{LINE_NAMES[nextLeg.line]} · </span>
+                              <span lang={lang} className="font-medium">{lineName(nextLeg.line, lang)} · </span>
                             )}
                             {leg.boardVia
                               ? t.boardTowardVia(stationName(leg.boardToward, lang), stationName(leg.boardVia, lang))
@@ -426,6 +654,11 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
                             station={leg.station}
                             directionKey={terminusInDirection(nextLeg.line, leg.station.code, leg.station.code)}
                           />
+                        )}
+                        {leg.boardToward && !leg.station.hasLiveArrivals && nextLeg?.line && (
+                          // No live feed on this line: give the published
+                          // frequency instead of leaving the boarding point blank.
+                          <ScheduledFrequency line={nextLeg.line} />
                         )}
                       </div>
                     </li>
@@ -516,7 +749,7 @@ function RouteSummary({
   const parts = [t.stops(path.stops), t.changes(changes)];
   const walkMeters = path.walkMeters + (finalWalk?.meters ?? 0) + (firstWalk?.meters ?? 0);
   if (walkMeters > 0) parts.push(t.walk(distanceLabel(walkMeters, lang)));
-  parts.push(t.aboutMinutes(path.minutes + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0)));
+  parts.push(t.aboutMinutes(Math.round(path.minutes + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0))));
   const showFare = useSettingsStore((s) => s.settings.showFare);
   const fares = useFares(showFare);
   const fare = showFare ? computeFare(path, fares) : null;
@@ -540,6 +773,17 @@ function RouteSummary({
         </div>
       )}
     </>
+  );
+}
+
+function ScheduledFrequency({ line }: { line: LineKey }) {
+  const { t } = useT();
+  const headway = headwayMinutes(line);
+  if (!headway) return null;
+  return (
+    <p className="text-xs text-neutral-600 dark:text-neutral-400">
+      {t.everyMinutes(headway)}
+    </p>
   );
 }
 

@@ -10,6 +10,9 @@ import {
   type ReportContext,
   type ReportContextInput,
 } from "@/lib/report-context";
+import { reportDeliveryEnabled, sendReport } from "@/lib/report-delivery";
+import { flushReportQueue, queueReport } from "@/lib/report-queue";
+import { whenMapPainted } from "@/lib/map-ready";
 
 const CATEGORIES = [
   { key: "route", labelKey: "reportCatRoute" as const },
@@ -46,6 +49,8 @@ function ReportSheet({ context, initialCategory, onClose }: SheetProps) {
   const [showContext, setShowContext] = useState(false);
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [sendState, setSendState] = useState<"idle" | "sending" | "sent" | "failed" | "queued">("idle");
+  const canSend = reportDeliveryEnabled();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -185,6 +190,36 @@ function ReportSheet({ context, initialCategory, onClose }: SheetProps) {
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
         >
           <div className="flex flex-col gap-2">
+            {canSend && (
+              <button
+                type="button"
+                onClick={async () => {
+                  setSendState("sending");
+                  const ok = navigator.onLine ? await sendReport(ctx) : false;
+                  if (ok) {
+                    setSendState("sent");
+                    return;
+                  }
+                  // Offline, or the Worker refused: keep the report on the
+                  // device (IndexedDB) and send it when the connection returns,
+                  // rather than making the rider retype it. If the browser
+                  // cannot store it either, say so honestly.
+                  setSendState((await queueReport(ctx)) ? "queued" : "failed");
+                }}
+                disabled={sendState === "sending"}
+                className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-green-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-800 disabled:opacity-60"
+              >
+                {sendState === "sent"
+                  ? t.reportSent
+                  : sendState === "queued"
+                    ? t.reportQueued
+                    : sendState === "failed"
+                      ? t.reportSendFailed
+                      : sendState === "sending"
+                        ? t.reportSending
+                        : t.reportSend}
+              </button>
+            )}
             <button
               type="button"
               onClick={handleCopy}
@@ -231,6 +266,28 @@ export function ReportIssue({
     else setInternalOpen(v);
   };
 
+  // A report queued while offline last time (or in another tab) goes out as
+  // soon as a page is open, and again when the connection returns. No request
+  // while offline, and the mount flush waits for the map to paint, like every
+  // other background job. The queue makes this safe to call from every mounted
+  // instance, and does nothing when no delivery endpoint is configured.
+  useEffect(() => {
+    if (!reportDeliveryEnabled()) return;
+    let cancelled = false;
+    const flush = () => {
+      if (!navigator.onLine) return;
+      void flushReportQueue(sendReport);
+    };
+    void whenMapPainted().then(() => {
+      if (!cancelled) flush();
+    });
+    window.addEventListener("online", flush);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("online", flush);
+    };
+  }, []);
+
   const triggerButton =
     trigger === "floating" ? (
       <button
@@ -248,10 +305,12 @@ export function ReportIssue({
         type="button"
         onClick={() => setOpen(true)}
         aria-label={t.reportIssue}
-        className={`inline-flex h-11 items-center gap-1.5 rounded-full border border-neutral-300 px-3 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800 ${className ?? ""}`}
+        className={`inline-flex h-11 min-w-11 items-center justify-center gap-1.5 rounded-full border border-neutral-300 px-3 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800 ${className ?? ""}`}
       >
         <AlertTriangle size={14} aria-hidden="true" />
-        <span>{t.report}</span>
+        {/* Narrow phones can't fit the word next to the other header
+            controls; the icon plus aria-label keeps the target and the name. */}
+        <span className="hidden min-[420px]:inline">{t.report}</span>
       </button>
     ) : trigger === "link" ? (
       <button

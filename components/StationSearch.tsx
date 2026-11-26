@@ -9,17 +9,40 @@ import { useArrivals } from "@/lib/use-arrivals";
 import { minutesLabel, upcomingTrains } from "@/lib/format-eta";
 import { stationName, useT } from "@/lib/i18n";
 import { MIN_QUERY_LENGTH, searchPlaces, type Place } from "@/lib/google-places";
+import { googleMapsKey } from "@/lib/google-maps";
 import { useSettingsStore } from "@/lib/settings-store";
+import { useBackLayer } from "@/lib/use-back-layer";
 
 export interface StationSearchProps {
   onSelectStation: (station: Station) => void;
   onSelectPlace: (place: Place) => void;
+  /**
+   * Bumped by the page when something else takes over the screen (a station
+   * tapped on the map in /v2). The palette closes itself, since it owns its
+   * own open state.
+   */
+  closeSignal?: number;
 }
 
 /** One keyboard-navigable list: stations first, then places found online. */
 type Item = { kind: "station"; station: Station; key: string } | { kind: "place"; place: Place; key: string };
 
 const PLACE_DEBOUNCE_MS = 350;
+
+/**
+ * The bundled places module, fetched on the first non-empty query. It carries
+ * `data/places.json` (~106 KB), which must not sit in the initial bundle: most
+ * visits never search for a place at all. One module-level promise, so a
+ * second query (or a reopened palette) reuses the same download.
+ */
+type PlacesModule = typeof import("@/lib/places-index");
+
+let placesModule: Promise<PlacesModule> | null = null;
+
+function loadPlaces(): Promise<PlacesModule> {
+  placesModule ??= import("@/lib/places-index");
+  return placesModule;
+}
 
 /**
  * Places matching the query, fetched online after a short pause. Each new
@@ -77,6 +100,28 @@ const searchIndex = stations.map((s) => ({
 
 const searchKeys = searchIndex.map(({ keys }) => keys);
 
+// Inlined at build time, so this is a constant check, not a runtime env read.
+const HAS_GOOGLE_KEY = googleMapsKey().length > 0;
+
+/** Bundled places carry a `local:` id; Google's are opaque. */
+function isLocalPlace(place: Place): boolean {
+  return place.id.startsWith("local:");
+}
+
+/**
+ * Whether two results name the same real place: same normalised name and
+ * within ~150 m. Google almost always returns the mall/shop the bundled list
+ * already had, sometimes with a different suffix ("ICONSIAM" vs "ICONSIAM
+ * Shopping Mall"), so this only suppresses near-identical rows.
+ */
+function samePlace(a: Place, b: Place): boolean {
+  if (normalize(a.name) !== normalize(b.name)) return false;
+  const metresPerDegree = 111_320;
+  const dLat = (a.lat - b.lat) * metresPerDegree;
+  const dLon = (a.lon - b.lon) * metresPerDegree * Math.cos(((a.lat + b.lat) / 2) * (Math.PI / 180));
+  return dLat * dLat + dLon * dLon <= 150 * 150;
+}
+
 function SearchResultEta({ station }: { station: Station }) {
   const { data, live, now } = useArrivals(station.hasLiveArrivals ? station.code : null);
   const { t } = useT();
@@ -112,7 +157,7 @@ function SearchResultEta({ station }: { station: Station }) {
 const RECENTS_KEY = "bts:search-recents:v1";
 type RecentEntry = { kind: "station"; code: string } | { kind: "place"; place: Place };
 
-export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchProps) {
+export function StationSearch({ onSelectStation, onSelectPlace, closeSignal }: StationSearchProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
@@ -146,7 +191,69 @@ export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchP
   }, [open]);
 
   const { onlinePlaces, placeResults } = useSettingsStore((s) => s.settings);
-  const { places, error: placesError, loading: placesLoading } = usePlaces(query, onlinePlaces, lang, placeResults);
+
+  // Bundled places (`data/places.json`, ~106 KB) are not in the initial
+  // bundle: the module is fetched on the first non-empty query, then searched
+  // synchronously on every later keystroke - no request, no Google billing,
+  // and it still works offline once downloaded.
+  const [index, setIndex] = useState<PlacesModule | null>(null);
+  const [indexFailed, setIndexFailed] = useState(false);
+  // Bumped on every query. The chunk can arrive while the rider is already on
+  // a newer query; anything answered for the old one must not land, and the
+  // newer query will get its own answer when the cached promise resolves.
+  const queryGen = useRef(0);
+  const q = query.trim();
+
+  useEffect(() => {
+    if (!q || index) return;
+    const gen = ++queryGen.current;
+    let cancelled = false;
+    void loadPlaces()
+      .then((module) => {
+        if (!cancelled && gen === queryGen.current) setIndex(module);
+      })
+      .catch(() => {
+        // A failed chunk (offline on a first visit) must not stop Google from
+        // answering, or place search would be dead until the next reload.
+        if (!cancelled && gen === queryGen.current) setIndexFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [q, index]);
+
+  const localResults = useMemo(
+    () => (index && q ? index.searchLocalPlaces(q, placeResults, lang) : []),
+    [index, q, placeResults, lang],
+  );
+
+  // Google is the fallback only: switched on, a key is configured, the query
+  // is long enough for its text search, the bundled list is ready (so it never
+  // bills for a place the bundle would have answered), and the bundled list
+  // did not already fill the result slots.
+  const googleEnabled =
+    onlinePlaces &&
+    HAS_GOOGLE_KEY &&
+    (index !== null || indexFailed) &&
+    q.length >= MIN_QUERY_LENGTH &&
+    localResults.length < placeResults;
+  // Always ask for the full limit: the answer is cached per query, so a
+  // stable request key avoids re-billing as bundled matches fill the slots.
+  const {
+    places: googlePlaces,
+    error: placesError,
+    loading: placesLoading,
+  } = usePlaces(query, googleEnabled, lang, placeResults);
+
+  // Fill whatever slots the bundled list left, dropping Google rows that are
+  // the same real place.
+  const places = useMemo(() => {
+    const room = Math.max(0, placeResults - localResults.length);
+    const extra = googlePlaces
+      .filter((p) => !localResults.some((local) => samePlace(local, p)))
+      .slice(0, room);
+    return [...localResults, ...extra].slice(0, placeResults);
+  }, [localResults, googlePlaces, placeResults]);
 
   // The typo-tolerant matcher is a separate chunk, fetched the first time the
   // panel opens (the main bundle never carries it). Until it arrives - a
@@ -181,6 +288,8 @@ export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchP
 
   // The highlighted row, kept in range as results arrive or shrink.
   const current = Math.min(active, results.length - 1);
+  const hasLocalPlaces = places.some(isLocalPlace);
+  const hasGooglePlaces = places.some((p) => !isLocalPlace(p));
 
   const close = (returnFocus = false) => {
     setOpen(false);
@@ -188,6 +297,21 @@ export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchP
     setActive(0);
     if (returnFocus) triggerRef.current?.focus();
   };
+
+  // Hardware/gesture back closes the palette before it leaves the page.
+  useBackLayer(open, () => close());
+
+  // Something else on the page took over (a station tapped on the map in /v2):
+  // the palette gets out of the way, but a first render with a signal already
+  // set must not close a palette the rider just opened.
+  const seenSignal = useRef(closeSignal);
+  useEffect(() => {
+    if (closeSignal === seenSignal.current) return;
+    seenSignal.current = closeSignal;
+    setOpen(false);
+    setQuery("");
+    setActive(0);
+  }, [closeSignal]);
 
   // ARIA combobox keyboard model: arrows move the highlighted result without
   // leaving the input, Enter picks it, Escape closes and returns focus.
@@ -238,24 +362,48 @@ export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchP
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 flex max-h-[70dvh] w-72 flex-col rounded-xl border border-neutral-200 bg-white p-2 shadow-lg dark:border-neutral-800 dark:bg-neutral-900">
-          <input
-            autoFocus
-            role="combobox"
-            aria-label={t.searchStations}
-            aria-expanded={results.length > 0}
-            aria-controls={listId}
-            aria-autocomplete="list"
-            aria-activedescendant={results[current] ? `${listId}-${results[current].key}` : undefined}
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setActive(0);
-            }}
-            onKeyDown={onKeyDown}
-            placeholder={t.searchPlaceholder}
-            className="min-h-11 w-full shrink-0 rounded-lg border border-neutral-300 px-3 py-1.5 text-base placeholder:text-neutral-600 dark:border-neutral-600 dark:bg-neutral-800 dark:placeholder:text-neutral-400"
+        <>
+          {/* Phones: the palette takes the screen, so a tap on the dimmed page
+              behind it (or the back gesture) closes it. From `sm` up it is the
+              anchored popover, with the map still in view and no backdrop. */}
+          <div
+            aria-hidden="true"
+            onClick={() => close()}
+            className="fixed inset-0 z-[1400] bg-black/40 sm:hidden"
           />
+          <div className="fixed inset-0 z-[1500] flex flex-col bg-white px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:bg-neutral-900 sm:absolute sm:inset-auto sm:top-full sm:right-0 sm:z-50 sm:mt-2 sm:max-h-[70dvh] sm:w-72 sm:rounded-xl sm:border sm:border-neutral-200 sm:p-2 sm:shadow-lg sm:dark:border-neutral-800">
+            <div className="flex shrink-0 items-center gap-2">
+              <input
+                autoFocus
+                role="combobox"
+                aria-label={t.searchStations}
+                aria-expanded={results.length > 0}
+                aria-controls={listId}
+                aria-autocomplete="list"
+                aria-activedescendant={results[current] ? `${listId}-${results[current].key}` : undefined}
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setActive(0);
+                }}
+                onKeyDown={onKeyDown}
+                placeholder={t.searchPlaceholder}
+                enterKeyHint="search"
+                autoComplete="off"
+                spellCheck={false}
+                className="min-h-11 w-full flex-1 rounded-lg border border-neutral-300 px-3 py-1.5 text-base placeholder:text-neutral-600 dark:border-neutral-600 dark:bg-neutral-800 dark:placeholder:text-neutral-400"
+              />
+              {/* The header's toggle is behind the phone overlay, so the palette
+                  carries its own close button there. */}
+              <button
+                type="button"
+                onClick={() => close(true)}
+                aria-label={t.closeSearch}
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-neutral-300 text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800 sm:hidden"
+              >
+                <X size={18} aria-hidden="true" />
+              </button>
+            </div>
 
           {/* Announces the result count as the user types (polite, not per keystroke noise). */}
           <p className="sr-only" role="status">
@@ -268,135 +416,153 @@ export function StationSearch({ onSelectStation, onSelectPlace }: StationSearchP
               : ""}
           </p>
 
-          <ul id={listId} role="listbox" aria-label={t.searchStations} hidden={results.length === 0} className="mt-1 min-h-0 overflow-y-auto">
-            {results.map((item, i) => {
-              const rowClass = `flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left text-sm ${
-                i === current ? "bg-neutral-100 dark:bg-neutral-800" : ""
-              }`;
-              // A heading row where the places begin, so it is clear which results are stations and which are places.
-              const placesStart = item.kind === "place" && results[i - 1]?.kind !== "place";
-              return (
-                <Fragment key={item.key}>
-                  {placesStart && (
-                    <li role="presentation" className="px-2 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
-                      {t.placesHeading}
-                    </li>
-                  )}
-                  {item.kind === "station" ? (
-                    <li
-                      id={`${listId}-${item.key}`}
-                      role="option"
-                      aria-selected={i === current}
-                      onClick={() => select(item)}
-                      onMouseMove={() => setActive(i)}
-                      className={rowClass}
-                    >
+          {/* Everything under the input scrolls as one column: results, the
+              "nothing found" notes, recents and the browse-by-line list. */}
+          <div className="mt-1 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+            <ul id={listId} role="listbox" aria-label={t.searchStations} hidden={results.length === 0} className="mt-1">
+              {results.map((item, i) => {
+                const rowClass = `flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left text-sm ${
+                  i === current ? "bg-neutral-100 dark:bg-neutral-800" : ""
+                }`;
+                // A heading row where each group begins, so stations, bundled
+                // places and Google results are never mixed without a label.
+                const placeGroup = item.kind === "place" ? (isLocalPlace(item.place) ? "local" : "google") : null;
+                const previous = results[i - 1];
+                const previousGroup =
+                  previous?.kind === "place" ? (isLocalPlace(previous.place) ? "local" : "google") : null;
+                const groupStart = placeGroup !== null && placeGroup !== previousGroup;
+                const groupHeading =
+                  placeGroup === "local"
+                    ? hasGooglePlaces
+                      ? t.localPlacesHeading
+                      : t.placesHeading
+                    : hasLocalPlaces
+                      ? t.morePlaces
+                      : t.placesHeading;
+                return (
+                  <Fragment key={item.key}>
+                    {groupStart && (
+                      <li role="presentation" className="px-2 pt-2 text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
+                        {groupHeading}
+                      </li>
+                    )}
+                    {item.kind === "station" ? (
+                      <li
+                        id={`${listId}-${item.key}`}
+                        role="option"
+                        aria-selected={i === current}
+                        onClick={() => select(item)}
+                        onMouseMove={() => setActive(i)}
+                        className={rowClass}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: LINE_COLORS[item.station.lines[0].line] }}
+                        />
+                        <span lang={lang} className="flex-1 truncate">{stationName(item.station, lang)}</span>
+                        <SearchResultEta station={item.station} />
+                        <span className="shrink-0 text-xs text-neutral-600 dark:text-neutral-400">{shownCode(item.station)}</span>
+                      </li>
+                    ) : (
+                      <li
+                        id={`${listId}-${item.key}`}
+                        role="option"
+                        aria-selected={i === current}
+                        onClick={() => select(item)}
+                        onMouseMove={() => setActive(i)}
+                        className={rowClass}
+                      >
+                        <MapPin size={14} className="shrink-0 text-neutral-600 dark:text-neutral-400" aria-hidden="true" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate">{item.place.name}</span>
+                          <span className="block truncate text-xs text-neutral-600 dark:text-neutral-400">
+                            {[item.place.kind, item.place.detail].filter(Boolean).join(" · ")}
+                          </span>
+                        </span>
+                      </li>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </ul>
+
+            {query.trim() && googleEnabled && localResults.length === 0 && placesLoading && (
+              <p className="px-2 py-2 text-xs text-neutral-600 dark:text-neutral-400">{t.searchingPlaces}</p>
+            )}
+            {query.trim() && placesError && (
+              <p className="px-2 py-2 text-xs text-neutral-600 dark:text-neutral-400">{t.placesUnavailable}</p>
+            )}
+            {query.trim() && results.length === 0 && !placesLoading && !placesError && (
+              <p className="px-2 py-2 text-sm text-neutral-600 dark:text-neutral-400">{t.noStations}</p>
+            )}
+
+             {!query.trim() && recents.length > 0 && (
+               <div className="mt-1">
+                 <p className="px-2 pt-1 text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
+                   {t.recent}
+                 </p>
+                 <ul>
+                   {recents.map((item) => {
+                     const rowClass = "flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800";
+                     return (
+                       <li key={item.key}>
+                         {item.kind === "station" ? (
+                           <button type="button" onClick={() => select(item)} className={rowClass}>
+                             <span className="w-12 shrink-0 text-xs text-neutral-600 dark:text-neutral-400">{shownCode(item.station)}</span>
+                             <span lang={lang} className="flex-1 truncate">{stationName(item.station, lang)}</span>
+                           </button>
+                         ) : (
+                           <button type="button" onClick={() => select(item)} className={rowClass}>
+                             <MapPin size={14} className="shrink-0 text-neutral-600 dark:text-neutral-400" aria-hidden="true" />
+                             <span className="min-w-0 flex-1 truncate">{item.place.name}</span>
+                           </button>
+                         )}
+                       </li>
+                     );
+                   })}
+                 </ul>
+               </div>
+             )}
+
+             {!query.trim() && (
+              <div className="mt-1" data-testid="browse-stations">
+                <p className="px-2 pt-1 text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
+                  {t.browseByLine}
+                </p>
+                {groups.map(({ line, stations: list }) => (
+                  <section key={line} aria-labelledby={`${listId}-line-${line}`} className="mt-2">
+                    <h3 id={`${listId}-line-${line}`} className="flex items-center gap-2 px-2 text-sm font-semibold">
                       <span
                         aria-hidden="true"
-                        className="h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: LINE_COLORS[item.station.lines[0].line] }}
+                        className="h-3 w-3 shrink-0 rounded-full"
+                        style={{ backgroundColor: LINE_COLORS[line] }}
                       />
-                      <span lang={lang} className="flex-1 truncate">{stationName(item.station, lang)}</span>
-                      <SearchResultEta station={item.station} />
-                      <span className="shrink-0 text-xs text-neutral-600 dark:text-neutral-400">{shownCode(item.station)}</span>
-                    </li>
-                  ) : (
-                    <li
-                      id={`${listId}-${item.key}`}
-                      role="option"
-                      aria-selected={i === current}
-                      onClick={() => select(item)}
-                      onMouseMove={() => setActive(i)}
-                      className={rowClass}
-                    >
-                      <MapPin size={14} className="shrink-0 text-neutral-600 dark:text-neutral-400" aria-hidden="true" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate">{item.place.name}</span>
-                        <span className="block truncate text-xs text-neutral-600 dark:text-neutral-400">
-                          {[item.place.kind, item.place.detail].filter(Boolean).join(" · ")}
-                        </span>
-                      </span>
-                    </li>
-                  )}
-                </Fragment>
-              );
-            })}
-          </ul>
-
-          {query.trim() && onlinePlaces && placesLoading && (
-            <p className="px-2 py-2 text-xs text-neutral-600 dark:text-neutral-400">{t.searchingPlaces}</p>
-          )}
-          {query.trim() && placesError && (
-            <p className="px-2 py-2 text-xs text-neutral-600 dark:text-neutral-400">{t.placesUnavailable}</p>
-          )}
-          {query.trim() && results.length === 0 && !placesLoading && !placesError && (
-            <p className="px-2 py-2 text-sm text-neutral-600 dark:text-neutral-400">{t.noStations}</p>
-          )}
-
-           {!query.trim() && recents.length > 0 && (
-             <div className="mt-1">
-               <p className="px-2 pt-1 text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
-                 Recent
-               </p>
-               <ul>
-                 {recents.map((item) => {
-                   const rowClass = "flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800";
-                   return (
-                     <li key={item.key}>
-                       {item.kind === "station" ? (
-                         <button type="button" onClick={() => select(item)} className={rowClass}>
-                           <span className="w-12 shrink-0 text-xs text-neutral-600 dark:text-neutral-400">{shownCode(item.station)}</span>
-                           <span lang={lang} className="flex-1 truncate">{stationName(item.station, lang)}</span>
-                         </button>
-                       ) : (
-                         <button type="button" onClick={() => select(item)} className={rowClass}>
-                           <MapPin size={14} className="shrink-0 text-neutral-600 dark:text-neutral-400" aria-hidden="true" />
-                           <span className="min-w-0 flex-1 truncate">{item.place.name}</span>
-                         </button>
-                       )}
-                     </li>
-                   );
-                 })}
-               </ul>
-             </div>
-           )}
-
-           {!query.trim() && (
-            <div className="mt-1 min-h-0 overflow-y-auto" data-testid="browse-stations">
-              <p className="px-2 pt-1 text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
-                {t.browseByLine}
-              </p>
-              {groups.map(({ line, stations: list }) => (
-                <section key={line} aria-labelledby={`${listId}-line-${line}`} className="mt-2">
-                  <h3 id={`${listId}-line-${line}`} className="flex items-center gap-2 px-2 text-sm font-semibold">
-                    <span
-                      aria-hidden="true"
-                      className="h-3 w-3 shrink-0 rounded-full"
-                      style={{ backgroundColor: LINE_COLORS[line] }}
-                    />
-                    <span lang="en">{LINE_NAMES[line]}</span>
-                  </h3>
-                  <ul>
-                    {list.map((s) => (
-                      <li key={s.code}>
-                        <button
-                          type="button"
-                          onClick={() => select({ kind: "station", station: s, key: s.code })}
-                          className="flex min-h-11 w-full items-center gap-2 rounded-lg px-2 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                        >
-                          <span className="w-12 shrink-0 text-xs text-neutral-600 dark:text-neutral-400">{shownCode(s)}</span>
-                          <span lang={lang} className="flex-1 truncate">
-                            {stationName(s, lang)}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </div>
-          )}
+                      <span lang="en">{LINE_NAMES[line]}</span>
+                    </h3>
+                    <ul>
+                      {list.map((s) => (
+                        <li key={s.code}>
+                          <button
+                            type="button"
+                            onClick={() => select({ kind: "station", station: s, key: s.code })}
+                            className="flex min-h-11 w-full items-center gap-2 rounded-lg px-2 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                          >
+                            <span className="w-12 shrink-0 text-xs text-neutral-600 dark:text-neutral-400">{shownCode(s)}</span>
+                            <span lang={lang} className="flex-1 truncate">
+                              {stationName(s, lang)}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+        </>
       )}
     </div>
   );

@@ -55,6 +55,16 @@ const paidApi: RuntimeCaching = {
   handler: new NetworkOnly(),
 };
 
+// The offline fallback is served for any navigation the network and the
+// runtime page cache both miss - a link to a page this device never visited,
+// opened in a tunnel.
+const OFFLINE_URL = "/offline";
+
+// Last resort if even the precached fallback is gone (a half-finished
+// install). Inline and self-contained: an offline page that needs a
+// resource from the network is not an offline page.
+const OFFLINE_FALLBACK_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>You're offline</title><style>body{margin:0;min-height:100dvh;display:grid;place-content:center;gap:1rem;padding:2rem;font:16px/1.5 system-ui,sans-serif;background:#fff;color:#171717;text-align:center}a{color:#15803d}</style></head><body><h1 style="font-size:1.25rem">You're offline</h1><p>This page isn't saved on this device yet. The map and the lines you have opened still work.</p><p><a href="/">Open the map</a></p></body></html>`;
+
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   // The shell ("/", added in next.config.ts) is precached, so a cold start
@@ -62,10 +72,34 @@ const serwist = new Serwist({
   // out a network timeout. Query strings are ignored so a shared
   // `/?from=N8&to=CEN` link opens offline too: the route is read client-side.
   precacheOptions: { cleanupOutdatedCaches: true, ignoreURLParametersMatching: [/.*/] },
-  skipWaiting: true,
+  // A new worker waits instead of taking over: taking over mid-session used
+  // to leave the open page asking the new build for lazy chunks that no
+  // longer existed (404 -> blank sheet); the rider now chooses when to
+  // reload (components/ServiceWorkerUpdate.tsx). `clientsClaim` only affects
+  // activation, so it is safe to keep: it lets the very first worker control
+  // the page it was installed from, which is what makes the first-visit map
+  // warm actually land in the cache. A waiting *update* never activates until
+  // the rider accepts, so it cannot claim anything early.
   clientsClaim: true,
+  //
+  // No `message` listener is needed for that: with skipWaiting false,
+  // Serwist's own constructor registers one that calls self.skipWaiting() on
+  // `{ type: "SKIP_WAITING" }` (node_modules/serwist -> Serwist).
   navigationPreload: true,
   runtimeCaching: [paidApi, liveArrivals, googleMaps, openFreeMapCache, ...defaultCache],
+});
+
+serwist.setCatchHandler(async ({ request }) => {
+  // Only navigations get a page back; a failed tile or chunk is left to fail
+  // so the app's own fallbacks (stationLineSegments, last-known arrivals) run.
+  if (request.mode === "navigate" || request.destination === "document") {
+    const cached = await serwist.matchPrecache(OFFLINE_URL);
+    if (cached) return cached;
+    return new Response(OFFLINE_FALLBACK_HTML, {
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
+  }
+  return Response.error();
 });
 
 serwist.addEventListeners();
