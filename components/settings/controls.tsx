@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useId, useState } from "react";
+import { Fragment, useEffect, useId, useState } from "react";
 import { Check } from "lucide-react";
 import { LINE_COLORS, LINE_NAMES, LINE_ORDER } from "@/lib/line-colors";
 import { useLangStore, useT, type Lang } from "@/lib/i18n";
@@ -258,14 +258,70 @@ function LanguageRow({ row, lang }: { row: Extract<Row, { kind: "language" }>; l
 
 const SAVED_KEYS = ["bts:settings:v1", "lang", "bts:stop-alert:v1", "bts:arrivals:v1", "bts:clock-offset:v1"];
 
+/**
+ * What the device holds of the offline map: the light pass (overview zooms, a
+ * few MB) or the full set (plus street level around every station). Read from
+ * the same keys the warm-up module writes.
+ */
+interface SavedMap {
+  full: boolean;
+  /** Bytes used by this whole site, per the browser - the map is most of it, but not all. */
+  bytes: number | null;
+  /** Whether the browser promised to keep it, or null where it cannot say. */
+  persisted: boolean | null;
+}
+
+/** MB to one decimal below 10, whole MB above; GB past 1 GB. */
+function formatSize(bytes: number): string {
+  const mb = bytes / 1_048_576;
+  return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`;
+}
+
+async function readSavedMap(): Promise<SavedMap | null> {
+  try {
+    const { OFFLINE_DONE_KEY, OFFLINE_OVERVIEW_KEY } = await import("@/lib/offline-warm");
+    const full = localStorage.getItem(OFFLINE_DONE_KEY) !== null;
+    const overview = localStorage.getItem(OFFLINE_OVERVIEW_KEY) !== null;
+    if (!full && !overview) return null;
+    // Not every browser has the storage API; estimate and persisted are both optional.
+    const estimate = await navigator.storage?.estimate?.();
+    const persisted = (await navigator.storage?.persisted?.()) ?? null;
+    return { full, bytes: estimate?.usage ?? null, persisted };
+  } catch {
+    return null;
+  }
+}
+
+/** The map download's own UI state, richer than a one-line status: it has real progress. */
+type MapJob =
+  | { kind: "idle" }
+  | { kind: "running"; done: number; total: number; phase: "overview" | "detail" }
+  | ({ kind: "saved" } & SavedMap)
+  | { kind: "error" };
+
 /** Buttons that do something once (not a stored preference). Heavy helpers are imported on click, not up front. */
 function Action({ row, lang }: { row: Extract<Row, { kind: "action" }>; lang: Lang }) {
   const { t } = useT();
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mapJob, setMapJob] = useState<MapJob>({ kind: "idle" });
   const [text, setText] = useState("");
+  const progressId = useId();
   const replace = useSettingsStore((s) => s.replace);
   const T = (en: string, th: string) => (lang === "th" ? th : en);
+
+  // Arriving at the section should say what is already saved, not just offer
+  // to download it again (the row is rendered afresh each time).
+  useEffect(() => {
+    if (row.id !== "downloadMap") return;
+    let live = true;
+    void readSavedMap().then((saved) => {
+      if (live && saved) setMapJob({ kind: "saved", ...saved });
+    });
+    return () => {
+      live = false;
+    };
+  }, [row.id]);
 
   const run: Record<ActionId, () => Promise<void> | void> = {
     testSound: async () => {
@@ -278,26 +334,41 @@ function Action({ row, lang }: { row: Extract<Row, { kind: "action" }>; lang: La
     },
     downloadMap: async () => {
       setBusy(true);
-      setStatus(T("Downloading…", "กำลังดาวน์โหลด…"));
+      setMapJob({ kind: "running", done: 0, total: 0, phase: "overview" });
       try {
         const { warmMapNow } = await import("@/lib/offline-warm");
-        await warmMapNow();
-        setStatus(T("Done. The map works offline now.", "เสร็จแล้ว ใช้แผนที่แบบออฟไลน์ได้"));
+        const summary = await warmMapNow({
+          onProgress: (p) => {
+            // One update per new percent: a full pass is hundreds of requests,
+            // and the bar cannot show more than that anyway.
+            const step = Math.max(1, Math.ceil(p.total / 100));
+            if (p.done < p.total && p.done % step !== 0) return;
+            setMapJob({ kind: "running", done: p.done, total: p.total, phase: p.phase });
+          },
+        });
+        const saved = await readSavedMap();
+        setMapJob({
+          kind: "saved",
+          full: saved ? saved.full : true,
+          bytes: saved?.bytes ?? null,
+          persisted: summary.persisted,
+        });
       } catch {
-        setStatus(T("Couldn't finish. Try again on a better connection.", "ดาวน์โหลดไม่สำเร็จ ลองใหม่เมื่อสัญญาณดีขึ้น"));
+        setMapJob({ kind: "error" });
       } finally {
         setBusy(false);
       }
     },
     clearMap: async () => {
+      setMapJob({ kind: "idle" });
       try {
         await caches.delete("openfreemap-tiles");
         const { OFFLINE_DONE_KEY, OFFLINE_OVERVIEW_KEY } = await import("@/lib/offline-warm");
         localStorage.removeItem(OFFLINE_DONE_KEY);
         localStorage.removeItem(OFFLINE_OVERVIEW_KEY);
-        setStatus(T("Deleted. It will be downloaded again on a later visit.", "ลบแล้ว จะดาวน์โหลดใหม่ในการเข้าครั้งถัดไป"));
+        setStatus(t.mapDeleted);
       } catch {
-        setStatus(T("Nothing to delete.", "ไม่มีอะไรให้ลบ"));
+        setStatus(t.mapNothingToDelete);
       }
     },
     clearSaved: async () => {
@@ -350,6 +421,9 @@ function Action({ row, lang }: { row: Extract<Row, { kind: "action" }>; lang: La
   };
 
   const needsBox = row.id === "exportSettings" || row.id === "importSettings";
+  const running = mapJob.kind === "running" ? mapJob : null;
+  // Floor, never round: 99.6% must not read as done.
+  const percent = running && running.total > 0 ? Math.min(100, Math.floor((running.done / running.total) * 100)) : 0;
   return (
     <div className="px-2 py-1">
       <button
@@ -361,6 +435,65 @@ function Action({ row, lang }: { row: Extract<Row, { kind: "action" }>; lang: La
         {pick(row.label, lang)}
       </button>
       {row.hint && <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">{pick(row.hint, lang)}</p>}
+      {row.id === "downloadMap" && (
+        <div className="mt-2 text-xs text-neutral-700 dark:text-neutral-300">
+          {running && (
+            <>
+              <div className="flex items-baseline justify-between gap-2">
+                <span id={progressId}>{running.total > 0 ? t.mapDownloading(running.done, running.total) : t.mapPreparing}</span>
+                {running.total > 0 && <span className="shrink-0 tabular-nums">{percent}%</span>}
+              </div>
+              {running.total > 0 && (
+                <div
+                  role="progressbar"
+                  aria-labelledby={progressId}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={percent}
+                  aria-valuetext={`${percent}%`}
+                  className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700"
+                >
+                  <div className="h-full rounded-full bg-green-700 transition-[width]" style={{ width: `${percent}%` }} />
+                </div>
+              )}
+              <p className="mt-1 text-neutral-600 dark:text-neutral-400">
+                {running.phase === "detail" ? t.mapPhaseDetail : t.mapPhaseOverview}
+              </p>
+            </>
+          )}
+          {mapJob.kind === "saved" && (
+            <>
+              <div role="status">
+                <p className="flex items-start gap-1.5">
+                  <Check size={14} aria-hidden="true" className="mt-0.5 shrink-0 text-green-700 dark:text-green-400" />
+                  <span>{mapJob.full ? t.mapSavedFull : t.mapSavedOverview}</span>
+                </p>
+                {mapJob.bytes !== null && mapJob.bytes > 0 && (
+                  <p className="mt-0.5 pl-5 text-neutral-600 dark:text-neutral-400">{t.mapSizeUsed(formatSize(mapJob.bytes))}</p>
+                )}
+                {mapJob.persisted !== null && (
+                  <p className="mt-0.5 pl-5 text-neutral-600 dark:text-neutral-400">
+                    {mapJob.persisted ? t.mapKept : t.mapMayRemove}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void run.downloadMap()}
+                className="mt-1.5 inline-flex min-h-11 items-center rounded-full border border-neutral-300 px-3.5 text-xs font-medium hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
+              >
+                {t.mapUpdate}
+              </button>
+            </>
+          )}
+          {mapJob.kind === "error" && (
+            <p role="status" className="text-neutral-700 dark:text-neutral-300">
+              {t.mapDownloadFailed}
+            </p>
+          )}
+        </div>
+      )}
       {needsBox && (
         <textarea
           value={text}

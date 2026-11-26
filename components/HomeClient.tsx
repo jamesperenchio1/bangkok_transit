@@ -29,6 +29,7 @@ import { googleMapsKey } from "@/lib/google-maps";
 import { chooseMap } from "@/lib/map-provider";
 import { firstRideLeg, tripTiming } from "@/lib/trip-time";
 import { useArrivals } from "@/lib/use-arrivals";
+import { tapFeedback } from "@/lib/haptics";
 
 // Line geometry starts downloading with hydration. The map chunk itself is
 // requested when its component first renders: MapLibre by default, Google
@@ -43,6 +44,11 @@ const GoogleTransitMap = dynamic(
   () => import("@/components/GoogleTransitMap").then((m) => m.GoogleTransitMap),
   { ssr: false },
 );
+
+// Only /v2 renders it, so the classic page never downloads the sheet's code.
+const StationSheet = dynamic(() => import("@/components/v2/StationSheet").then((m) => m.StationSheet), {
+  ssr: false,
+});
 
 /**
  * One button that shows the language you'd switch *to*. Two 44px segments
@@ -94,15 +100,27 @@ function OfflineBanner() {
 export function HomeClient({
   children,
   networkSvg,
+  variant = "classic",
 }: {
   children?: React.ReactNode;
   /** Build-time SVG of the network, painted before the map's JS arrives. */
   networkSvg?: string;
+  /**
+   * "classic" is the shipped app (station cards on the map). "v2" is the
+   * native-feeling preview: a station tap opens its own sheet instead of the
+   * map card, and everything else is unchanged.
+   */
+  variant?: "classic" | "v2";
 }) {
+  const v2 = variant === "v2";
   const [start, setStart] = useState<Station | null>(null);
   const [destination, setDestination] = useState<Station | null>(null);
   const [recentTrips, setRecentTrips] = useState<{ from: string; to: string }[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
+  // /v2's station sheet, and the browser-back layer that closes it.
+  const [stationSheet, setStationSheet] = useState<Station | null>(null);
+  // Bumped to make the search palette close itself: it owns its open state.
+  const [closeSearch, setCloseSearch] = useState(0);
   const [focusStation, setFocusStation] = useState<Station | null>(null);
   const [focusPlace, setFocusPlace] = useState<Place | null>(null);
   // The place a route ends (or starts) at. Kept beside the station so the last
@@ -126,6 +144,10 @@ export function HomeClient({
   // PWA shortcut / shared link asked for "route from where I am"; resolved
   // once geolocation settles, never from a guessed position.
   const [nearRequested, setNearRequested] = useState(false);
+
+  // /v2's station sheet pushes and releases its own back-layer entry (see
+  // components/v2/StationSheet.tsx) - registering one here as well would make
+  // a single back press walk two history entries.
 
   // Recent trips (localStorage)
   useEffect(() => {
@@ -273,7 +295,9 @@ export function HomeClient({
     }
     params.delete("near");
     const query = params.toString();
-    window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
+    // `history.state` carries the back-layer tags pushed by open sheets;
+    // replaceState must keep them, or back would stop closing the top layer.
+    window.history.replaceState(window.history.state, "", query ? `?${query}` : window.location.pathname);
   }, [urlRead, start, destination, destinationPlace]);
 
   // The dot follows every fix; anything that decides something for the rider
@@ -338,7 +362,8 @@ export function HomeClient({
   const firstLeg = path ? firstRideLeg(path) : null;
   const firstArrivals = useArrivals(firstLeg?.station.code ?? null);
   const timing = path ? tripTiming(path, firstArrivals.data, firstArrivals.now) : null;
-  const totalMinutes = (timing?.minutes ?? path?.minutes ?? 0) + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0);
+  // Walk estimates are fractional; riders read whole minutes.
+  const totalMinutes = Math.round((timing?.minutes ?? path?.minutes ?? 0) + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0));
 
   // No route, but only because of lines turned off for routes: say which.
   const blockedBy = useMemo(
@@ -349,6 +374,7 @@ export function HomeClient({
   const fareLine = showFare ? fareText(t, computeFare(path, fares)) : "";
 
   const handleSetStart = (station: Station, place?: Place) => {
+    tapFeedback();
     setStart(station);
     setStartPlace(place ?? null);
     if (destination?.code === station.code) {
@@ -359,6 +385,7 @@ export function HomeClient({
 
   const handleSetDestination = (station: Station, place?: Place) => {
     if (start?.code === station.code) return;
+    tapFeedback();
     setDestination(station);
     setDestinationPlace(place ?? null);
     setSheetOpen(true);
@@ -369,6 +396,17 @@ export function HomeClient({
   // header chips. Dismissing the sheet keeps the card visible.
   const handleSelectStation = () => {
     setSheetOpen(false);
+  };
+
+  // /v2: a station tap opens the native sheet instead of a map card, and takes
+  // over the screen from the search palette (which owns its own open state).
+  // The sheet stays open after Start/Destination is set, so the rider sees
+  // their choice land on it. The route sheet is left alone on purpose: closing
+  // it here would race its history entry against the sheet's new one, and the
+  // station sheet is simply drawn above it.
+  const handleStationOpen = (station: Station) => {
+    setCloseSearch((n) => n + 1);
+    setStationSheet(station);
   };
 
   const clearRoute = () => {
@@ -493,7 +531,11 @@ export function HomeClient({
               routeChanges: path?.changes ?? null,
             }}
           />
-          <StationSearch onSelectStation={handleSearchSelect} onSelectPlace={handlePlaceSelect} />
+          <StationSearch
+            onSelectStation={handleSearchSelect}
+            onSelectPlace={handlePlaceSelect}
+            closeSignal={closeSearch}
+          />
           <SettingsMenu />
         </div>
       </header>
@@ -530,7 +572,7 @@ export function HomeClient({
               return (
                 <button
                   key={`${tr.from}-${tr.to}`}
-                  onClick={() => { setStart(fromS); setDestination(toS); setSheetOpen(true); }}
+                  onClick={() => { tapFeedback(); setStart(fromS); setDestination(toS); setSheetOpen(true); }}
                   className="shrink-0 rounded-full border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-sm hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
                 >
                   {stationName(fromS, lang)} → {stationName(toS, lang)}
@@ -566,6 +608,7 @@ export function HomeClient({
         {!settingsReady ? null : useGoogle ? (
           <GoogleTransitMap
             onSelectStation={handleSelectStation}
+            onStationOpen={v2 ? handleStationOpen : undefined}
             onSetStart={handleSetStart}
             onSetDestination={handleSetDestination}
             startCode={startCode}
@@ -584,6 +627,7 @@ export function HomeClient({
         ) : (
           <TransitMap
             onSelectStation={handleSelectStation}
+            onStationOpen={v2 ? handleStationOpen : undefined}
             onSetStart={handleSetStart}
             onSetDestination={handleSetDestination}
             startCode={startCode}
@@ -603,8 +647,12 @@ export function HomeClient({
         {nearest && !hasRoute && (
           <button
             onClick={() => {
+              tapFeedback();
               setStart(nearest.station);
               setStartPlace(null);
+              // Open the station card too, so the rider can confirm the
+              // platform and see the live trains before choosing a destination.
+              setFocusStation({ ...nearest.station });
               // remember the walk from the rider to the station
               if (settled) {
                 // stored via state below; we reuse userPosition via a temp? We'll compute in HomeClient as firstWalk
@@ -642,6 +690,16 @@ export function HomeClient({
           useSettingsStore.getState().update({ unusedLines: unusedLines.filter((l) => !lines.includes(l)) })
         }
       />
+      {v2 && (
+        <StationSheet
+          station={stationSheet}
+          onClose={() => setStationSheet(null)}
+          startCode={startCode}
+          destinationCode={destinationCode}
+          onSetStart={handleSetStart}
+          onSetDestination={handleSetDestination}
+        />
+      )}
       {children}
     </div>
   );

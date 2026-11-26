@@ -61,6 +61,11 @@ import type { GeoPosition } from "@/lib/use-geolocation";
 
 export interface GoogleTransitMapProps {
   onSelectStation: (station: Station) => void;
+  /**
+   * /v2: a station tap opens the page's own sheet. When set, it replaces the
+   * map card entirely (no InfoWindow is opened for that station).
+   */
+  onStationOpen?: (station: Station) => void;
   /** A place card passes its place, so the route can end with the walk to it. */
   onSetStart: (station: Station, place?: Place) => void;
   onSetDestination: (station: Station, place?: Place) => void;
@@ -156,6 +161,7 @@ function centered(css: string): string {
  */
 export function GoogleTransitMap({
   onSelectStation,
+  onStationOpen,
   onSetStart,
   onSetDestination,
   startCode,
@@ -217,9 +223,9 @@ export function GoogleTransitMap({
   }, [path]);
 
   // The newest props and settings, for handlers created once.
-  const latest = useRef({ onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions, onLoad, onError, settings, lang });
+  const latest = useRef({ onSelectStation, onStationOpen, onSetStart, onSetDestination, startCode, destinationCode, pathOptions, onLoad, onError, settings, lang });
   useEffect(() => {
-    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions, onLoad, onError, settings, lang };
+    latest.current = { onSelectStation, onStationOpen, onSetStart, onSetDestination, startCode, destinationCode, pathOptions, onLoad, onError, settings, lang };
   });
 
   const reducedMotion = () => motionDuration(1) === 0;
@@ -584,6 +590,11 @@ export function GoogleTransitMap({
     hit.setAttribute("aria-label", station.nameEn);
     hit.addEventListener("click", (e) => {
       e.stopPropagation();
+      // /v2 draws its own station sheet: the tap goes there instead of a card.
+      if (latest.current.onStationOpen) {
+        latest.current.onStationOpen(station);
+        return;
+      }
       latest.current.onSelectStation(station);
       openStationCard(station);
     });
@@ -803,7 +814,9 @@ export function GoogleTransitMap({
         moveTo(target, Math.max(map.getZoom() ?? 11, mapLibreToGoogleZoom(FOCUS_ZOOM_FLOOR)));
       }
     }
-    openStationCard(focusStation);
+    // /v2: the page's sheet replaces the map card for a searched station too.
+    if (latest.current.onStationOpen) latest.current.onStationOpen(focusStation);
+    else openStationCard(focusStation);
     // The camera and card are driven by the pick alone; the rest is read from `latest`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, focusStation]);

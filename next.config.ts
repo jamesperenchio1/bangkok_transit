@@ -24,12 +24,28 @@ const precachedPublicFiles = [
   revision: createHash("md5").update(readFileSync(`public${url}`)).digest("hex"),
 }));
 
+/**
+ * Export routes that are HTML, not hashed assets, so Serwist's manifest
+ * can't name them. The shell ("/") and the offline fallback (app/sw.ts serves
+ * it for a navigation nothing else answers) plus the four content indexes:
+ * without these, "browse the lines" offline only worked for a page the rider
+ * had already opened. A fresh revision per build re-fetches them on deploy.
+ * The indexes are `page.tsx` files under app/(content)/ - add one here only
+ * when it exists. "/stations" is an index; the per-station pages are not
+ * precached (there are hundreds; they arrive through the runtime page cache).
+ */
+const precachedRoutes = ["/", "/offline", "/lines", "/stations", "/routes", "/info"].map((url) => ({
+  url,
+  revision: randomUUID(),
+}));
+
 const withSerwist = withSerwistInit({
   swSrc: "app/sw.ts",
   swDest: "public/sw.js",
-  // A static export's index.html isn't in the glob-built manifest, so list
-  // the shell explicitly. A fresh revision per build re-fetches it on deploy.
-  additionalPrecacheEntries: [{ url: "/", revision: randomUUID() }, ...precachedPublicFiles],
+  additionalPrecacheEntries: [...precachedRoutes, ...precachedPublicFiles],
+  // The /v2 preview is not part of the shipped app: never make every install
+  // download its page, layout or sheet chunks. It still works online.
+  exclude: [/^\/v2(\/|\.html?$)/, /app\/v2\//],
   // Serwist's default is a full `location.reload()` whenever the device
   // comes back online - which on a phone leaving a tunnel or the subway
   // wipes the open station card, the map view, and everything else on

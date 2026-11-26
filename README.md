@@ -8,6 +8,8 @@
   <img src="docs/screenshot-route.png" width="270" alt="The route sheet: stops, changes, walking transfer, boarding direction and live times">
 </p>
 
+Preview: **[/v2](https://bangkok-transit.com/v2)** shows the next station UI — a bottom sheet on the same map — with the classic interface unchanged (noindex, reachable by URL only).
+
 ## Highlights
 
 - **Costs don't grow with users.** Live arrivals are polled once, centrally, by a single Cloudflare Durable Object and published as one JSON file behind the CDN. A thousand riders cost the same as one — everything fits Cloudflare's free tier with wide margins ([cost model](docs/architecture.md#cost-model)).
@@ -61,6 +63,7 @@ npm run dev              # http://localhost:3000 (Turbopack, no service worker)
 | `npm test` | Unit tests (Vitest) |
 | `npm run test:e2e` | Playwright against the production build: desktop, mobile, and the phone-by-phone station-alert matrix |
 | `npm run test:alert` | Only the alert matrix: iPhone Safari/Chrome, the iPhone range, Android, then desktop |
+| `npm run test:perf` | Performance budget: first load on Slow 4G + 4x CPU (LCP, CLS, JS transfer) |
 | `npm run check:live` | Health check of production (site headers, live data, CDN caching) |
 
 The poller lives in [`cloudflare/poller`](cloudflare/poller) with its own `package.json`:
@@ -77,7 +80,7 @@ To point the site at a local copy of the live document, set `NEXT_PUBLIC_ARRIVAL
 
 ## CI/CD
 
-- **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) on every push and PR: lint, typecheck, unit tests, production dependency audit and the Playwright suite for the site; typecheck, Workers-runtime tests, a dry-run bundle and an audit for the poller.
+- **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) on every push and PR: lint, typecheck, unit tests, production dependency audit and the Playwright suite for the site, plus a throttled first-load performance budget (`npm run test:perf`); typecheck, Workers-runtime tests, a dry-run bundle and an audit for the poller.
 - **CD** is Cloudflare Workers Builds: a push to `main` builds and deploys the site (repo root) and the poller (`cloudflare/poller`). No Cloudflare credentials are stored in GitHub.
 - **Monitoring** ([`.github/workflows/live-check.yml`](.github/workflows/live-check.yml)) runs `scripts/check-live.mjs` against production every 30 minutes; a failure emails the repo owner.
 

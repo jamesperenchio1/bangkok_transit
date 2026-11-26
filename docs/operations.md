@@ -63,6 +63,39 @@ Poller logs (`console.warn("upstream failures")`, state transitions) are in the 
 | `check-live`: not edge-cached | `cf-cache-status` on `live.` | Restore the Cache Rule. |
 | A deploy broke the site | Workers → `bangkok-transit` → Deployments | Roll back to the previous version there, then fix forward. |
 
+## Preview, updates and performance
+
+### The "new version" toast
+
+The service worker no longer takes over mid-session. After a deploy, an open tab keeps the build it loaded and the app shows **"A new version is available"** with *Reload* once the new worker is waiting. This is normal, not an error.
+
+- **Rider taps Reload**: the waiting worker activates and the page reloads into the new build.
+- **Rider ignores it**: the old build keeps working; closing every tab of the app (or the next cold start) picks up the new worker. Nothing is lost and nothing is forced.
+- **If a deploy seems stale**: check Workers → `bangkok-transit` → Deployments that the push actually built and deployed. A device can legitimately keep the old shell until the toast is accepted; a hard reload (Cmd/Ctrl-Shift-R) bypasses the worker for that load, but the next normal load is controlled again until the waiting worker activates.
+- **If the toast never appears after a deploy**: hard reload once, then check DevTools → Application → Service Workers for a *waiting* worker. Private windows and "clear site data" remove the worker entirely; the next visit installs it afresh.
+
+### Verifying `/v2`
+
+`/v2` is the station-bottom-sheet preview, reachable by URL only and `noindex`; the classic `/` is unchanged. Once it is merged and deployed:
+
+1. Open `https://bangkok-transit.com/v2` (and `/?from=N8&to=CEN` on `/v2` to carry a route).
+2. Tap a station: the sheet should rise from the bottom with the same name, live times, Start and Destination actions.
+3. Press browser back (Android) or swipe from the edge (iOS): the sheet closes, the route stays, and a second back leaves the page as expected.
+4. Confirm `https://bangkok-transit.com/` still opens the classic popup card, and that `/v2` is not linked from `/` or the sitemap.
+5. View source / DevTools: `/v2` must carry `noindex`; it must make no new origin request and add no server work.
+
+It is a preview to **delete once the decision is made** (see `docs/architecture.md` → *Preview UI*): remove `app/v2/`, `components/v2/` and its copy, and leave the shared helpers alone. Do not link it from the app or add it to the sitemap while it exists.
+
+### Triaging a performance-budget failure
+
+The budget (`npm run test:perf`, also the CI `perf` job) runs `/` on Slow 4G with a 4x CPU throttle: LCP ≤ 6000 ms, CLS ≤ 0.1, JS transfer ≤ 600 KB. LCP lands on MapLibre's attribution because the map canvas is not LCP-eligible, so it effectively measures the map bundle arriving; measured runs are 4.4-5.0 s, and 6 s leaves room for CDP variance while still catching a real regression. The run prints `[perf] LCP … · CLS … · JS …` and attaches `performance-budget.json` with the list of `.js` files to the Playwright report.
+
+1. Reproduce locally with `npm run test:perf` (it builds and serves `out/` through `wrangler dev`, like production). Compare the numbers with the failing CI run - if only CI fails and both attempts are close to budget, suspect runner noise before a regression.
+2. **JS over budget**: use the attached list to find what grew. Common causes are a new client component imported into the home page instead of lazy-loaded, a second copy of a library (check for duplicate `maplibre`/`react` chunks), or a dependency added to the critical path. Fix by splitting or deferring - never by adding an API route, a server, or a paid plan (the cost rule).
+3. **LCP over budget**: look for work now starting before the map paints (a new fetch at hydration, a blocking script, an extra font/sprite request). Anything that isn't needed for the first frame belongs behind `whenMapPainted()` or in a lazy chunk.
+4. **CLS over budget**: a late-arriving element above the fold (banner, toast, install hint) that pushes the map or header. Reserve its space, or render it in a fixed overlay.
+5. If the budget genuinely needs to change, change the constant in `e2e/performance.spec.ts` and the table in `docs/architecture.md` together, with the reason in the PR - never silently loosen one.
+
 ## Fare audit
 
 `tests/fare-audit.test.ts` prices every ordered pair of stations (about 36,600 journeys, ~15 s) and fails on any rule violation (unpriced ride, rules raising a fare, discounts that do not add up, an unexplained difference between a journey and its reverse). Run it with `FARE_AUDIT_OUT=<dir> npx vitest run tests/fare-audit.test.ts` to also write `report.md`: which journeys get a transfer rate, and which changes between systems pay full price. `tests/fare-oracle.test.ts` compares the fares with operator tables copied as published into `data/fare-oracle/`.

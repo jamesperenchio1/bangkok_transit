@@ -111,7 +111,7 @@ test.describe("when the basemap is slow or missing", () => {
     await page.getByRole("button", { name: "Search stations" }).click();
     await page.getByRole("combobox").fill("siam");
     await page.getByRole("option").first().click();
-    await expect(page.locator(".maplibregl-popup").getByText("Siam")).toBeVisible();
+    await expect(page.locator(".maplibregl-popup").getByText("Siam", { exact: true })).toBeVisible();
     forgiveNetworkErrors(problems);
   });
 
