@@ -21,6 +21,14 @@ import { carryOverPlatforms, type ArrivalsDocument, type UpstreamState } from ".
 /** Steady-state poll. Served by the CDN, so this costs the server nothing per user. */
 const POLL_MS = 15_000;
 /**
+ * Slower cadences for a weaker link: every request is answered by the CDN, but
+ * it still wakes the radio and costs the rider data. 3G gets half the rate,
+ * 2G / Data Saver a quarter. The times stay just as honest - a reading stops
+ * being shown as live at the same age either way (lib/bts.ts).
+ */
+const MEDIUM_POLL_MS = 30_000;
+const SLOW_POLL_MS = 60_000;
+/**
  * A first-time visitor can arrive while the shared snapshot is still filling
  * in after a cold start. Poll fast until every live station has arrived.
  */
@@ -36,15 +44,38 @@ const MAX_FAST_POLLS = 15;
 const RESUME_FAST_POLLS = 5;
 /**
  * Backstop for a poll chain that silently died (a timer dropped while the
- * phone slept, say): if no poll has started for this long while the page is
- * visible, start one.
+ * phone slept, say): if no poll has started for twice the current cadence
+ * while the page is visible, start one.
  */
-const WATCHDOG_MS = 2 * POLL_MS;
+const WATCHDOG_FACTOR = 2;
 
 const SNAPSHOT_KEY = "bts:arrivals:v1";
 const CLOCK_OFFSET_KEY = "bts:clock-offset:v1";
 /** Abandon a request that hasn't answered by now, so a hung connection can't stall polling. */
 const REQUEST_TIMEOUT_MS = 10_000;
+
+/** The Network Information API, where the browser has it (Chrome/Android; Safari has neither field). */
+interface NetworkInformation {
+  saveData?: boolean;
+  effectiveType?: string;
+  addEventListener?: (type: "change", listener: () => void) => void;
+}
+
+function networkInformation(): NetworkInformation | undefined {
+  return (navigator as Navigator & { connection?: NetworkInformation }).connection;
+}
+
+/**
+ * How often to poll on this link: 15 s normally, 30 s on 3G, 60 s on 2G/slow-2G
+ * or with Data Saver on. A rider who asked to save data gets the slowest
+ * cadence we have; an unknown connection is treated as fast (as it always was).
+ */
+export function pollIntervalMs(connection?: Pick<NetworkInformation, "saveData" | "effectiveType">): number {
+  if (connection?.saveData) return SLOW_POLL_MS;
+  if (connection?.effectiveType === "3g") return MEDIUM_POLL_MS;
+  if (connection?.effectiveType === "2g" || connection?.effectiveType === "slow-2g") return SLOW_POLL_MS;
+  return POLL_MS;
+}
 
 export type ArrivalsEntry = Arrivals;
 export type ArrivalsMap = Record<string, ArrivalsEntry>;
@@ -201,6 +232,9 @@ export function startArrivalsPolling() {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let inFlight = false;
   let lastPollStart = 0;
+  // Re-read on a connection change; every scheduling decision uses this, so a
+  // move to 3G slows the cadence without restarting the loop.
+  let baseMs = pollIntervalMs(networkInformation());
 
   function stop() {
     if (timer !== null) clearTimeout(timer);
@@ -235,7 +269,7 @@ export function startArrivalsPolling() {
     if (useSettingsStore.getState().settings.pauseLive) {
       // Settled: "nothing held" is the honest answer now, not "still checking".
       if (!useArrivalsStore.getState().settled) useArrivalsStore.setState({ settled: true });
-      if (!document.hidden) timer = setTimeout(poll, POLL_MS);
+      if (!document.hidden) timer = setTimeout(poll, baseMs);
       return;
     }
     inFlight = true;
@@ -248,7 +282,7 @@ export function startArrivalsPolling() {
     if (!navigator.onLine) {
       useArrivalsStore.setState({ offline: true, settled: true });
       inFlight = false;
-      if (!document.hidden) timer = setTimeout(poll, POLL_MS);
+      if (!document.hidden) timer = setTimeout(poll, baseMs);
       return;
     }
     try {
@@ -303,13 +337,13 @@ export function startArrivalsPolling() {
     // the first time the snapshot comes back complete. It is never reset:
     // otherwise one station that stays missing (its upstream call keeps
     // failing), or a long network outage, would burn a 2s-poll burst on every
-    // cycle for every open tab. Outages retry at the normal POLL_MS cadence.
+    // cycle for every open tab. Outages retry at the normal cadence.
     if (complete) fastPolls = MAX_FAST_POLLS;
     // (resume() hands back a few of these for a cold snapshot after a return.)
     // Only a server that answered with a still-filling snapshot earns a quick
     // retry; a failed request (offline, timeout, error) waits the normal
-    // POLL_MS, so an outage never burns through quick retries.
-    let delay = POLL_MS;
+    // cadence for this link, so an outage never burns through quick retries.
+    let delay = baseMs;
     if (answered && !complete && fastPolls < MAX_FAST_POLLS) {
       fastPolls += 1;
       delay = FAST_POLL_MS;
@@ -330,8 +364,20 @@ export function startArrivalsPolling() {
   window.addEventListener("pageshow", (e) => {
     if (e.persisted) resume();
   });
+  // The phone moved between Wi-Fi, 3G and 2G (or Data Saver was switched on):
+  // re-arm the wait at the new cadence. No fetch here - a change of network is
+  // not a reason to send a request before the next one is due.
+  networkInformation()?.addEventListener?.("change", () => {
+    const next = pollIntervalMs(networkInformation());
+    if (next === baseMs) return;
+    baseMs = next;
+    if (timer !== null) {
+      stop();
+      if (!document.hidden) timer = setTimeout(poll, baseMs);
+    }
+  });
   setInterval(() => {
-    if (!document.hidden && !inFlight && Date.now() - lastPollStart > WATCHDOG_MS) pollNow();
+    if (!document.hidden && !inFlight && Date.now() - lastPollStart > WATCHDOG_FACTOR * baseMs) pollNow();
   }, POLL_MS);
 
   void poll();

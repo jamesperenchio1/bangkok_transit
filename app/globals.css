@@ -116,6 +116,22 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Controls, not content: a long press on a header control, a map button or a
+   card's close button must not raise the iOS selection callout, start a text
+   selection, or add the 300 ms tap delay. Deliberately scoped - station
+   names, route legs and the cards' own text stay selectable and copyable. */
+header button,
+header a,
+.maplibregl-ctrl button,
+.maplibregl-ctrl a,
+.maplibregl-popup-close-button,
+.bt-card-close {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
 /* Popups are interactive cards; keep them above MapLibre's control container
    (attribution/zoom, z-index 2) so their buttons are never blocked. */
 .maplibregl-popup {

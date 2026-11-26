@@ -3,6 +3,8 @@ import { preconnect, preload } from "react-dom";
 import "./globals.css";
 import { ARRIVALS_URL } from "@/lib/arrivals-url";
 import { JsonLd } from "@/components/JsonLd";
+import { ServiceWorkerUpdate } from "@/components/ServiceWorkerUpdate";
+import { ThemeColorSync } from "@/components/ThemeColorSync";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE, SITE_URL, siteLd } from "@/lib/seo";
 
 // Must match TransitMap's STYLE_URL exactly, or this preload is wasted.
@@ -60,6 +62,11 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Lets env(safe-area-inset-*) report the notch / home indicator so the header and bottom controls can clear them.
   viewportFit: "cover",
+  // Android's on-screen keyboard shrinks the layout instead of covering it,
+  // so the search field's results stay visible above the keyboard.
+  interactiveWidget: "resizes-content",
+  // Light brand colour for the first paint; components/ThemeColorSync.tsx
+  // switches it to the dark background once the app knows its theme.
   themeColor: "#76b729",
 };
 
@@ -93,6 +100,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="h-full flex flex-col overflow-hidden overflow-clip overscroll-none">
         {children}
+        {/* Both return null / no markup until they have something to say, and
+            neither fetches anything at mount, so first paint is unaffected. */}
+        <ServiceWorkerUpdate />
+        <ThemeColorSync />
         <JsonLd data={siteLd()} />
       </body>
     </html>

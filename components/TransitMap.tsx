@@ -152,6 +152,11 @@ maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
 export interface TransitMapProps {
   onSelectStation: (station: Station) => void;
+  /**
+   * /v2: a station tap opens the page's own sheet. When set, it replaces the
+   * map card entirely (no popup is opened for that station).
+   */
+  onStationOpen?: (station: Station) => void;
   /** A place card passes its place, so the route can end with the walk to it. */
   onSetStart: (station: Station, place?: Place) => void;
   onSetDestination: (station: Station, place?: Place) => void;
@@ -313,6 +318,7 @@ function withTransitLayers(map: maplibregl.Map, loaded: boolean, fn: () => void)
 
 export function TransitMap({
   onSelectStation,
+  onStationOpen,
   onSetStart,
   onSetDestination,
   startCode,
@@ -386,6 +392,7 @@ export function TransitMap({
   // needing to be re-registered on every render.
   const latest = useRef({
     onSelectStation,
+    onStationOpen,
     onSetStart,
     onSetDestination,
     startCode,
@@ -393,7 +400,7 @@ export function TransitMap({
     pathOptions,
   });
   useEffect(() => {
-    latest.current = { onSelectStation, onSetStart, onSetDestination, startCode, destinationCode, pathOptions };
+    latest.current = { onSelectStation, onStationOpen, onSetStart, onSetDestination, startCode, destinationCode, pathOptions };
   });
 
   // Create the map once per mount. Like the Leaflet canvas renderer this
@@ -730,6 +737,12 @@ export function TransitMap({
         const code = e.features?.[0]?.properties?.code as string | undefined;
         const station = code ? stations.find((s) => s.code === code) : undefined;
         if (!station) return;
+        // A page that draws its own station sheet (the /v2 preview) takes the
+        // tap instead of the map card. Everything else stays exactly as it was.
+        if (latest.current.onStationOpen) {
+          latest.current.onStationOpen(station);
+          return;
+        }
         latest.current.onSelectStation(station);
         openPopup(map, popupsRef, station, latest);
       });
@@ -1034,7 +1047,11 @@ export function TransitMap({
       // off screen); the rider's zoom level is never changed.
       const move = focusCamera(map, focusStation, other, padding, useSettingsStore.getState().settings.autoZoom);
       if (move) map.stop().easeTo({ ...move, duration: motionMs(600) });
-      openPopup(map, popupsRef, focusStation, latest);
+      // /v2 replaces the map card with the page's own sheet everywhere,
+      // including a station picked from search - otherwise the preview would
+      // show two different station UIs depending on how it was opened.
+      if (latest.current.onStationOpen) latest.current.onStationOpen(focusStation);
+      else openPopup(map, popupsRef, focusStation, latest);
     };
     if (loadedRef.current) apply();
     else map.once("style.load", apply);

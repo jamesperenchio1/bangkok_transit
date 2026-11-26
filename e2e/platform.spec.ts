@@ -28,6 +28,7 @@ test.describe("security headers", () => {
         "https://live.bangkok-transit.com",
         "https://maps.googleapis.com",
         "https://places.googleapis.com",
+        "https://reports.bangkok-transit.com",
         "https://tiles.openfreemap.org",
         "https://*.googleapis.com",
         "https://*.gstatic.com",

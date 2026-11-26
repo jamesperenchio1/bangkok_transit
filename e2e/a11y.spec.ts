@@ -67,13 +67,17 @@ test.describe("accessibility", () => {
     const browse = page.getByTestId("browse-stations");
     await expect(browse).toBeVisible();
     await audit(page);
-    // Reach a station with Tab alone, and choose it with Enter.
-    await page.keyboard.press("Tab");
+    // Reach a station with Tab alone, and choose it with Enter. On phones the
+    // palette has its own close button between the input and the list, so tab
+    // until focus is actually inside the list rather than assuming one hop.
+    for (let i = 0; i < 4 && (await browse.locator(":focus").count()) === 0; i++) {
+      await page.keyboard.press("Tab");
+    }
     await expect(browse.locator(":focus")).toBeVisible();
     await browse.getByRole("button", { name: /Siam/ }).first().focus();
     await page.keyboard.press("Enter");
     await expect(browse).toBeHidden();
-    await expect(page.locator(".maplibregl-popup").getByText("Siam")).toBeVisible();
+    await expect(page.locator(".maplibregl-popup").getByText("Siam", { exact: true })).toBeVisible();
   });
 
   test("the settings dialog is keyboard operable and returns focus", async ({ page }) => {
