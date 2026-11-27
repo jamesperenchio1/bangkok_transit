@@ -100,11 +100,15 @@ export function ServiceWorkerUpdate() {
     // free to look for, so do it at once; the network check waits its turn.
     void check();
     // The worker is registered on window load, which can be after this mount;
-    // `ready` resolves then, without a request of its own.
-    void navigator.serviceWorker.ready.then((registration) => {
-      watch(registration);
-      offer(registration.waiting);
-    });
+    // `ready` resolves then, without a request of its own. It can resolve
+    // undefined where service workers are blocked or unsupported.
+    void navigator.serviceWorker.ready
+      .then((registration) => {
+        if (cancelled || !registration) return;
+        watch(registration);
+        if (registration.waiting) offer(registration.waiting);
+      })
+      .catch(() => {});
     void whenMapPainted().then(() => void check(true));
 
     return () => {
