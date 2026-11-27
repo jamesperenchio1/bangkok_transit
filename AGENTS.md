@@ -22,12 +22,14 @@ live BTS arrivals, live at bangkok-transit.com. Read `README.md` first, then
   file written by one Durable Object. Don't add API routes, per-user fetches
   to the upstream, or anything that needs a paid plan. Keep the Cloudflare
   free-tier numbers in `docs/architecture.md#cost-model` true.
-  - Default users stay on MapLibre/OpenFreeMap and make zero Google requests.
-    The map is cached on the device so it works offline; that is why it is
-    the default. The opt-in Google map and Google Places search are the one exception: a
-    browser key restricted by HTTP referrer and API, with daily quotas and a
-    budget alert. They are billed per request when enabled; never put them in
-    the default path.
+  - Default users stay on MapLibre/OpenFreeMap and make zero Google requests
+    on their own. The map is cached on the device so it works offline; that is
+    why it is the default. The opt-in Google map, Google Places search and the
+    one-shot walking-geometry lookup are the deliberate exceptions: the first
+    two only when chosen, the last once per place destination (cached 7 days,
+    straight line if there is no key or the call fails). They use a browser key
+    restricted by HTTP referrer and API, with daily quotas and a budget alert.
+    They are billed per request when enabled; never put them in the default path.
 - **Never per-user calls to `bts-api.topmile.com`.** It has no CORS, no batch
   endpoint and a ~180/min rate limit; only `cloudflare/poller` talks to it.
 - **Honest live data.** Old readings are shown as last-known with their age
