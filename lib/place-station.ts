@@ -56,6 +56,8 @@ export interface FinalWalk {
   to: { lat: number; lon: number };
   meters: number;
   minutes: number;
+  /** Road-following geometry when Google gave us one, as [lat, lon] pairs. */
+  path?: [number, number][];
   /** The place's name, shown on the sheet's last line. */
   name: string;
 }

@@ -59,7 +59,7 @@ export interface MapPalette {
   /** Stations off the highlighted route. */
   dimmedStationFill: string;
   dimmedStationStroke: string;
-  /** The dashed walking transfer and the walk to a place. */
+  /** The dotted walking transfer, the walk to a place, and its endpoint. */
   routeWalk: string;
   /** The fallback style's ground, when the basemap itself cannot be fetched. */
   background: string;
@@ -72,7 +72,7 @@ const LIGHT_PALETTE: MapPalette = {
   dimmedLine: "#ccc",
   dimmedStationFill: "#ddd",
   dimmedStationStroke: "#ccc",
-  routeWalk: "#525252",
+  routeWalk: "#0f766e",
   background: "#f2efe9",
 };
 
@@ -85,7 +85,7 @@ const DARK_PALETTE: MapPalette = {
   dimmedLine: "#3f3f46",
   dimmedStationFill: "#3f3f46",
   dimmedStationStroke: "#52525b",
-  routeWalk: "#d4d4d4",
+  routeWalk: "#5eead4",
   background: "#0c0c0c",
 };
 
