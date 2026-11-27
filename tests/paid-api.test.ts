@@ -128,11 +128,22 @@ describe("route, station and line facts", () => {
     for (const s of stations) {
       const facts = stationFacts(stationSlug(s))!;
       for (const r of refs(facts)) {
-        // `code` may list two official codes ("RN01 / RW01"); each must find the same station as the slug.
+        // Send back exactly what the API returned: both `slug` and the whole `code`
+        // (which is "BL10 / PP16" for a station with two official codes).
         const bySlug = findStation(r.slug);
-        for (const c of r.code.split("/").map((x) => x.trim())) expect(findStation(c)?.code, `${r.nameEn} ${c}`).toBe(bySlug?.code);
+        expect(bySlug, `${r.nameEn} slug`).toBeDefined();
+        expect(findStation(r.code)?.code, `${r.nameEn} code "${r.code}"`).toBe(bySlug?.code);
       }
     }
+  });
+
+  it("accepts a two-code string only when every part is the same station", () => {
+    const krung = findStation("RN01 / RW01");
+    expect(krung?.nameEn).toBeDefined();
+    expect(findStation("RW01/RN01")?.code).toBe(krung?.code);
+    expect(findStation("BL10 / N8")).toBeUndefined();
+    expect(findStation("RN01 / ")).toBeUndefined();
+    expect(findStation("/")).toBeUndefined();
   });
 
   it("plans a route between official codes, not internal ids", () => {

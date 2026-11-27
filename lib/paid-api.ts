@@ -103,7 +103,17 @@ const stationsByOfficialCode = new Map(stations.flatMap((s) => codeAliases(s).ma
 export function findStation(input: string): Station | undefined {
   const key = input.trim();
   if (!key || key.length > 80) return undefined;
-  return stationsBySlug.get(key.toLowerCase()) ?? stationsByOfficialCode.get(key.toUpperCase()) ?? stationsByCode.get(key) ?? stationsByCode.get(key.toUpperCase());
+  const one = (k: string) =>
+    stationsBySlug.get(k.toLowerCase()) ?? stationsByOfficialCode.get(k.toUpperCase()) ?? stationsByCode.get(k) ?? stationsByCode.get(k.toUpperCase());
+  const direct = one(key);
+  if (direct || !key.includes("/")) return direct;
+  // A station with two official codes is returned as "BL10 / PP16" (shownCode);
+  // send that exact string back and it still means that station - but only if
+  // every part names the same one, so "BL10 / N8" is rejected, not guessed.
+  const parts = key.split("/").map((p) => p.trim());
+  if (parts.length > 4 || parts.some((p) => !p)) return undefined;
+  const found = parts.map(one);
+  return found[0] && found.every((f) => f === found[0]) ? found[0] : undefined;
 }
 
 export function stationFacts(input: string) {
