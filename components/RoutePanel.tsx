@@ -4,7 +4,7 @@ import { useSettingsStore } from "@/lib/settings-store";
 import { computeFare, type FareResult } from "@/lib/fares";
 import { useFares } from "@/lib/use-fares";
 import { useEffect, useId, useRef, useState } from "react";
-import { X, MapPin, ArrowRight, ChevronDown, ChevronUp, Share2 } from "lucide-react";
+import { X, MapPin, ArrowRight, ChevronDown, ChevronUp, Share2, Footprints } from "lucide-react";
 import { useArrivals } from "@/lib/use-arrivals";
 import {
   arrivalClockTime,
@@ -30,8 +30,9 @@ import { useBackLayer } from "@/lib/use-back-layer";
 function directionsUrl(
   origin: { lat: number; lon: number },
   destination: { lat: number; lon: number },
+  mode: "transit" | "walking" = "transit",
 ) {
-  return `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lon}&destination=${destination.lat},${destination.lon}&travelmode=transit`;
+  return `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lon}&destination=${destination.lat},${destination.lon}&travelmode=${mode}`;
 }
 
 function GoogleMapsLink({ href }: { href: string }) {
@@ -670,16 +671,25 @@ export function RoutePanel({ state, userPosition, stopAlert, onClose, onUseLines
             {state.path && finalWalk && (
               <div className="flex items-stretch gap-3 px-4">
                 <div className="relative w-4 shrink-0">
-                  <span className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-l-2 border-dotted border-neutral-400" />
+                  <span className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-l-2 border-dotted border-teal-700/60 dark:border-teal-300/60" />
                   <span className="absolute top-1/2 left-1/2 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white dark:bg-neutral-900">
-                    <MapPin size={12} className="text-green-700 dark:text-green-500" aria-hidden="true" />
+                    <MapPin size={12} className="text-teal-700 dark:text-teal-300" aria-hidden="true" />
                   </span>
                 </div>
                 <div className="flex-1 py-1.5">
                   <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">{finalWalk.name}</p>
                   <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                    {t.walked(distanceLabel(finalWalk.meters, lang))} · {t.aboutMinutes(finalWalk.minutes)}
+                    {t.walked(distanceLabel(finalWalk.meters, lang))} · {t.aboutMinutes(Math.round(finalWalk.minutes))}
                   </p>
+                  <a
+                    href={directionsUrl(finalWalk.from, finalWalk.to, "walking")}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-teal-700 underline underline-offset-2 hover:text-teal-900 dark:text-teal-300 dark:hover:text-teal-100"
+                  >
+                    <Footprints size={12} aria-hidden="true" />
+                    {t.walkingDirections}
+                  </a>
                 </div>
               </div>
             )}
