@@ -28,12 +28,17 @@ test.describe("search & AI discoverability", () => {
     const catalog = await request.get("/.well-known/api-catalog");
     expect(catalog.status()).toBe(200);
     expect(catalog.headers()["content-type"]).toContain("application/linkset+json");
-    expect((await catalog.json()).linkset[0].anchor).toBe("https://live.bangkok-transit.com/arrivals.json");
+    expect((await catalog.json()).linkset.map((e: { anchor: string }) => e.anchor)).toEqual([
+      "https://live.bangkok-transit.com/arrivals.json",
+      "https://bangkok-transit.com/api/v1",
+    ]);
 
     const api = await request.get("/openapi.json");
     expect(api.status()).toBe(200);
     expect(api.headers()["content-type"]).toContain("application/openapi+json");
-    expect(Object.keys((await api.json()).paths)).toEqual(["/arrivals.json"]);
+    const apiPaths = Object.keys((await api.json()).paths);
+    expect(apiPaths).toContain("/arrivals.json");
+    expect(apiPaths).toContain("/api/v1/route");
 
     for (const path of ["/md/index.md", "/md/lines/mrt-blue-line.md", "/md/stations/siam-cen.md"]) {
       const res = await request.get(path);

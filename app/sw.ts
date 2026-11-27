@@ -47,6 +47,14 @@ const googleMaps: RuntimeCaching = {
   handler: new NetworkOnly(),
 };
 
+// The paid API (worker/) answers with money-gated data and 402s. A cached copy
+// would hand a paid response to someone who didn't pay (Serwist's default rule
+// caches same-origin /api/ GETs), so it is never stored.
+const paidApi: RuntimeCaching = {
+  matcher: ({ url }) => url.pathname === "/api" || url.pathname.startsWith("/api/"),
+  handler: new NetworkOnly(),
+};
+
 // The offline fallback is served for any navigation the network and the
 // runtime page cache both miss - a link to a page this device never visited,
 // opened in a tunnel.
@@ -78,7 +86,7 @@ const serwist = new Serwist({
   // Serwist's own constructor registers one that calls self.skipWaiting() on
   // `{ type: "SKIP_WAITING" }` (node_modules/serwist -> Serwist).
   navigationPreload: true,
-  runtimeCaching: [liveArrivals, googleMaps, openFreeMapCache, ...defaultCache],
+  runtimeCaching: [paidApi, liveArrivals, googleMaps, openFreeMapCache, ...defaultCache],
 });
 
 serwist.setCatchHandler(async ({ request }) => {

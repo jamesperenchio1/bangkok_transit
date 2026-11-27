@@ -1,0 +1,22 @@
+{
+  // A second copy of the site Worker for the one e2e test that needs a Worker
+  // that has never served a request (e2e/paid-api.spec.ts, "cold start"). Same
+  // entry, routing and (test-network) payment settings as ../wrangler.jsonc, but
+  // no `build`: the main webServer has already built ../out. Keep the routing
+  // and vars in step with ../wrangler.jsonc.
+  "name": "bangkok-transit-cold-test",
+  "main": "../worker/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "../out",
+    "not_found_handling": "404-page",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "vars": {
+    "X402_PAY_TO": "0x941eb61c0052da28d09e39f7ddc946a9631a5eeb",
+    "X402_NETWORK": "eip155:84532",
+    "X402_FACILITATOR_URL": "https://x402.org/facilitator"
+  }
+}

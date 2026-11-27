@@ -26,6 +26,9 @@ const eslintConfig = defineConfig([
     "cloudflare/**/node_modules/**",
     ".wrangler/**",
     "cloudflare/**/.wrangler/**",
+    // e2e/paid-api.spec.ts starts a second Worker from e2e/wrangler.cold.jsonc,
+    // and wrangler leaves its bundle in .wrangler/ next to that config.
+    "e2e/.wrangler/**",
     "cloudflare/**/worker-configuration.d.ts",
     "venv-scrape/**",
     ".venv/**",

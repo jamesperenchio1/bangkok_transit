@@ -83,6 +83,29 @@ if (catalog) {
     }
   }
 }
+// The paid x402 API (worker/): the index is free and states the prices; a paid route must ask for
+// payment (402) and never answer 200 without it.
+const apiIndex = await get(`${SITE_URL}/api/v1`);
+if (apiIndex) {
+  if (!apiIndex.ok) fail(`${SITE_URL}/api/v1: HTTP ${apiIndex.status}`);
+  else {
+    try {
+      const idx = await apiIndex.json();
+      const prices = (idx.endpoints ?? []).map((e) => e.price);
+      if (prices.length !== 4) fail(`${SITE_URL}/api/v1: expected 4 priced endpoints, found ${prices.length}`);
+      if (typeof idx.payments?.testnet !== "boolean") fail(`${SITE_URL}/api/v1: no payments.testnet flag`);
+      else note(`paid API: ${idx.payments.testnet ? "TEST MODE" : "LIVE (mainnet)"}, ${idx.payments.network}, prices ${prices.join(" ")}`);
+      if (!/^0x[0-9a-fA-F]{40}$/.test(idx.payments?.payTo ?? "")) fail(`${SITE_URL}/api/v1: payTo is not an address`);
+    } catch {
+      fail(`${SITE_URL}/api/v1: not valid JSON`);
+    }
+  }
+}
+const paid = await get(`${SITE_URL}/api/v1/route?from=N8&to=CEN`);
+if (paid) {
+  if (paid.status !== 402) fail(`${SITE_URL}/api/v1/route answered HTTP ${paid.status} without payment (expected 402)`);
+  else if (!paid.headers.get("payment-required")) fail(`${SITE_URL}/api/v1/route: 402 without a PAYMENT-REQUIRED header`);
+}
 const twin = await get(`${SITE_URL}/md/index.md`);
 if (twin) {
   if (!twin.ok) fail(`${SITE_URL}/md/index.md: HTTP ${twin.status}`);

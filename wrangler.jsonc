@@ -1,21 +1,39 @@
 {
   // The site: a static export (`npm run build` -> out/) served as Workers
-  // static assets. Assets-only (no `main`), so no script ever runs and
-  // requests are free and unlimited. Live arrivals are a separate,
-  // CDN-cached document written by cloudflare/poller.
+  // static assets, plus one small Worker that runs ONLY for /api/* (the paid
+  // x402 API for AI agents, worker/). Everything else - every page, the map,
+  // the data files - is a static asset served without running any code, so
+  // page views stay free and unlimited. Keep `run_worker_first` exactly
+  // ["/api/*"]: widening it would put a Worker in front of every page view.
+  // Live arrivals are a separate, CDN-cached document written by
+  // cloudflare/poller.
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "bangkok-transit",
   "compatibility_date": "2026-09-01",
   // Wrangler builds the site itself before every deploy/dev, so a deploy
   // never depends on the dashboard's "Build command" field being filled in.
   "build": { "command": "npm run build" },
+  "main": "worker/index.ts",
+  // fetch() in the Worker and the x402 libraries expect Node-style globals.
+  "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "./out",
-    "not_found_handling": "404-page"
+    "not_found_handling": "404-page",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  // Payment settings, all public (an address and a network name; no secrets).
+  // X402_NETWORK eip155:84532 is Base Sepolia, a TEST network: payments are
+  // test USDC with no monetary value. See docs/operations.md for going live.
+  "vars": {
+    "X402_PAY_TO": "0x941eb61c0052da28d09e39f7ddc946a9631a5eeb",
+    "X402_NETWORK": "eip155:84532",
+    "X402_FACILITATOR_URL": "https://x402.org/facilitator"
   },
   // Workers Builds deploys every non-main branch as a Worker Preview
-  // (`wrangler preview`), which needs this block. Empty is right: the site
-  // is static assets only, so a Preview needs no bindings of its own.
+  // (`wrangler preview`), which needs this block. Empty is right: a Preview
+  // needs no bindings (the Worker reads only the plain `vars` above, and if a
+  // Preview did not get them the API would answer 503, never free data).
   "previews": {},
   "routes": [
     { "pattern": "bangkok-transit.com", "custom_domain": true },

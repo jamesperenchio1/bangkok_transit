@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import robots from "@/app/robots";
 import { llmsTxt } from "@/lib/llms";
 import { ARRIVALS_URL } from "@/lib/arrivals-url";
+import { PAID_ENDPOINTS, priceUsd } from "@/lib/paid-api";
 import { CONTENT_SIGNAL, SITE_URL } from "@/lib/seo";
 import type { ArrivalsDocument } from "@/lib/arrivals-document";
 import type { ArrivalPlatform, ArrivalTrain, Arrivals } from "@/lib/bts";
@@ -35,22 +36,41 @@ describe("API catalog and OpenAPI", () => {
   const catalog = json("public/.well-known/api-catalog");
   const api = json("public/openapi.json");
 
-  it("lists the live arrivals document, with its description and docs", () => {
-    expect(catalog.linkset).toHaveLength(1);
-    const entry = catalog.linkset[0];
-    expect(entry.anchor).toBe(ARRIVALS_URL);
-    expect(entry["service-desc"][0].href).toBe(`${SITE_URL}/openapi.json`);
-    expect(entry["service-doc"][0].href).toBe(`${SITE_URL}/llms.txt`);
-    // The docs it points to really describe the API.
+  it("lists both APIs, each with its description and docs", () => {
+    expect(catalog.linkset.map((e: { anchor: string }) => e.anchor)).toEqual([ARRIVALS_URL, `${SITE_URL}/api/v1`]);
+    for (const entry of catalog.linkset) {
+      expect(entry["service-desc"][0].href).toBe(`${SITE_URL}/openapi.json`);
+      expect(entry["service-doc"][0].href).toBe(`${SITE_URL}/llms.txt`);
+    }
+    // The docs it points to really describe both.
     expect(llmsTxt()).toContain(ARRIVALS_URL);
     expect(llmsTxt()).toContain("/openapi.json");
+    expect(llmsTxt()).toContain(`${SITE_URL}/api/v1`);
   });
 
-  it("describes only the one real endpoint, at the real address, with no payment or auth", () => {
+  it("describes the free document and the paid API, with the real addresses and no auth or MPP claims", () => {
     expect(api.openapi).toMatch(/^3\.1\./);
-    expect(api.servers[0].url + Object.keys(api.paths)[0]).toBe(ARRIVALS_URL);
-    expect(Object.keys(api.paths)).toEqual(["/arrivals.json"]);
+    expect(api.servers[0].url + "/arrivals.json").toBe(ARRIVALS_URL);
+    expect(Object.keys(api.paths).sort()).toEqual(
+      ["/arrivals.json", "/api/v1", ...PAID_ENDPOINTS.map((e) => e.openapiPath)].sort(),
+    );
+    // We take payment with x402 only: no login, no API keys, no MPP discovery metadata.
     expect(JSON.stringify(api)).not.toMatch(/x-payment-info|securitySchemes|"security"/);
+  });
+
+  it("publishes exactly the prices the code charges, and a 402 on every paid path", () => {
+    for (const e of PAID_ENDPOINTS) {
+      const op = api.paths[e.openapiPath];
+      expect(op.servers[0].url, e.id).toBe(SITE_URL);
+      expect(op.get["x-price-usd"], e.id).toBe(priceUsd(e));
+      expect(op.get.description, e.id).toContain(e.price);
+      expect(op.get.responses["402"].$ref, e.id).toBe("#/components/responses/PaymentRequired");
+      // A failed call is free; the docs say so for every error it can return.
+      for (const code of ["400", "404"]) if (op.get.responses[code]) expect(op.get.responses[code].description).toContain("Not charged");
+    }
+    // The index is the one free path on the API.
+    expect(api.paths["/api/v1"].get["x-price-usd"]).toBeUndefined();
+    for (const e of PAID_ENDPOINTS) expect(llmsTxt()).toContain(`${e.openapiPath}\` ${e.price}`);
   });
 
   it("matches the shape of the arrivals document", () => {

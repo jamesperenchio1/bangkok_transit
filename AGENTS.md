@@ -30,6 +30,13 @@ live BTS arrivals, live at bangkok-transit.com. Read `README.md` first, then
     straight line if there is no key or the call fails). They use a browser key
     restricted by HTTP referrer and API, with daily quotas and a budget alert.
     They are billed per request when enabled; never put them in the default path.
+  - **The one server-code exception, waived by the owner:** the paid x402 API for AI agents
+    (`worker/`, served under `/api/*`). It is the site's only server code, it runs
+    only for `/api/*` (`assets.run_worker_first` in `wrangler.jsonc` must stay
+    exactly `["/api/*"]`), and every call that costs us anything is paid for by
+    its caller. Never put a Worker, or any per-request work, in front of pages,
+    the map or the data files, and never serve paid data without payment
+    (`tests/x402-worker.test.ts` checks that every paid route answers 402 unpaid).
 - **Never per-user calls to `bts-api.topmile.com`.** It has no CORS, no batch
   endpoint and a ~180/min rate limit; only `cloudflare/poller` talks to it.
 - **Honest live data.** Old readings are shown as last-known with their age
@@ -73,6 +80,11 @@ live BTS arrivals, live at bangkok-transit.com. Read `README.md` first, then
 - `cloudflare/poller/` — separate Worker: `src/index.ts` (the
   `ArrivalsPoller` Durable Object + cron watchdog), `src/schedule.ts` (pure
   scheduling/health logic). Own `package.json`, tests in `test/`.
+- `worker/` + `lib/paid-api.ts` — the paid x402 API (`/api/v1`): `lib/paid-api.ts`
+  is the price table and the data each endpoint returns (pure); `worker/app.ts`
+  is the Hono app with the payment middleware; `worker/index.ts` is the entry.
+  Prices live only in `PAID_ENDPOINTS`; `public/openapi.json` and `llms.txt`
+  are tested against it. See `docs/architecture.md#paid-api-x402`.
 - `app/(content)/`, `lib/seo.ts`, `lib/llms.ts` — static SEO pages (lines, stations, routes), sitemap/robots/llms.txt; see `docs/architecture.md#seo-and-ai-discoverability`. New pages need unique title/description via `pageMeta()`.
 - `data/` — `stations.json`, `line-sequences.json`, `interchanges.json`
   (hand-maintained; see `scripts/README.md` for how to add stations).
@@ -131,7 +143,9 @@ Light Red (RW) are separate lines that share Krung Thep Aphiwat.
 - The poller's entry module (`cloudflare/poller/src/index.ts`) may export
   only the Durable Object class and the default handler - workerd rejects
   the Worker if any other named export isn't a class/handler. `npm run
-  smoke` (also in CI) boots the real Worker and catches this.
+  smoke` (also in CI) boots the real Worker and catches this. The same holds
+  for the site Worker's entry, `worker/index.ts` (logic lives in
+  `worker/app.ts`); `e2e/paid-api.spec.ts` boots it under `wrangler dev`.
 - Station-alert audio (`lib/alert-output.ts`) must work on iPhone first, then
   Android: the AudioContext is unlocked inside a tap, scheduling waits for a
   `running` context, and a closed one is replaced. Any change there must pass
