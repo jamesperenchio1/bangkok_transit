@@ -20,6 +20,7 @@ import { fetchLineGeometry, haversineMeters } from "@/lib/line-geometry";
 import { whenMapPainted } from "@/lib/map-ready";
 import { distanceLabel, nearestStation } from "@/lib/nearest-station";
 import type { FinalWalk } from "@/lib/place-station";
+import { useWalkingRoute } from "@/lib/use-walking-route";
 import type { Place } from "@/lib/google-places";
 import { computeFare } from "@/lib/fares";
 import { useFares } from "@/lib/use-fares";
@@ -344,6 +345,16 @@ export function HomeClient({
       name: destinationPlace.name,
     };
   }, [destination, destinationPlace, walkSpeed]);
+  // The straight estimate above paints at once; when Google answers, the
+  // same walk is redrawn along the actual footpath and the distance/time
+  // become Google's. Without a key, offline, or on any error the hook stays
+  // null and the honest straight line is what everyone sees.
+  const walkingRoute = useWalkingRoute(finalWalk);
+  const shownFinalWalk = useMemo<FinalWalk | null>(() => {
+    if (!finalWalk) return null;
+    if (!walkingRoute) return finalWalk;
+    return { ...finalWalk, path: walkingRoute.path, meters: walkingRoute.meters, minutes: walkingRoute.minutes };
+  }, [finalWalk, walkingRoute]);
   const firstWalk = useMemo<FinalWalk | null>(() => {
     if (!start || !position || startPlace) return null;
     const meters = haversineMeters([start.lat, start.lon], [position.lat, position.lon]);
@@ -363,7 +374,7 @@ export function HomeClient({
   const firstArrivals = useArrivals(firstLeg?.station.code ?? null);
   const timing = path ? tripTiming(path, firstArrivals.data, firstArrivals.now) : null;
   // Walk estimates are fractional; riders read whole minutes.
-  const totalMinutes = Math.round((timing?.minutes ?? path?.minutes ?? 0) + (finalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0));
+  const totalMinutes = Math.round((timing?.minutes ?? path?.minutes ?? 0) + (shownFinalWalk?.minutes ?? 0) + (firstWalk?.minutes ?? 0));
 
   // No route, but only because of lines turned off for routes: say which.
   const blockedBy = useMemo(
@@ -439,9 +450,9 @@ export function HomeClient({
   };
 
   const panelState: RoutePanelState | null = useMemo(() => {
-    if (start && destination) return { mode: "route", start, destination, path, blockedBy, finalWalk, firstWalk };
+    if (start && destination) return { mode: "route", start, destination, path, blockedBy, finalWalk: shownFinalWalk, firstWalk };
     return null;
-  }, [start, destination, path, blockedBy, finalWalk, firstWalk]);
+  }, [start, destination, path, blockedBy, shownFinalWalk, firstWalk]);
 
   const startCode = start?.code ?? null;
   const destinationCode = destination?.code ?? null;
@@ -614,7 +625,7 @@ export function HomeClient({
             startCode={startCode}
             destinationCode={destinationCode}
             path={path}
-            finalWalk={finalWalk}
+            finalWalk={shownFinalWalk}
             firstWalk={firstWalk}
             pathOptions={routeOptions}
             userPosition={position}
@@ -633,7 +644,7 @@ export function HomeClient({
             startCode={startCode}
             destinationCode={destinationCode}
             path={path}
-            finalWalk={finalWalk}
+            finalWalk={shownFinalWalk}
             firstWalk={firstWalk}
             pathOptions={routeOptions}
             userPosition={position}

@@ -83,10 +83,12 @@ export function routeParts(
     parts.push({
       line: "",
       walk: true,
-      points: [
+      // The real footpath when the Routes API answered, otherwise the honest
+      // straight line between the station and the place.
+      points: (finalWalk.path ?? [
         [finalWalk.from.lat, finalWalk.from.lon],
         [finalWalk.to.lat, finalWalk.to.lon],
-      ] as LatLon[],
+      ]) as LatLon[],
     });
   }
   return parts;
@@ -226,8 +228,12 @@ export function routeBounds(
   const lons = path.legs.map((l) => l.station.lon);
   const lats = path.legs.map((l) => l.station.lat);
   if (finalWalk) {
-    lons.push(finalWalk.to.lon);
-    lats.push(finalWalk.to.lat);
+    // Include every point of the real footpath, not just its ends: a route
+    // around a block or over a footbridge can leave the station->place box.
+    for (const [lat, lon] of finalWalk.path ?? [[finalWalk.to.lat, finalWalk.to.lon]]) {
+      lats.push(lat);
+      lons.push(lon);
+    }
   }
   if (firstWalk) {
     lons.push(firstWalk.from.lon, firstWalk.to.lon);
