@@ -27,7 +27,8 @@ const WATCH_OPTIONS: PositionOptions = {
   // actually walking, which is the opposite of "real time" tracking.
   enableHighAccuracy: true,
   maximumAge: 0,
-  timeout: 15_000,
+  // Long, so a slow fix is not reported as a failure.
+  timeout: 30_000,
 };
 
 export interface GeoPosition {
@@ -69,6 +70,48 @@ export function useGeolocation(): UseGeolocationResult {
   useEffect(() => {
     if (!supported) return;
     let watchId: number | null = null;
+    let stopped = false;
+    let restartTimer: ReturnType<typeof setTimeout> | undefined;
+    let tweenTimer: ReturnType<typeof setInterval> | undefined;
+    // Where the dot is drawn now, and the latest real fix it is gliding to.
+    let shown: GeoPosition | null = null;
+    let tween: { from: GeoPosition; to: GeoPosition; start: number; length: number } | null = null;
+    let lastFixAt = 0;
+    let wakeLock: WakeLockSentinel | null = null;
+
+    const stopTween = () => {
+      if (tweenTimer) clearInterval(tweenTimer);
+      tweenTimer = undefined;
+      tween = null;
+    };
+
+    // Glide the dot to each new fix over about the time between fixes instead
+    // of jumping, at ~12 Hz so the page is not re-rendered every frame.
+    const moveDot = (next: GeoPosition) => {
+      const now = performance.now();
+      const length = Math.min(Math.max(now - lastFixAt, 400), 2000);
+      lastFixAt = now;
+      // First fix, or a jump (resumed from background): do not fly across the city.
+      if (!shown || haversineMeters([shown.lat, shown.lon], [next.lat, next.lon]) > 200) {
+        stopTween();
+        shown = next;
+        setPosition(next);
+        return;
+      }
+      tween = { from: shown, to: next, start: now, length };
+      tweenTimer ??= setInterval(() => {
+        if (!tween) return stopTween();
+        const t = Math.min((performance.now() - tween.start) / tween.length, 1);
+        const { from: a, to: b } = tween;
+        shown = {
+          lat: a.lat + (b.lat - a.lat) * t,
+          lon: a.lon + (b.lon - a.lon) * t,
+          accuracy: a.accuracy + (b.accuracy - a.accuracy) * t,
+        };
+        setPosition(shown);
+        if (t >= 1) stopTween();
+      }, 80);
+    };
 
     const onFix = (pos: GeolocationPosition) => {
       const next = {
@@ -80,7 +123,7 @@ export function useGeolocation(): UseGeolocationResult {
       setError(null);
       // Every good fix reaches the dot; nothing is gated here, because a dot
       // that waits for 5 m of movement looks frozen while the rider walks.
-      setPosition(next);
+      moveDot(next);
 
       const prev = settledRef.current;
       const moved = prev ? haversineMeters([prev.position.lat, prev.position.lon], [next.lat, next.lon]) : Infinity;
@@ -92,31 +135,62 @@ export function useGeolocation(): UseGeolocationResult {
     };
 
     const onError = (err: GeolocationPositionError) => {
-      if (err.code === err.PERMISSION_DENIED) setError("denied");
-      else if (err.code === err.TIMEOUT) setError("timeout");
-      else setError("timeout");
+      if (err.code === err.PERMISSION_DENIED) {
+        setError("denied");
+        return;
+      }
+      setError("timeout");
+      // Some browsers (Safari) stop the watch after an error; re-arm it so
+      // tracking never just quietly ends.
+      clearTimeout(restartTimer);
+      restartTimer = setTimeout(start, 1_000);
     };
 
     const start = () => {
+      if (stopped) return;
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
       watchId = navigator.geolocation.watchPosition(onFix, onError, WATCH_OPTIONS);
     };
     const stop = () => {
+      clearTimeout(restartTimer);
       if (watchId === null) return;
       navigator.geolocation.clearWatch(watchId);
       watchId = null;
     };
 
+    // Keep the screen on so the OS does not suspend tracking (battery is not a
+    // concern here). The browser drops the lock when the tab hides.
+    const requestWake = async () => {
+      try {
+        if (!navigator.wakeLock || wakeLock) return;
+        wakeLock = await navigator.wakeLock.request("screen");
+        wakeLock.addEventListener("release", () => (wakeLock = null));
+      } catch {
+        wakeLock = null;
+      }
+    };
+
     // Browsers throttle or drop a watch while the tab is hidden, and it does
     // not always resume on its own: re-arm it when the rider comes back, so
     // the dot is not stuck at where they left.
-    const onVisibility = () => (document.visibilityState === "visible" ? start() : stop());
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        start();
+        void requestWake();
+      } else {
+        stop();
+      }
+    };
 
     start();
+    void requestWake();
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
+      stopped = true;
       document.removeEventListener("visibilitychange", onVisibility);
+      stopTween();
       stop();
+      void wakeLock?.release().catch(() => {});
     };
   }, [supported]);
 
