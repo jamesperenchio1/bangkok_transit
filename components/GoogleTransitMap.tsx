@@ -39,6 +39,7 @@ import {
   routeFitPadding,
   routeParts,
   stationVisuals,
+  tripEnd,
   type StationVisual,
 } from "@/lib/map-data";
 import { motionDuration, useSettingsStore } from "@/lib/settings-store";
@@ -97,7 +98,7 @@ const STATION_BOUNDS = {
 /** The map has this long to show its first tiles before Google is given up on. */
 const LOAD_TIMEOUT_MS = 15_000;
 
-const WALK_COLOR = "#525252";
+const WALK_COLOR = "#0f766e";
 const GPS_COLOR = "#2563eb";
 const FONT = `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Thai", sans-serif`;
 
@@ -187,6 +188,7 @@ export function GoogleTransitMap({
   const [ready, setReady] = useState(false);
   const baseLines = useRef<google.maps.Polyline[]>([]);
   const routeLines = useRef<google.maps.Polyline[]>([]);
+  const tripEndMarker = useRef<google.maps.Marker | null>(null);
   const gpsCircle = useRef<google.maps.Circle | null>(null);
   const nodes = useRef(new Map<string, StationNode>());
   const trainNodes = useRef(new Map<string, TrainNode>());
@@ -460,6 +462,8 @@ export function GoogleTransitMap({
       for (const line of [...baseLines.current, ...routeLines.current]) line.setMap(null);
       baseLines.current = [];
       routeLines.current = [];
+      tripEndMarker.current?.setMap(null);
+      tripEndMarker.current = null;
       gpsCircle.current?.setMap(null);
       gpsCircle.current = null;
       closeCard();
@@ -520,30 +524,18 @@ export function GoogleTransitMap({
     if (!map || !ready) return;
     for (const line of routeLines.current) line.setMap(null);
     routeLines.current = [];
+    tripEndMarker.current?.setMap(null);
+    tripEndMarker.current = null;
     if (!path) return;
     let stale = false;
     void fetchLineGeometry().then((real) => {
       if (stale) return;
       const g = window.google;
-      routeLines.current = routeParts(path, real, finalWalk, firstWalk).map(({ line, walk, points }) => {
+      routeLines.current = routeParts(path, real, finalWalk, firstWalk).flatMap(({ line, walk, points }) => {
         const pathLatLng = points.map(([lat, lng]) => ({ lat, lng }));
-        return walk
-          ? new g.maps.Polyline({
-              map,
-              path: pathLatLng,
-              strokeOpacity: 0,
-              clickable: false,
-              zIndex: 20,
-              // A dashed line: Google has no dash style, so a repeated 1px-gap symbol draws it.
-              icons: [
-                {
-                  icon: { path: "M 0,-1 0,1", strokeOpacity: 1, strokeColor: WALK_COLOR, scale: Math.max(2, routeWidth - 2) / 2 },
-                  offset: "0",
-                  repeat: "9px",
-                },
-              ],
-            })
-          : new g.maps.Polyline({
+        if (!walk) {
+          return [
+            new g.maps.Polyline({
               map,
               path: pathLatLng,
               strokeColor: LINE_COLORS[line as LineKey] ?? "#666666",
@@ -551,8 +543,73 @@ export function GoogleTransitMap({
               strokeWeight: routeWidth,
               clickable: false,
               zIndex: 20,
-            });
+            }),
+          ];
+        }
+        // Google has no dash style: repeated round symbols make the dot trail,
+        // with a wider white copy underneath as the halo.
+        return [
+          new g.maps.Polyline({
+            map,
+            path: pathLatLng,
+            strokeOpacity: 0,
+            clickable: false,
+            zIndex: 19,
+            icons: [
+              {
+                icon: {
+                  path: g.maps.SymbolPath.CIRCLE,
+                  scale: 4.2,
+                  fillColor: "#fff",
+                  fillOpacity: 0.95,
+                  strokeOpacity: 0,
+                },
+                offset: "0",
+                repeat: "12px",
+              },
+            ],
+          }),
+          new g.maps.Polyline({
+            map,
+            path: pathLatLng,
+            strokeOpacity: 0,
+            clickable: false,
+            zIndex: 20,
+            icons: [
+              {
+                icon: {
+                  path: g.maps.SymbolPath.CIRCLE,
+                  scale: 2.2,
+                  fillColor: WALK_COLOR,
+                  fillOpacity: 1,
+                  strokeOpacity: 0,
+                },
+                offset: "0",
+                repeat: "12px",
+              },
+            ],
+          }),
+        ];
       });
+
+      // Picking a place closes its card, so mark where the walk ends.
+      const end = tripEnd(finalWalk);
+      if (end) {
+        tripEndMarker.current = new g.maps.Marker({
+          map,
+          position: { lat: end.lat, lng: end.lon },
+          title: `${end.label} · ${end.detail}`,
+          zIndex: 25,
+          icon: {
+            path: g.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: WALK_COLOR,
+            fillOpacity: 1,
+            strokeColor: "#fff",
+            strokeWeight: 3,
+          },
+        });
+      }
     });
     return () => {
       stale = true;

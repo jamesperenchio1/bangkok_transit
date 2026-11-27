@@ -40,14 +40,14 @@ describe("basemap style", () => {
 });
 
 describe("mapPalette", () => {
-  it("keeps the light basemap's existing colours", () => {
+  it("pins the light basemap palette", () => {
     expect(mapPalette(false)).toEqual({
       labelText: "#1f2937",
       labelHalo: "#ffffff",
       dimmedLine: "#ccc",
       dimmedStationFill: "#ddd",
       dimmedStationStroke: "#ccc",
-      routeWalk: "#525252",
+      routeWalk: "#0f766e",
       background: "#f2efe9",
     });
   });

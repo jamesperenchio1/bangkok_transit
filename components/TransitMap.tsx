@@ -27,6 +27,7 @@ import {
   routeFitPadding,
   routeParts,
   stationVisuals,
+  tripEnd,
 } from "@/lib/map-data";
 import { markMapPainted } from "@/lib/map-ready";
 import type { GeoPosition } from "@/lib/use-geolocation";
@@ -185,6 +186,11 @@ const LINES_LAYER = "transit-lines-layer";
 const ROUTE_SOURCE = "highlighted-route";
 const ROUTE_LAYER = "highlighted-route-layer";
 const ROUTE_WALK_LAYER = "highlighted-route-walk-layer";
+const ROUTE_WALK_HALO_LAYER = "highlighted-route-walk-halo-layer";
+const TRIP_END_SOURCE = "trip-end";
+const TRIP_END_HALO_LAYER = "trip-end-halo-layer";
+const TRIP_END_LAYER = "trip-end-layer";
+const TRIP_END_LABEL_LAYER = "trip-end-label-layer";
 const STATIONS_SOURCE = "stations";
 const STATIONS_HIT_LAYER = "stations-hit-layer";
 const STATIONS_LAYER = "stations-layer";
@@ -542,13 +548,23 @@ export function TransitMap({
           "line-opacity": 1,
         },
       });
+      // A white underlay makes each teal dot readable over both the pale day
+      // basemap and the dark one, where a thin grey dash used to disappear.
+      map.addLayer({
+        id: ROUTE_WALK_HALO_LAYER,
+        type: "line",
+        source: ROUTE_SOURCE,
+        filter: ["==", ["get", "walk"], true],
+        layout: { "line-cap": "round" },
+        paint: { "line-color": "#fff", "line-opacity": 0.85, "line-width": 6, "line-dasharray": [0.1, 1.6] },
+      });
       map.addLayer({
         id: ROUTE_WALK_LAYER,
         type: "line",
         source: ROUTE_SOURCE,
         filter: ["==", ["get", "walk"], true],
         layout: { "line-cap": "round" },
-        paint: { "line-color": palette.routeWalk, "line-width": 3, "line-dasharray": [0.5, 1.5] },
+        paint: { "line-color": palette.routeWalk, "line-width": 4, "line-dasharray": [0.1, 1.6] },
       });
 
       map.addSource(STATIONS_SOURCE, {
@@ -696,6 +712,49 @@ export function TransitMap({
           "circle-color": "#2563eb",
           "circle-stroke-color": "#fff",
           "circle-stroke-width": 2,
+        },
+      });
+
+      // The place a trip ends at. Picking a place closes its map card, so
+      // without this the dotted walk ran to an unmarked point on the basemap.
+      map.addSource(TRIP_END_SOURCE, {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+      map.addLayer({
+        id: TRIP_END_HALO_LAYER,
+        type: "circle",
+        source: TRIP_END_SOURCE,
+        paint: { "circle-radius": 12, "circle-color": "#fff", "circle-opacity": 0.95 },
+      });
+      map.addLayer({
+        id: TRIP_END_LAYER,
+        type: "circle",
+        source: TRIP_END_SOURCE,
+        paint: {
+          "circle-radius": 7,
+          "circle-color": palette.routeWalk,
+          "circle-stroke-color": "#fff",
+          "circle-stroke-width": 3,
+        },
+      });
+      map.addLayer({
+        id: TRIP_END_LABEL_LAYER,
+        type: "symbol",
+        source: TRIP_END_SOURCE,
+        layout: {
+          "text-field": ["get", "label"],
+          "text-font": ["Noto Sans Bold"],
+          "text-size": 11,
+          "text-anchor": "top",
+          "text-offset": [0, 1.4],
+          "text-max-width": 9,
+          "text-optional": true,
+        },
+        paint: {
+          "text-color": palette.labelText,
+          "text-halo-color": palette.labelHalo,
+          "text-halo-width": 2,
         },
       });
     };
@@ -875,6 +934,9 @@ export function TransitMap({
         ["get", "strokeColor"],
       ]);
       map.setPaintProperty(ROUTE_WALK_LAYER, "line-color", palette.routeWalk);
+      map.setPaintProperty(TRIP_END_LAYER, "circle-color", palette.routeWalk);
+      map.setPaintProperty(TRIP_END_LABEL_LAYER, "text-color", palette.labelText);
+      map.setPaintProperty(TRIP_END_LABEL_LAYER, "text-halo-color", palette.labelHalo);
     };
     withTransitLayers(map, loadedRef.current, apply);
   }, [dark, styleEpoch]);
@@ -890,6 +952,21 @@ export function TransitMap({
         const source = map.getSource<maplibregl.GeoJSONSource>(ROUTE_SOURCE);
         source?.setData(
           path ? routeGeoJSON(path, segmentsByLine, finalWalk, firstWalk) : { type: "FeatureCollection", features: [] },
+        );
+        const end = tripEnd(finalWalk);
+        map.getSource<maplibregl.GeoJSONSource>(TRIP_END_SOURCE)?.setData(
+          end
+            ? {
+                type: "FeatureCollection",
+                features: [
+                  {
+                    type: "Feature",
+                    geometry: { type: "Point", coordinates: [end.lon, end.lat] },
+                    properties: { label: end.label, detail: end.detail },
+                  },
+                ],
+              }
+            : { type: "FeatureCollection", features: [] },
         );
       };
       withTransitLayers(map, loadedRef.current, apply);
@@ -950,6 +1027,7 @@ export function TransitMap({
       map.setPaintProperty(STATIONS_LAYER, "circle-radius", ["*", ["get", "radius"], k]);
       map.setPaintProperty(STATIONS_HIT_LAYER, "circle-radius", ["+", ["*", ["get", "radius"], k], 12]);
       map.setPaintProperty(ROUTE_LAYER, "line-width", routeWidth);
+      map.setPaintProperty(ROUTE_WALK_HALO_LAYER, "line-width", Math.max(5, routeWidth + 2));
       map.setPaintProperty(ROUTE_WALK_LAYER, "line-width", Math.max(2, routeWidth - 2));
       for (const id of basemapLabelLayers) {
         if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", basemapLabels ? "visible" : "none");

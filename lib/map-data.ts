@@ -208,8 +208,12 @@ export function routeFitPadding(
 ): { top: number; left: number; right: number; bottom: number } {
   const sheetTop = viewportHeight * 0.3;
   const covered = sheetOpen ? Math.max(0, mapBottom - sheetTop) : 0;
+  // With the sheet closed the "View route" pill still floats over the
+  // bottom of the map; without room for it, the final walk (the whole point
+  // of the last leg) is fitted underneath the pill. Keep 96px clear there.
+  const pill = sheetOpen ? 0 : 72;
   // Never pad away the whole map (the fit refuses then).
-  const bottom = Math.min(covered + 24, mapHeight - 120);
+  const bottom = Math.min(covered + 24 + pill, mapHeight - 120);
   return { top: 40, left: 40, right: 40, bottom: Math.max(40, bottom) };
 }
 
@@ -243,3 +247,23 @@ export const FOCUS_ZOOM_CAP = 15;
 /** Zoom the "locate me" button and a picked place fly to at least. (MapLibre scale.) */
 export const LOCATE_ZOOM = 16;
 export const PLACE_ZOOM = 15;
+
+/** The place a trip ends at, for the destination marker both maps draw. */
+export interface TripEnd {
+  lat: number;
+  lon: number;
+  /** The place's name, already chosen for the rider's language. */
+  label: string;
+  /** Short walking distance, e.g. "350 m". */
+  detail: string;
+}
+
+export function tripEnd(finalWalk?: FinalWalk | null): TripEnd | null {
+  if (!finalWalk) return null;
+  return {
+    lat: finalWalk.to.lat,
+    lon: finalWalk.to.lon,
+    label: finalWalk.name,
+    detail: `${Math.round(finalWalk.meters)} m`,
+  };
+}

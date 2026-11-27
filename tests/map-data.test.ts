@@ -124,7 +124,7 @@ describe("camera helpers", () => {
 
   it("leaves room for the route sheet, but never pads the whole map away", () => {
     const closed = routeFitPadding(false, 800, 700, 800);
-    expect(closed).toEqual({ top: 40, left: 40, right: 40, bottom: 40 });
+    expect(closed).toEqual({ top: 40, left: 40, right: 40, bottom: 96 });
     // The sheet covers the bottom 70% of an 800 px window (560 px) plus 24 px of air, but the
     // padding never exceeds what leaves 120 px of map to fit into: 700 - 120.
     expect(routeFitPadding(true, 800, 700, 800).bottom).toBe(580);
